@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Full Test Bank — Admin</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #f0f2f5;
+            padding: 20px;
+            color: #1e293b;
+            line-height: 1.5;
+        }
+
+        /* ─── Header ─── */
+        .admin-header {
+            background: #1a2b4a;
+            color: white;
+            padding: 14px 24px;
+            border-radius: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .admin-header span { font-size: 18px; font-weight: 600; }
+        .admin-header a {
+            color: #ddd;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .admin-header a:hover { color: white; text-decoration: underline; }
+
+        /* ─── Flash messages ─── */
+        .flash {
+            padding: 12px 18px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-weight: 500;
+            border-left: 4px solid;
+        }
+        .flash.success {
+            background: #d4edda;
+            color: #155724;
+            border-color: #28a745;
+        }
+        .flash.danger {
+            background: #f8d7da;
+            color: #721c24;
+            border-color: #dc3545;
+        }
+        .flash.info {
+            background: #cce5ff;
+            color: #004085;
+            border-color: #0a2b4a;
+        }
+        .flash.warning {
+            background: #fff3cd;
+            color: #856404;
+            border-color: #ffc107;
+        }
+
+        /* ─── Cards ─── */
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+        }
+        .card h2 {
+            color: #1a2b4a;
+            margin-bottom: 16px;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* ─── Hint banner ─── */
+        .hint {
+            background: #fff3cd;
+            color: #856404;
+            padding: 12px 18px;
+            border-radius: 8px;
+            margin-bottom: 18px;
+            border-left: 4px solid #ffc107;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        .hint strong { color: #5d3a00; }
+
+        /* ─── Generation form ─── */
+        .gen-form {
+            display: flex;
+            gap: 14px;
+            flex-wrap: wrap;
+            align-items: flex-end;
+        }
+        .gen-form label {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-weight: 600;
+            font-size: 13px;
+            color: #555;
+        }
+        .gen-form select,
+        .gen-form input {
+            padding: 10px 14px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: border-color 0.2s;
+        }
+        .gen-form select:focus,
+        .gen-form input:focus {
+            outline: none;
+            border-color: #6c63ff;
+            box-shadow: 0 0 0 3px rgba(108,99,255,0.15);
+        }
+        .gen-form input[type="number"] { width: 90px; }
+        .gen-form button {
+            padding: 12px 28px;
+            background: linear-gradient(135deg, #6c63ff, #5b52d2);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 14px rgba(108,99,255,0.3);
+            font-family: inherit;
+        }
+        .gen-form button:hover {
+            background: linear-gradient(135deg, #5b52d2, #4a43b5);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(108,99,255,0.4);
+        }
+        .gen-form button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* ─── Table ─── */
+        .variants-table-wrap {
+            overflow-x: auto;
+            border-radius: 10px;
+            border: 1px solid #eef2f7;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            min-width: 700px;
+        }
+        thead th {
+            background: #f8f9fc;
+            color: #1a2b4a;
+            text-align: left;
+            padding: 12px 14px;
+            font-weight: 700;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            border-bottom: 2px solid #eef2f7;
+            white-space: nowrap;
+        }
+        tbody td {
+            padding: 12px 14px;
+            border-bottom: 1px solid #eef2f7;
+            font-size: 14px;
+            vertical-align: middle;
+        }
+        tbody tr:hover td { background: #fafbfc; }
+        tbody tr:last-child td { border-bottom: none; }
+
+        /* ─── Badges ─── */
+        .badge {
+            display: inline-block;
+            padding: 3px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        .badge-easy    { background: #dcfce7; color: #16a34a; }
+        .badge-medium  { background: #fef3c7; color: #d97706; }
+        .badge-hard    { background: #fee2e2; color: #dc2626; }
+        .badge-ready   { background: #e3f2fd; color: #0a2b4a; }
+        .badge-pending { background: #f0f0f0; color: #6c757d; }
+
+        /* ─── Buttons ─── */
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+            padding: 6px 14px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            font-family: inherit;
+            transition: background 0.2s;
+        }
+        .btn-danger:hover { background: #b02a37; }
+
+        .btn-preview {
+            background: #fff;
+            color: #0a2b4a;
+            padding: 5px 12px;
+            border: 2px solid #0a2b4a;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            font-family: inherit;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn-preview:hover {
+            background: #0a2b4a;
+            color: white;
+        }
+
+        /* ─── Empty state ─── */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #6c757d;
+        }
+        .empty-state .icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+            opacity: 0.7;
+        }
+        .empty-state h3 {
+            color: #1a2b4a;
+            margin-bottom: 8px;
+            font-size: 20px;
+        }
+        .empty-state p {
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        /* ─── Value badges ─── */
+        .count-pill {
+            background: #e8f0fe;
+            color: #003d6b;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 12px;
+            display: inline-block;
+            min-width: 32px;
+            text-align: center;
+        }
+        .users-list {
+            font-size: 12px;
+            color: #6c757d;
+            max-width: 220px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .users-list strong { color: #1a2b4a; }
+
+        /* ─── Responsive ─── */
+        @media (max-width: 640px) {
+            body { padding: 12px; }
+            .card { padding: 18px; }
+            .gen-form { flex-direction: column; align-items: stretch; }
+            .gen-form button { width: 100%; }
+            .gen-form input[type="number"] { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ─── HEADER ─── -->
+    <div class="admin-header">
+        <span>🎓 Full Test Bank Manager</span>
+        <a href="{{ url_for('admin_dashboard') }}">← Back to Admin Dashboard</a>
+    </div>
+
+    <!-- ─── FLASH MESSAGES ─── -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="flash {{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- ─── GENERATE NEW VARIANT ─── -->
+    <div class="card">
+        <h2>➕ Generate New Full-Test Variant</h2>
+
+        <div class="hint">
+            ⚠️ Each variant takes <strong>1–3 minutes</strong> to generate
+            (Listening with audio + Reading + Writing + Speaking).
+            After clicking <strong>Generate</strong>, wait 2–3 minutes and refresh the page —
+            new variant(s) will appear in the table below.
+        </div>
+
+        <form method="POST"
+              action="{{ url_for('admin_full_test_bank_generate') }}"
+              class="gen-form"
+              onsubmit="onGenerateSubmit(this);">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+
+            <label>
+                Difficulty
+                <select name="difficulty">
+                    <option value="easy">Easy</option>
+                    <option value="medium" selected>Medium</option>
+                    <option value="hard">Hard</option>
+                </select>
+            </label>
+
+            <label>
+                Accent
+                <select name="accent">
+                    <option value="british" selected>British 🇬🇧</option>
+                    <option value="american">American 🇺🇸</option>
+                    <option value="australian">Australian 🇦🇺</option>
+                    <option value="canadian">Canadian 🇨🇦</option>
+                </select>
+            </label>
+
+            <label>
+                How many
+                <input type="number"
+                       name="count"
+                       value="1"
+                       min="1"
+                       max="5"
+                       required>
+            </label>
+
+            <button type="submit" id="gen-btn">
+                🚀 Generate
+            </button>
+        </form>
+    </div>
+
+    <!-- ─── EXISTING VARIANTS ─── -->
+    <div class="card">
+        <h2>📋 Existing Variants ({{ variants|length }})</h2>
+
+        {% if variants %}
+            <div class="variants-table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Difficulty</th>
+                            <th>Uses</th>
+                            <th>Taken by</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for v in variants %}
+                            <tr>
+                                <td>
+                                    <strong style="color:#6c63ff;">#{{ v.id }}</strong>
+                                </td>
+
+                                <td>
+                                    <span class="badge badge-{{ v.difficulty or 'medium' }}">
+                                        {{ (v.difficulty or 'medium')|upper }}
+                                    </span>
+                                </td>
+
+                                <td>
+                                    <span class="count-pill">{{ v.usage_count or 0 }}</span>
+                                </td>
+
+                                <td>
+                                    {% set used_raw = v.used_by_users %}
+                                    {% if used_raw %}
+                                        {% if used_raw is string %}
+                                            {% set cleaned = used_raw
+                                                | replace('[', '')
+                                                | replace(']', '')
+                                                | replace('"', '')
+                                                | replace("'", '') %}
+                                            {% if cleaned|trim %}
+                                                <span class="users-list" title="{{ cleaned }}">
+                                                    {{ cleaned }}
+                                                </span>
+                                            {% else %}
+                                                <em style="color:#aaa;">None yet</em>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="users-list">
+                                                <strong>{{ used_raw|length }}</strong> user(s)
+                                            </span>
+                                        {% endif %}
+                                    {% else %}
+                                        <em style="color:#aaa;">None yet</em>
+                                    {% endif %}
+                                </td>
+
+                                <td style="font-size: 12px; color: #6c757d; white-space: nowrap;">
+                                    {% if v.created_at %}
+                                        {{ v.created_at.strftime('%Y-%m-%d') }}<br>
+                                        <span style="font-size: 11px;">
+                                            {{ v.created_at.strftime('%H:%M') }}
+                                        </span>
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </td>
+
+                                <td>
+                                    <a href="{{ url_for('static', filename='full_test_bank/variant_' + '%03d'|format(v.id) + '/snapshot.json') }}"
+                                       target="_blank"
+                                       class="btn-preview"
+                                       style="margin-right: 6px;">
+                                        👁 Preview
+                                    </a>
+
+                                    <form method="POST"
+                                          action="{{ url_for('admin_full_test_bank_delete', bank_id=v.id) }}"
+                                          style="display: inline;"
+                                          onsubmit="return confirm('Delete variant #{{ v.id }}?\n\nThis will:\n  • Remove the DB row\n  • Delete the audio + chart files from disk\n\nThis CANNOT be undone.');">
+                                        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                                        <button type="submit" class="btn-danger">
+                                            🗑 Delete
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <div class="icon">📭</div>
+                <h3>No variants yet</h3>
+                <p>
+                    Use the form above to generate your first full-test variant.<br>
+                    We recommend creating <strong>at least 2–3 variants per difficulty</strong>
+                    so users get variety and to reduce leak risk.
+                </p>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- ─── INFO FOOTER ─── -->
+    <div class="card" style="background: #f8f9fc; border: 1px dashed #d1d5db;">
+        <h2 style="font-size: 16px;">💡 How it works</h2>
+        <ul style="font-size: 13px; color: #555; line-height: 1.9; padding-left: 20px;">
+            <li>Each variant stores <strong>all 4 phases</strong> — Listening (with audio),
+                Reading, Writing (with chart), and Speaking (all prompts).</li>
+            <li>Audio and chart images are copied to
+                <code style="background:#eef2f7; padding:2px 6px; border-radius:4px;">static/full_test_bank/variant_XXX/</code>
+                on disk.</li>
+            <li>When a user starts a full test, the system picks a variant they
+                <strong>haven't taken yet</strong> and serves it instantly — no AI cost, no delay.</li>
+            <li>Once served, the variant is <strong>locked to that user's attempt</strong>
+                (their answers go to a separate session row).</li>
+            <li>Deleting a variant removes both the DB row and the on-disk files.</li>
+        </ul>
+    </div>
+
+    <!-- ─── JS ─── -->
+    <script>
+        /**
+         * When the generate form is submitted:
+         *   - Prevent double-clicks
+         *   - Show a "generating..." state
+         *   - Auto-refresh the page after 90 seconds so the new variant appears
+         */
+        function onGenerateSubmit(form) {
+            const btn = document.getElementById('gen-btn');
+            if (!btn) return true;
+
+            btn.disabled = true;
+            btn.textContent = '⏳ Generating…';
+
+            // Re-enable + auto-refresh so the new variant shows up
+            setTimeout(function () {
+                try {
+                    window.location.reload();
+                } catch (e) { /* ignore */ }
+            }, 90000);  // 90 seconds
+
+            return true;
+        }
+
+        // Confirm before leaving if the user just generated a batch
+        // (helps prevent accidental navigation away during the wait)
+        (function () {
+            const params = new URLSearchParams(window.location.search);
+            // Nothing to do here for now — placeholder for future UX.
+        })();
+    </script>
+
+</body>
+</html>

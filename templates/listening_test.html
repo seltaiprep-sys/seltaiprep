@@ -1,0 +1,2867 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <title>IELTS Listening Test</title>
+    <style>
+        /* ─── Base Styles ───────────────────────────────────────────── */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; }
+        .header { background: #003d6b; color: white; padding: 15px 30px; }
+        .header-content { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+        .logo h1 { font-size: 20px; }
+        .logo p { font-size: 12px; opacity: 0.8; }
+        .nav-links a { color: white; text-decoration: none; margin-left: 25px; }
+        .nav-links a:hover { text-decoration: underline; }
+        .container { max-width: 950px; margin: 30px auto; padding: 0 20px; }
+        .test-card { background: white; border-radius: 16px; padding: 30px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); position: relative; }
+
+        /* ── Full Test banner ── */
+        .full-test-banner {
+            display: none;
+            background: linear-gradient(135deg, #0d2137 0%, #1a3a5c 100%);
+            color: white;
+            padding: 14px 24px;
+            border-radius: 14px;
+            margin-bottom: 18px;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.15);
+            font-weight: 600;
+            font-size: 15px;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .full-test-banner.show { display: flex; }
+        .full-test-banner .phase-pill {
+            background: #ffc107;
+            color: #333;
+            padding: 5px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .full-test-banner .ft-info { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+        .full-test-banner a {
+            color: #ffc107;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 13px;
+            padding: 6px 14px;
+            border: 2px solid #ffc107;
+            border-radius: 20px;
+            transition: all 0.2s;
+        }
+        .full-test-banner a:hover { background: #ffc107; color: #333; }
+
+        /* ✅ Retake banner */
+        .retake-banner {
+            display: none;
+            background: linear-gradient(135deg, #1e7e34 0%, #2e7d32 100%);
+            color: white;
+            padding: 14px 24px;
+            border-radius: 14px;
+            margin-bottom: 18px;
+            box-shadow: 0 4px 14px rgba(30,126,52,0.25);
+            font-weight: 600;
+            font-size: 15px;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .retake-banner.show { display: flex; }
+        .retake-banner .retake-pill {
+            background: #ffc107;
+            color: #333;
+            padding: 5px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .retake-banner .ft-info { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+        .timer-section { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
+        .timer { background: #ffc107; color: #333; padding: 8px 20px; border-radius: 20px; font-size: 16px; font-weight: bold; transition: all 0.3s; }
+        .timer.warning { background: #ff9800; color: #fff; animation: pulse-timer 1.5s infinite; }
+        .timer.expired { background: #dc3545; color: #fff; animation: pulse-timer 1s infinite; }
+        @keyframes pulse-timer {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.85; transform: scale(1.03); }
+        }
+        .question-counter { background: #e3f2fd; padding: 8px 20px; border-radius: 20px; font-size: 14px; }
+
+        .accent-selector { display: flex; align-items: center; gap: 12px; background: #e8f0fe; padding: 8px 16px; border-radius: 30px; flex-wrap: wrap; }
+        .accent-selector label { font-weight: 600; color: #003d6b; }
+        .accent-selector select { padding: 6px 12px; border-radius: 20px; border: 2px solid #003d6b; background: white; font-weight: 500; cursor: pointer; }
+
+        .difficulty-selector { display: flex; align-items: center; gap: 12px; background: #e8f0fe; padding: 8px 16px; border-radius: 30px; flex-wrap: wrap; }
+        .difficulty-selector label { font-weight: 600; color: #003d6b; }
+        .difficulty-selector select { padding: 6px 12px; border-radius: 20px; border: 2px solid #003d6b; background: white; font-weight: 500; cursor: pointer; }
+
+        .options-box {
+            background: #f8fafc;
+            padding: 12px 20px;
+            margin-bottom: 16px;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            align-items: center;
+        }
+        .options-box label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            color: #1e2b3c;
+            cursor: pointer;
+        }
+        .options-box input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: #003d6b;
+            cursor: pointer;
+        }
+
+        .resume-banner { display: none; background: #cce5ff; color: #004085; padding: 12px 20px; border-radius: 10px; margin-bottom: 15px; border: 2px solid #b8daff; font-weight: 500; align-items: center; gap: 12px; flex-wrap: wrap; }
+        .resume-banner.show { display: flex; }
+        .resume-banner .btn-sm { padding: 4px 16px; border: none; border-radius: 20px; font-size: 13px; font-weight: 600; cursor: pointer; background: #003d6b; color: white; transition: all 0.3s; }
+        .resume-banner .btn-sm:hover { background: #002a4a; }
+
+        .audio-player {
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            border: 2px solid #e0e0e0;
+            text-align: center;
+        }
+        .audio-controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .audio-btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 30px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .audio-btn-primary {
+            background: #003d6b;
+            color: white;
+        }
+        .audio-btn-primary:hover {
+            background: #002a4a;
+            transform: scale(1.02);
+        }
+        .audio-btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .audio-btn.playing {
+            background: #dc3545;
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        .audio-status {
+            font-size: 14px;
+            color: #666;
+            margin-top: 8px;
+        }
+        .audio-error-container {
+            margin-top: 10px;
+            display: none;
+        }
+        .audio-error-container .error-box {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 12px 18px;
+            border-radius: 8px;
+            border: 1px solid #f5c6cb;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .audio-error-container .retry-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 6px 18px;
+            border-radius: 20px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .audio-error-container .retry-btn:hover {
+            background: #c82333;
+        }
+
+        #silence-timer {
+            display: none;
+            position: fixed;
+            top: 90px;
+            right: 20px;
+            left: auto;
+            transform: none;
+            background: rgba(10, 20, 32, 0.95);
+            color: white;
+            padding: 14px 22px;
+            border-radius: 14px;
+            font-size: 16px;
+            font-weight: bold;
+            z-index: 1000;
+            text-align: center;
+            box-shadow: 0 10px 34px rgba(0,0,0,0.5);
+            border: 3px solid #ffc107;
+            min-width: 190px;
+            max-width: 260px;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        #silence-timer #silence-label {
+            font-size: 12px;
+            margin-bottom: 6px;
+            color: #ffc107;
+            font-weight: 800;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+        }
+        #silence-timer #silence-countdown {
+            font-size: 40px;
+            font-weight: 800;
+            line-height: 1;
+            color: #ffffff;
+            font-variant-numeric: tabular-nums;
+        }
+        #silence-timer .silence-sub {
+            font-size: 11px;
+            color: #94a3b8;
+            margin-top: 4px;
+            font-weight: 500;
+            letter-spacing: 0.3px;
+        }
+
+        .question-item { background: #f8f9fc; padding: 15px; margin: 10px 0; border-radius: 10px; border: 1px solid #e0e0e0; }
+        .question-item .q-number { font-weight: bold; color: #003d6b; }
+        .answer-input { width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 8px; font-size: 14px; margin-top: 8px; }
+        .answer-input:focus { outline: none; border-color: #003d6b; }
+        .answer-select { width: 100%; max-width: 300px; padding: 10px; border: 2px solid #ddd; border-radius: 8px; font-size: 14px; margin-top: 8px; background: white; cursor: pointer; }
+        .answer-select:focus { outline: none; border-color: #003d6b; }
+        .options-row { display: flex; flex-wrap: wrap; gap: 15px 30px; margin: 8px 0 4px 0; padding: 10px 14px; background: #eef2f7; border-radius: 8px; border: 1px solid #d0d7e2; font-size: 14px; }
+        .options-row .option-item { display: flex; align-items: center; gap: 4px; font-weight: 500; color: #1a3a5c; }
+        .options-row .option-item .opt-letter { display: inline-block; font-weight: 700; color: #003d6b; min-width: 18px; }
+        .map-container { background: #f8f9fc; padding: 15px; border-radius: 10px; margin: 10px 0; border: 1px solid #dee2e6; display: flex; flex-direction: column; align-items: center; }
+        .map-container h4 { color: #003d6b; margin-bottom: 10px; }
+        .map-svg-wrapper svg { max-width: 100%; height: auto; background: #f8f9fa; border-radius: 8px; border: 1px solid #dee2e6; display: block; }
+        .map-select { width: 100%; max-width: 300px; padding: 8px; border: 1px solid #ddd; border-radius: 6px; margin-top: 8px; }
+
+        .section-map-wrapper {
+            background: #f8f9fc;
+            padding: 18px;
+            border-radius: 12px;
+            border: 2px solid #003d6b;
+            margin-bottom: 22px;
+            box-shadow: 0 3px 12px rgba(0,61,107,0.08);
+        }
+        .section-map-wrapper h4 {
+            color: #003d6b;
+            margin-bottom: 12px;
+            text-align: center;
+            font-size: 17px;
+        }
+        .section-map-wrapper .map-hint {
+            font-size: 12.5px;
+            color: #555;
+            text-align: center;
+            margin-top: 10px;
+            font-style: italic;
+        }
+        .map-letter-select {
+            width: 100%;
+            max-width: 220px;
+            padding: 10px 14px;
+            border: 2px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 700;
+            color: #003d6b;
+            background: white;
+            cursor: pointer;
+            margin-top: 8px;
+            letter-spacing: 1.5px;
+        }
+        .map-letter-select:focus {
+            outline: none;
+            border-color: #003d6b;
+            box-shadow: 0 0 0 3px rgba(0,61,107,0.15);
+        }
+
+        .section-card { background: #f8f9fc; padding: 20px; margin-bottom: 20px; border-radius: 10px; border-left: 4px solid #003d6b; display: none; }
+        .section-card.active { display: block; }
+
+        .section-navigation { display: flex; justify-content: space-between; margin-top: 20px; gap: 10px; flex-wrap: wrap; }
+        .section-indicators { display: flex; gap: 8px; justify-content: center; margin: 15px 0; flex-wrap: wrap; }
+        .section-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #ddd;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+            position: relative;
+        }
+        .section-dot.active { background: #003d6b; border-color: #003d6b; transform: scale(1.2); }
+        .section-dot.ready { background: #28a745; }
+        .section-dot.generating { background: #ffc107; animation: pulse 1s infinite; }
+        .section-dot.error { background: #dc3545; }
+        .section-dot .dot-spinner { display: none; }
+        .section-dot.generating .dot-spinner { display: inline-block; font-size: 8px; }
+
+        .btn { padding: 8px 20px; border: none; border-radius: 25px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.3s; text-decoration: none; display: inline-block; text-align: center; }
+        .btn-primary { background: #003d6b; color: white; }
+        .btn-primary:hover { background: #002a4a; }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-success:hover { background: #1e7e34; }
+        .btn-success:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-outline { background: transparent; color: #003d6b; border: 2px solid #003d6b; }
+        .btn-outline:hover { background: #003d6b; color: white; }
+        .btn-danger { background: #dc3545; color: white; }
+        .btn-danger:hover { background: #c82333; }
+        .btn-secondary { background: #6c757d; color: white; }
+        .btn-secondary:hover { background: #5a6268; }
+
+        .btn-retake { background: #1e7e34; color: white; }
+        .btn-retake:hover { background: #155d27; }
+        .btn-new-test { background: #003d6b; color: white; }
+        .btn-new-test:hover { background: #002a4a; }
+
+        .loading { text-align: center; padding: 60px; }
+        .spinner { border: 3px solid #f3f3f3; border-top: 3px solid #003d6b; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 20px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .status-banner { padding: 10px 15px; border-radius: 8px; margin: 10px 0; display: none; font-weight: 500; }
+        .status-banner.success { display: block; background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .status-banner.error { display: block; background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .status-banner.info { display: block; background: #cce5ff; color: #004085; border: 1px solid #b8daff; }
+        .status-banner.warning { display: block; background: #fff3cd; color: #856404; border: 1px solid #ffc107; }
+
+        .section-loading {
+            text-align: center;
+            padding: 30px;
+            color: #666;
+        }
+        .section-loading .spinner-small {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #003d6b;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 10px auto;
+        }
+
+        .review-screen { display: none; padding: 20px; }
+        .review-screen .review-header { text-align: center; margin-bottom: 20px; }
+        .review-actions { display: flex; gap: 15px; justify-content: center; margin-top: 20px; flex-wrap: wrap; }
+        .review-question { background: #f8f9fc; padding: 12px 15px; margin: 4px 0; border-radius: 6px; border: 1px solid #e0e0e0; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; }
+        .review-question .q-number { font-weight: bold; color: #003d6b; min-width: 55px; }
+        .review-question .q-text { flex: 1; min-width: 150px; color: #333; padding: 0 10px; font-size: 14px; }
+        .review-question .q-answer-input { flex: 1; min-width: 120px; max-width: 300px; padding: 6px 10px; border: 2px solid #d1d5db; border-radius: 6px; font-size: 14px; background: white; transition: border-color 0.2s; }
+        .review-question .q-answer-input:focus { outline: none; border-color: #6c63ff; box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.15); }
+        .review-question .q-answer-input.empty { border-color: #f59e0b; background: #fffbeb; }
+        .review-question .q-answer-input:disabled { background: #f3f4f6; cursor: not-allowed; }
+        .review-question .q-answer-select { flex: 1; min-width: 120px; max-width: 200px; padding: 6px 10px; border: 2px solid #d1d5db; border-radius: 6px; font-size: 14px; background: white; cursor: pointer; transition: border-color 0.2s; }
+        .review-question .q-answer-select:focus { outline: none; border-color: #6c63ff; box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.15); }
+        .review-question .q-answer-select.empty { border-color: #f59e0b; background: #fffbeb; }
+
+        .review-section-header { background: #e3f2fd; padding: 10px 15px; margin: 15px 0 8px 0; border-radius: 6px; font-weight: bold; color: #003d6b; }
+
+        .results-screen { display: none; text-align: left; padding: 20px; }
+        .results-screen .score-box { text-align: center; background: #e3f2fd; padding: 20px; border-radius: 16px; margin-bottom: 20px; }
+        .results-screen .score-box .score { font-size: 48px; color: #003d6b; margin: 10px 0; }
+        .results-screen .score-box .band { font-size: 24px; color: #28a745; }
+        .section-scores { display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; margin: 15px 0; }
+        .section-score-card { background: white; padding: 12px 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); text-align: center; min-width: 100px; }
+        .section-score-card .sec-label { font-size: 12px; color: #666; }
+        .section-score-card .sec-value { font-size: 24px; font-weight: bold; color: #003d6b; }
+        .detailed-answers { margin-top: 20px; background: #f8f9fc; border-radius: 12px; padding: 20px; }
+        .detailed-answers h3 { margin-bottom: 15px; color: #003d6b; border-bottom: 2px solid #003d6b; padding-bottom: 8px; }
+        .answer-review-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-bottom: 1px solid #e0e0e0; flex-wrap: wrap; gap: 8px; }
+        .answer-review-item.correct { background: #d4edda; border-left: 4px solid #28a745; }
+        .answer-review-item.incorrect { background: #f8d7da; border-left: 4px solid #dc3545; }
+        .answer-review-item.unanswered { background: #fff3cd; border-left: 4px solid #ffc107; }
+        .answer-review-item .q-info { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 150px; }
+        .answer-review-item .q-number { font-weight: bold; color: #003d6b; }
+        .answer-review-item .q-text { font-size: 13px; color: #555; margin-bottom: 2px; }
+        .answer-review-item .user-answer { color: #dc3545; font-weight: 500; }
+        .answer-review-item .correct-answer { color: #28a745; font-weight: 500; }
+        .answer-review-item .status-badge { font-weight: 600; padding: 2px 12px; border-radius: 20px; font-size: 12px; }
+        .answer-review-item .status-badge.correct { background: #28a745; color: white; }
+        .answer-review-item .status-badge.incorrect { background: #dc3545; color: white; }
+        .answer-review-item .status-badge.unanswered { background: #ffc107; color: #333; }
+        .feedback-summary { background: #003d6b; color: white; padding: 15px 20px; border-radius: 10px; margin-top: 20px; }
+        .feedback-summary ul { list-style: none; padding: 0; }
+        .feedback-summary li { padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .feedback-summary li:last-child { border-bottom: none; }
+        .feedback-summary .highlight { color: #ffc107; font-weight: bold; }
+        .results-actions { display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; margin-top: 20px; }
+
+        @media (max-width: 768px) {
+            .container { padding: 10px; }
+            .test-card { padding: 15px; }
+            .audio-controls { flex-direction: column; align-items: stretch; }
+            .section-navigation { flex-direction: column; }
+            .section-navigation .btn { width: 100%; }
+            .answer-review-item { flex-direction: column; align-items: stretch; }
+            .options-row { gap: 8px 16px; font-size: 13px; }
+            .review-question { flex-direction: column; align-items: stretch; text-align: left; }
+            .review-question .q-text { padding: 0; }
+            .review-question .q-answer-input { max-width: 100%; }
+            .review-question .q-answer-select { max-width: 100%; }
+            .accent-selector, .difficulty-selector { flex-direction: column; align-items: stretch; }
+            .options-box { flex-direction: column; align-items: flex-start; }
+
+            #silence-timer {
+                top: 80px;
+                right: 10px;
+                padding: 10px 14px;
+                min-width: 140px;
+                max-width: 180px;
+            }
+            #silence-timer #silence-countdown { font-size: 30px; }
+            #silence-timer #silence-label { font-size: 10px; }
+            #silence-timer .silence-sub { font-size: 10px; }
+        }
+
+        #waiting-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.95);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            z-index: 20;
+            border-radius: 16px;
+            text-align: center;
+            padding: 30px;
+        }
+        #waiting-overlay .waiting-icon { font-size: 48px; margin-bottom: 20px; }
+        #waiting-overlay .waiting-title { font-size: 24px; font-weight: bold; color: #003d6b; }
+        #waiting-overlay .waiting-status { font-size: 16px; color: #555; margin-top: 10px; }
+        #waiting-overlay .waiting-spinner { border: 4px solid #f3f3f3; border-top: 4px solid #003d6b; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin: 20px auto; }
+        #waiting-overlay .waiting-progress { margin-top: 15px; color: #666; font-size: 14px; }
+
+        #start-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.92);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            z-index: 10;
+            border-radius: 16px;
+        }
+        #start-overlay .start-btn { font-size: 28px; padding: 20px 50px; background: #28a745; color: white; border: none; border-radius: 50px; cursor: pointer; box-shadow: 0 4px 15px rgba(40,167,69,0.4); transition: all 0.3s; font-weight: bold; }
+        #start-overlay .start-btn:hover { transform: scale(1.05); box-shadow: 0 6px 25px rgba(40,167,69,0.6); }
+        #start-overlay .start-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        #start-overlay .ready-text { font-size: 28px; color: #333; margin-bottom: 10px; }
+        #start-overlay .preview-timer { font-size: 72px; font-weight: bold; color: #003d6b; margin: 5px 0; }
+        #start-overlay .sub-text { font-size: 16px; color: #666; margin-top: 5px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <div class="logo"><h1>IELTS Official Practice</h1><p>Listening Test</p></div>
+            <div class="nav-links"><a href="/dashboard">Dashboard</a><a href="/logout">Logout</a></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- ░░ Full Test Banner ░░ -->
+        <div class="full-test-banner" id="full-test-banner">
+            <div class="ft-info">
+                <span class="phase-pill">Full Test · Listening</span>
+                <span>🎧 Listening Phase — 30 minutes · 4 Sections</span>
+            </div>
+            <a href="/ielts-full-test" onclick="return confirm('Return to the full test dashboard? Your listening progress will be saved.');">
+                ← Full Test Dashboard
+            </a>
+        </div>
+
+        <!-- ✅ RETAKE BANNER -->
+        <div class="retake-banner" id="retake-banner">
+            <div class="ft-info">
+                <span class="retake-pill">Retake</span>
+                <span>🔄 Retaking your previous listening test — same sections, fresh 30-minute timer.</span>
+            </div>
+        </div>
+
+        <div id="test-screen">
+            <div class="test-card" style="position:relative;">
+
+                <div id="waiting-overlay">
+                    <div class="waiting-icon">🎧</div>
+                    <div class="waiting-title">Preparing your test...</div>
+                    <div class="waiting-status">Generating Section 1 – please wait</div>
+                    <div class="waiting-spinner"></div>
+                    <div class="waiting-progress" id="waiting-progress">⏳ Generating test data...</div>
+                </div>
+
+                <div class="timer-section">
+                    <div class="timer" id="timer">⏱️ Time: 30:00</div>
+                    <div class="question-counter" id="question-counter">Section 1 of 4</div>
+                    <div class="accent-selector" id="accent-selector">
+                        <label for="accent-select">🎤 Accent:</label>
+                        <select id="accent-select">
+                            <option value="british">British 🇬🇧</option>
+                            <option value="american">American 🇺🇸</option>
+                            <option value="australian">Australian 🇦🇺</option>
+                            <option value="canadian">Canadian 🇨🇦</option>
+                            <option value="indian">Indian 🇮🇳</option>
+                        </select>
+                    </div>
+                    <div class="difficulty-selector" id="difficulty-selector">
+                        <label for="difficulty-select">📊 Difficulty:</label>
+                        <select id="difficulty-select">
+                            <option value="easy">Easy</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="hard">Hard</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- ✅ 'checked' removed — checkbox defaults to unchecked -->
+                <div class="options-box" id="options-box">
+                    <label id="force-new-label"><input type="checkbox" id="force-new-check"> 🔄 Force New Test (ignore cache)</label>
+                </div>
+
+                <div id="resume-banner" class="resume-banner">
+                    <span>🔄 <span id="resume-message">Resuming your previous test...</span></span>
+                    <button class="btn-sm" onclick="continueResume()">Continue</button>
+                    <button class="btn-sm" style="background:#6c757d;" onclick="startNewTest()">Start New</button>
+                </div>
+
+                <div id="status-banner" class="status-banner"></div>
+
+                <div id="start-overlay">
+                    <div class="ready-text">🎧 Your test is ready!</div>
+                    <div id="preview-timer-display" class="preview-timer">5</div>
+                    <div class="sub-text" id="countdown-label">Click "Start Test" to begin</div>
+                    <button class="start-btn" id="start-test-btn">▶ Start Test</button>
+                </div>
+
+                <div class="audio-player" id="audio-player">
+                    <div class="audio-controls">
+                        <button class="audio-btn audio-btn-primary" id="play-audio-btn" onclick="playCurrentSectionAudio()">▶️ Play Audio</button>
+                    </div>
+                    <div class="audio-status" id="audio-status">Ready</div>
+                    <div id="audio-error-container" class="audio-error-container"></div>
+                </div>
+
+                <div class="section-indicators" id="section-indicators"></div>
+
+                <div class="question-container" id="questions-container">
+                    <div class="loading" id="loading-container">
+                        <div class="spinner"></div>
+                        <p>🔄 Generating your test...</p>
+                        <p style="font-size:13px; color:#666; margin-top:10px;">Section 1 will appear shortly.</p>
+                    </div>
+                </div>
+
+                <div class="section-navigation">
+                    <button class="btn btn-outline" onclick="previousSection()" id="prev-section-btn" disabled>← Previous Section</button>
+                    <button class="btn btn-primary" onclick="nextSection()" id="next-section-btn" disabled>Next Section →</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Review Screen -->
+        <div class="review-screen" id="review-screen">
+            <div class="test-card">
+                <div class="review-header">
+                    <h2>📋 Review Your Answers</h2>
+                    <p style="color:#666;">All questions (1–40) are shown below. <strong>Click on any answer field to edit it directly.</strong></p>
+                </div>
+                <div id="review-questions-container"></div>
+                <div class="review-actions">
+                    <button class="btn btn-outline" onclick="hideReviewScreen()">← Back to Test</button>
+                    <button class="btn btn-success" id="submit-btn-review" onclick="submitTest()">📝 Submit Test</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Screen -->
+        <div class="results-screen" id="results-screen">
+            <div class="test-card">
+                <div class="score-box">
+                    <h2>🎯 Test Results</h2>
+                    <div class="score">Score: <span id="score-pct">0</span>%</div>
+                    <div class="band">Band Score: <span id="band-score">0</span>/9</div>
+                    <p style="margin-top:5px; color:#666;">Correct: <span id="correct-count">0</span>/<span id="total-count">0</span></p>
+                    <p style="font-size:14px; color:#666;">Unanswered: <span id="unanswered-count">0</span></p>
+                </div>
+                <div class="section-scores" id="section-scores-container">
+                    <h3 style="width:100%; text-align:center; color:#003d6b;">📊 Section-wise Scores</h3>
+                    <div id="section-scores-list"></div>
+                </div>
+                <div class="detailed-answers" id="detailed-answers">
+                    <h3>📝 Detailed Answer Review</h3>
+                    <div id="detailed-answers-list"></div>
+                </div>
+                <div class="feedback-summary" id="feedback-summary">
+                    <h3>📌 Feedback</h3>
+                    <p id="feedback-text"></p>
+                    <ul id="feedback-stats"></ul>
+                </div>
+                <div class="results-actions">
+                    <button class="btn btn-retake" onclick="window.location.href='/listening?retake=true'">🔄 Retake</button>
+                    <button class="btn btn-new-test" onclick="window.location.href='/listening?new=true'">🆕 New Test</button>
+                    <button class="btn btn-outline" onclick="location.href='/dashboard'">📊 Dashboard</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="silence-timer">
+        <div id="silence-label">📖 Reading time</div>
+        <div id="silence-countdown">30</div>
+        <div class="silence-sub">Please read the questions</div>
+    </div>
+
+    <script>
+        // ─── CSRF Token Helper ──────────────────────────────────────────────
+        function getCsrfToken() {
+            const meta = document.querySelector('meta[name="csrf-token"]');
+            return meta ? meta.getAttribute('content') : '';
+        }
+
+        function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+        // ─── Server-injected flags ───────────────────────────────────────────
+        const SERVER_FULL_TEST_MODE = {{ 'true' if full_test_mode else 'false' }};
+
+        // ─── URL Params ──────────────────────────────────────────────────────
+        const urlParams = new URLSearchParams(window.location.search);
+        const URL_FULL_TEST = urlParams.get('full_test') === 'true'
+                              || urlParams.get('from_full_test') === 'true';
+        const RESUME_ID = urlParams.get('resume');
+
+        // ✅ Trust server flag first; fall back to URL param
+        const FULL_TEST_MODE = SERVER_FULL_TEST_MODE || URL_FULL_TEST;
+
+        // ✅ Retake + New Test flags
+        const RETAKE = urlParams.get('retake') === 'true';
+        const FORCE_NEW_URL = urlParams.get('new') === 'true';
+        console.log(`🔄 Listening retake mode: ${RETAKE}, force new: ${FORCE_NEW_URL}`);
+
+        // ═══════════════════════════════════════════════════════════
+        // ✅ Auto-submit time config (from backend via URL)
+        // ═══════════════════════════════════════════════════════════
+        const TIME_LIMIT_SECONDS = parseInt(urlParams.get('time_limit') || '1800', 10);
+        const GRACE_SECONDS      = parseInt(urlParams.get('grace') || '0', 10);
+        const HARD_CAP_SECONDS   = TIME_LIMIT_SECONDS + GRACE_SECONDS;
+        console.log(`⏱️ Timer config: base=${TIME_LIMIT_SECONDS}s, grace=${GRACE_SECONDS}s, cap=${HARD_CAP_SECONDS}s`);
+
+        // ─── Option Normalization Helpers ──────────────────────────────────
+        function normalizeOption(opt) {
+            if (opt === null || opt === undefined) return '';
+            if (typeof opt === 'string') return opt;
+            if (typeof opt === 'object') {
+                const letter = opt.letter || opt.key || opt.id || opt.option || '';
+                const text = opt.text || opt.label || opt.value || opt.name || opt.description || '';
+                if (letter && text) return `${letter}: ${text}`;
+                if (letter) return `${letter}`;
+                if (text) return `${text}`;
+                try { return JSON.stringify(opt); } catch (e) { return ''; }
+            }
+            return String(opt);
+        }
+
+        function extractLetter(opt) {
+            const str = normalizeOption(opt);
+            let m = str.match(/^([A-Z])[\s]*[:–\-.]/);
+            if (m) return m[1];
+            m = str.match(/^\(?([A-Z])\)?/);
+            if (m) return m[1];
+            const first = str.trim().charAt(0).toUpperCase();
+            return /[A-Z]/.test(first) ? first : '';
+        }
+
+        function stripOptionPrefix(opt) {
+            const str = normalizeOption(opt);
+            const stripped = str
+                .replace(/^[A-Z]\s*[:–\-.]\s*/, '')
+                .replace(/^\([A-Z]\)\s*/, '')
+                .trim();
+            return stripped || str;
+        }
+
+        // ─── Accent & Difficulty ────────────────────────────────────────────
+        let selectedAccent = 'british';
+        let selectedDifficulty = 'medium';
+        document.addEventListener('DOMContentLoaded', function() {
+            const accentSelect = document.getElementById('accent-select');
+            const diffSelect = document.getElementById('difficulty-select');
+            const savedAccent = localStorage.getItem('listening_accent');
+            if (savedAccent) {
+                accentSelect.value = savedAccent;
+                selectedAccent = savedAccent;
+            }
+            accentSelect.addEventListener('change', function() {
+                selectedAccent = this.value;
+                localStorage.setItem('listening_accent', selectedAccent);
+            });
+            diffSelect.addEventListener('change', function() {
+                selectedDifficulty = this.value;
+            });
+        });
+
+        // ─── Globals ─────────────────────────────────────────────────────────
+        let userAnswers = {};
+        let testTimer = null;
+        let timeLeft = TIME_LIMIT_SECONDS;
+        let isAutoSubmitting = false;
+        let _graceUsed = false;
+        let sectionAudioUrls = {};
+        let sectionTimings = {};
+        let currentSectionNum = 1;
+        let isAudioPlaying = false;
+        let totalSections = 4;
+        let isSubmitting = false;
+        let sectionsData = [];
+        let allQuestions = [];
+        let testStarted = false;
+        let previewTimerInterval = null;
+        let countdownValue = 5;
+        let audioElement = null;
+        window.audioElement = null;
+        let isReviewShown = false;
+        let currentTestId = null;
+        let sessionId = null;
+        let resumeData = null;
+        let isResuming = false;
+        let activeRetryFn = null;
+        let sectionFetching = {};
+
+        // ─── Full Test mode UI adjustments ──────────────────────────────────
+        function applyFullTestMode() {
+            if (!FULL_TEST_MODE) return;
+
+            document.getElementById('full-test-banner').classList.add('show');
+
+            const forceLabel = document.getElementById('force-new-label');
+            if (forceLabel) {
+                forceLabel.style.opacity = '0.4';
+                forceLabel.style.pointerEvents = 'none';
+                const chk = document.getElementById('force-new-check');
+                if (chk) { chk.checked = false; chk.disabled = true; }
+            }
+
+            const submitBtn = document.getElementById('submit-btn-review');
+            if (submitBtn) {
+                submitBtn.textContent = '📝 Submit Listening → Reading Phase';
+            }
+
+            document.querySelectorAll('.nav-links a').forEach(a => {
+                if (a.getAttribute('href') === '/dashboard') {
+                    a.addEventListener('click', function(e) {
+                        if (!confirm('Leave the full test? Your current phase progress will be lost unless you return.')) {
+                            e.preventDefault();
+                        }
+                    });
+                }
+            });
+        }
+
+        // ✅ Apply retake mode UI
+        function applyRetakeMode() {
+            if (!RETAKE) return;
+
+            const banner = document.getElementById('retake-banner');
+            if (banner) banner.classList.add('show');
+
+            const forceLabel = document.getElementById('force-new-label');
+            if (forceLabel) {
+                forceLabel.style.opacity = '0.4';
+                forceLabel.style.pointerEvents = 'none';
+                const chk = document.getElementById('force-new-check');
+                if (chk) { chk.checked = false; chk.disabled = true; }
+            }
+        }
+
+        // ─── Audio Part Tracking ────────────────────────────────────────────
+        let currentAudioPart = 'intro';
+        let silenceTimeouts = { reading: null, checking: null };
+        let silenceTriggers = { reading: false, checking: false };
+        let partDurations = { intro: 0, main: 0, outro: 0, reading: 30, checking: 30 };
+        let totalDuration = 0;
+        let partStartTimes = {};
+        let isPlayingSequentially = false;
+        let stopSequentialPlay = false;
+
+        // ─── Silence Timer ──────────────────────────────────────────────────
+        let silenceTimerInterval = null;
+
+        function showSilenceTimer(label, remainingSeconds, subText) {
+            const overlay = document.getElementById('silence-timer');
+            const labelEl = document.getElementById('silence-label');
+            const countEl = document.getElementById('silence-countdown');
+            const subEl = document.querySelector('.silence-sub');
+            let remaining = Math.ceil(remainingSeconds);
+
+            if (silenceTimerInterval) {
+                clearInterval(silenceTimerInterval);
+                silenceTimerInterval = null;
+            }
+
+            overlay.style.display = 'block';
+            labelEl.textContent = label;
+            countEl.textContent = remaining;
+            subEl.textContent = subText || 'Please wait...';
+
+            silenceTimerInterval = setInterval(() => {
+                remaining--;
+                countEl.textContent = remaining;
+                if (remaining <= 0) {
+                    clearInterval(silenceTimerInterval);
+                    silenceTimerInterval = null;
+                    overlay.style.display = 'none';
+                }
+            }, 1000);
+        }
+
+        function hideSilenceTimer() {
+            if (silenceTimerInterval) {
+                clearInterval(silenceTimerInterval);
+                silenceTimerInterval = null;
+            }
+            document.getElementById('silence-timer').style.display = 'none';
+        }
+
+        // ─── Auto-save Answers ──────────────────────────────────────────────
+        function autoSaveAnswers() {
+            try {
+                localStorage.setItem('listening_answers_backup', JSON.stringify({
+                    answers: userAnswers,
+                    timestamp: Date.now(),
+                    testId: currentTestId || 'local'
+                }));
+            } catch(e) { /* ignore */ }
+        }
+        setInterval(autoSaveAnswers, 5000);
+
+        function loadSavedAnswers() {
+            try {
+                const raw = localStorage.getItem('listening_answers_backup');
+                if (raw) {
+                    const data = JSON.parse(raw);
+                    if (data.answers && typeof data.answers === 'object') {
+                        userAnswers = data.answers;
+                    }
+                }
+            } catch(e) { /* ignore */ }
+        }
+        loadSavedAnswers();
+
+        // ─── Save Answer ────────────────────────────────────────────────────
+        function saveAnswer(id, value) {
+            userAnswers[id] = value;
+            autoSaveAnswers();
+
+            const mainInput = document.getElementById('ans_' + id);
+            if (mainInput) mainInput.value = value;
+
+            const reviewInput = document.querySelector(`.review-question[data-qid="${id}"] .q-answer-input`);
+            if (reviewInput) {
+                reviewInput.value = value;
+                if (value) reviewInput.classList.remove('empty'); else reviewInput.classList.add('empty');
+            }
+            const reviewSelect = document.querySelector(`.review-question[data-qid="${id}"] .q-answer-select`);
+            if (reviewSelect) {
+                reviewSelect.value = value;
+                if (value) reviewSelect.classList.remove('empty'); else reviewSelect.classList.add('empty');
+            }
+        }
+        window.saveAnswer = saveAnswer;
+
+        // ─── Utility Functions ──────────────────────────────────────────────
+        function showStatusBanner(message, type) {
+            const banner = document.getElementById('status-banner');
+            banner.textContent = message;
+            banner.className = 'status-banner ' + type;
+            banner.style.display = 'block';
+            if (type === 'success' || type === 'info') {
+                setTimeout(() => { banner.style.display = 'none'; }, 8000);
+            }
+        }
+        function hideStatusBanner() { document.getElementById('status-banner').style.display = 'none'; }
+        function escapeHtml(text) {
+            if (text === null || text === undefined) return '';
+            const div = document.createElement('div');
+            div.textContent = String(text);
+            return div.innerHTML;
+        }
+        function formatTime(seconds) {
+            if (!seconds || isNaN(seconds)) return '0:00';
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return mins + ':' + String(secs).padStart(2, '0');
+        }
+        function showError(message) { showStatusBanner('❌ ' + message, 'error'); }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // Seeded PRNG + Procedural floor-plan generator
+        // ═══════════════════════════════════════════════════════════════════
+        function _hashSeed(str) {
+            let h = 2166136261 >>> 0;
+            for (let i = 0; i < str.length; i++) {
+                h ^= str.charCodeAt(i);
+                h = Math.imul(h, 16777619);
+            }
+            return h >>> 0;
+        }
+        function _mulberry32(a) {
+            return function () {
+                a = (a + 0x6D2B79F5) >>> 0;
+                let t = a;
+                t = Math.imul(t ^ (t >>> 15), t | 1);
+                t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+                return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+            };
+        }
+
+        function generateRealisticMapSVG(locations, extraSeed) {
+            const letters = (locations || [])
+                .map(l => (l.letter || '').toUpperCase())
+                .filter(Boolean);
+            if (letters.length === 0) return '<p>No map data</p>';
+
+            const seedStr = letters.join('|') + '::' + (extraSeed || '');
+            const rng = _mulberry32(_hashSeed(seedStr));
+
+            const W = 720, H = 520;
+            const bx1 = 60, by1 = 45, bx2 = 660, by2 = 440;
+            const pad = 6;
+            const midX = (bx1 + bx2) / 2;
+            const midY = (by1 + by2) / 2;
+
+            const orientation = rng() < 0.5 ? 'h' : 'v';
+            const corrT = 46 + Math.floor(rng() * 24);
+            const nTop = Math.ceil(letters.length / 2);
+            const nBot = letters.length - nTop;
+            const entranceEdge = orientation === 'h'
+                ? (rng() < 0.5 ? 'bottom' : 'top')
+                : (rng() < 0.5 ? 'left' : 'right');
+
+            let corrX1, corrY1, corrX2, corrY2;
+            if (orientation === 'h') {
+                corrX1 = bx1 + pad; corrX2 = bx2 - pad;
+                corrY1 = midY - corrT / 2; corrY2 = midY + corrT / 2;
+            } else {
+                corrY1 = by1 + pad; corrY2 = by2 - pad;
+                corrX1 = midX - corrT / 2; corrX2 = midX + corrT / 2;
+            }
+
+            const rooms = [];
+            if (orientation === 'h') {
+                const iX1 = bx1 + pad, iX2 = bx2 - pad;
+                const iY1 = by1 + pad, iY2 = by2 - pad;
+                const wT = (iX2 - iX1) / nTop;
+                for (let i = 0; i < nTop; i++) {
+                    rooms.push({
+                        x1: iX1 + i * wT, y1: iY1,
+                        x2: iX1 + (i + 1) * wT, y2: corrY1,
+                        side: 'top', letter: letters[i]
+                    });
+                }
+                const wB = (iX2 - iX1) / nBot;
+                for (let i = 0; i < nBot; i++) {
+                    rooms.push({
+                        x1: iX1 + i * wB, y1: corrY2,
+                        x2: iX1 + (i + 1) * wB, y2: iY2,
+                        side: 'bottom', letter: letters[nTop + i]
+                    });
+                }
+            } else {
+                const iX1 = bx1 + pad, iX2 = bx2 - pad;
+                const iY1 = by1 + pad, iY2 = by2 - pad;
+                const hL = (iY2 - iY1) / nTop;
+                for (let i = 0; i < nTop; i++) {
+                    rooms.push({
+                        x1: iX1, y1: iY1 + i * hL,
+                        x2: corrX1, y2: iY1 + (i + 1) * hL,
+                        side: 'left', letter: letters[i]
+                    });
+                }
+                const hR = (iY2 - iY1) / nBot;
+                for (let i = 0; i < nBot; i++) {
+                    rooms.push({
+                        x1: corrX2, y1: iY1 + i * hR,
+                        x2: iX2, y2: iY1 + (i + 1) * hR,
+                        side: 'right', letter: letters[nTop + i]
+                    });
+                }
+            }
+
+            let svg = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" ` +
+                `style="max-width:100%; height:auto; background:#e9f0e0; border-radius:8px; ` +
+                `border:1px solid #b8c0aa; font-family: Arial, Helvetica, sans-serif;">`;
+            svg += `<defs><marker id="entr-arrow" markerWidth="12" markerHeight="10" refX="10" refY="5" orient="auto">` +
+                `<polygon points="0 0, 12 5, 0 10" fill="#c0392b" /></marker></defs>`;
+            svg += `<rect width="${W}" height="${H}" fill="#e9f0e0" />`;
+
+            for (let i = 0; i < 10; i++) {
+                const tx = 20 + rng() * (W - 40);
+                const ty = 490 + rng() * 20;
+                svg += `<path d="M ${tx} ${ty} l -3 -6 M ${tx} ${ty} l 0 -8 M ${tx} ${ty} l 3 -6" ` +
+                    `stroke="#a3b18a" stroke-width="1" fill="none" />`;
+            }
+
+            svg += `<text x="${W/2}" y="26" text-anchor="middle" font-size="14" font-weight="bold" ` +
+                `fill="#2c3e50" letter-spacing="1.5">FLOOR PLAN</text>`;
+
+            svg += `<rect x="${bx1+5}" y="${by1+5}" width="${bx2-bx1}" height="${by2-by1}" fill="#00000018" />`;
+            svg += `<rect x="${bx1}" y="${by1}" width="${bx2-bx1}" height="${by2-by1}" ` +
+                `fill="#fdfcf8" stroke="#3d2f1f" stroke-width="4" />`;
+
+            svg += `<rect x="${corrX1}" y="${corrY1}" width="${corrX2-corrX1}" height="${corrY2-corrY1}" ` +
+                `fill="#f0e8d8" opacity="0.9" />`;
+
+            for (const r of rooms) {
+                const tone = rng() < 0.5 ? '#f7f3e8' : '#f2ede0';
+                svg += `<rect x="${r.x1}" y="${r.y1}" width="${r.x2-r.x1}" height="${r.y2-r.y1}" ` +
+                    `fill="${tone}" opacity="0.55" />`;
+            }
+
+            if (orientation === 'h') {
+                const iX1 = bx1 + pad, iX2 = bx2 - pad;
+                for (let i = 1; i < nTop; i++) {
+                    const x = iX1 + i * ((iX2 - iX1) / nTop);
+                    svg += `<line x1="${x}" y1="${by1+pad}" x2="${x}" y2="${corrY1}" ` +
+                        `stroke="#3d2f1f" stroke-width="2.4" />`;
+                }
+                for (let i = 1; i < nBot; i++) {
+                    const x = iX1 + i * ((iX2 - iX1) / nBot);
+                    svg += `<line x1="${x}" y1="${corrY2}" x2="${x}" y2="${by2-pad}" ` +
+                        `stroke="#3d2f1f" stroke-width="2.4" />`;
+                }
+            } else {
+                const iY1 = by1 + pad, iY2 = by2 - pad;
+                for (let i = 1; i < nTop; i++) {
+                    const y = iY1 + i * ((iY2 - iY1) / nTop);
+                    svg += `<line x1="${bx1+pad}" y1="${y}" x2="${corrX1}" y2="${y}" ` +
+                        `stroke="#3d2f1f" stroke-width="2.4" />`;
+                }
+                for (let i = 1; i < nBot; i++) {
+                    const y = iY1 + i * ((iY2 - iY1) / nBot);
+                    svg += `<line x1="${corrX2}" y1="${y}" x2="${bx2-pad}" y2="${y}" ` +
+                        `stroke="#3d2f1f" stroke-width="2.4" />`;
+                }
+            }
+
+            for (const r of rooms) {
+                const dW = Math.min(36, (r.x2 - r.x1) * 0.5, (r.y2 - r.y1) * 0.5);
+                if (orientation === 'h' && r.side === 'top') {
+                    const cy = corrY1;
+                    const cx = (r.x1 + r.x2) / 2;
+                    svg += `<line x1="${r.x1}" y1="${cy}" x2="${cx-dW/2}" y2="${cy}" stroke="#3d2f1f" stroke-width="2.6" />`;
+                    svg += `<line x1="${cx+dW/2}" y1="${cy}" x2="${r.x2}" y2="${cy}" stroke="#3d2f1f" stroke-width="2.6" />`;
+                    svg += `<path d="M ${cx+dW/2} ${cy} Q ${cx+dW/2} ${cy-dW} ${cx-dW/2} ${cy-dW}" ` +
+                        `fill="none" stroke="#8b7a66" stroke-width="0.9" stroke-dasharray="2,2" />`;
+                    svg += `<circle cx="${cx-dW/2}" cy="${cy}" r="1.6" fill="#8b7a66" />`;
+                } else if (orientation === 'h' && r.side === 'bottom') {
+                    const cy = corrY2;
+                    const cx = (r.x1 + r.x2) / 2;
+                    svg += `<line x1="${r.x1}" y1="${cy}" x2="${cx-dW/2}" y2="${cy}" stroke="#3d2f1f" stroke-width="2.6" />`;
+                    svg += `<line x1="${cx+dW/2}" y1="${cy}" x2="${r.x2}" y2="${cy}" stroke="#3d2f1f" stroke-width="2.6" />`;
+                    svg += `<path d="M ${cx-dW/2} ${cy} Q ${cx-dW/2} ${cy+dW} ${cx+dW/2} ${cy+dW}" ` +
+                        `fill="none" stroke="#8b7a66" stroke-width="0.9" stroke-dasharray="2,2" />`;
+                    svg += `<circle cx="${cx+dW/2}" cy="${cy}" r="1.6" fill="#8b7a66" />`;
+                } else if (orientation === 'v' && r.side === 'left') {
+                    const cx = corrX1;
+                    const cy = (r.y1 + r.y2) / 2;
+                    svg += `<line x1="${cx}" y1="${r.y1}" x2="${cx}" y2="${cy-dW/2}" stroke="#3d2f1f" stroke-width="2.6" />`;
+                    svg += `<line x1="${cx}" y1="${cy+dW/2}" x2="${cx}" y2="${r.y2}" stroke="#3d2f1f" stroke-width="2.6" />`;
+                    svg += `<path d="M ${cx} ${cy-dW/2} Q ${cx-dW} ${cy-dW/2} ${cx-dW} ${cy+dW/2}" ` +
+                        `fill="none" stroke="#8b7a66" stroke-width="0.9" stroke-dasharray="2,2" />`;
+                    svg += `<circle cx="${cx}" cy="${cy+dW/2}" r="1.6" fill="#8b7a66" />`;
+                } else if (orientation === 'v' && r.side === 'right') {
+                    const cx = corrX2;
+                    const cy = (r.y1 + r.y2) / 2;
+                    svg += `<line x1="${cx}" y1="${r.y1}" x2="${cx}" y2="${cy-dW/2}" stroke="#3d2f1f" stroke-width="2.6" />`;
+                    svg += `<line x1="${cx}" y1="${cy+dW/2}" x2="${cx}" y2="${r.y2}" stroke="#3d2f1f" stroke-width="2.6" />`;
+                    svg += `<path d="M ${cx} ${cy-dW/2} Q ${cx+dW} ${cy-dW/2} ${cx+dW} ${cy+dW/2}" ` +
+                        `fill="none" stroke="#8b7a66" stroke-width="0.9" stroke-dasharray="2,2" />`;
+                    svg += `<circle cx="${cx}" cy="${cy-dW/2}" r="1.6" fill="#8b7a66" />`;
+                }
+            }
+
+            const topWins = [180 + Math.floor(rng()*30), 330 + Math.floor(rng()*30), 480 + Math.floor(rng()*30)];
+            for (const wx of topWins) {
+                svg += `<rect x="${wx}" y="${by1-2}" width="30" height="8" fill="#e9f0e0" stroke="#8b7a66" stroke-width="0.8" />`;
+                svg += `<line x1="${wx+15}" y1="${by1-2}" x2="${wx+15}" y2="${by1+6}" stroke="#8b7a66" stroke-width="0.6" />`;
+            }
+            for (const wy of [130 + Math.floor(rng()*30), 320 + Math.floor(rng()*30)]) {
+                svg += `<rect x="${bx1-2}" y="${wy}" width="8" height="30" fill="#e9f0e0" stroke="#8b7a66" stroke-width="0.8" />`;
+                svg += `<line x1="${bx1-2}" y1="${wy+15}" x2="${bx1+6}" y2="${wy+15}" stroke="#8b7a66" stroke-width="0.6" />`;
+            }
+            for (const wy of [130 + Math.floor(rng()*30), 320 + Math.floor(rng()*30)]) {
+                svg += `<rect x="${bx2-6}" y="${wy}" width="8" height="30" fill="#e9f0e0" stroke="#8b7a66" stroke-width="0.8" />`;
+                svg += `<line x1="${bx2-6}" y1="${wy+15}" x2="${bx2+2}" y2="${wy+15}" stroke="#8b7a66" stroke-width="0.6" />`;
+            }
+            for (const wx of [170 + Math.floor(rng()*30), 500 + Math.floor(rng()*30)]) {
+                svg += `<rect x="${wx}" y="${by2-6}" width="30" height="8" fill="#e9f0e0" stroke="#8b7a66" stroke-width="0.8" />`;
+                svg += `<line x1="${wx+15}" y1="${by2-6}" x2="${wx+15}" y2="${by2+2}" stroke="#8b7a66" stroke-width="0.6" />`;
+            }
+
+            let entX, entY, entSide;
+            if (orientation === 'h') {
+                const cx = corrX1 + (corrX2 - corrX1) * (0.3 + rng() * 0.4);
+                if (entranceEdge === 'bottom') { entX = cx; entY = by2; entSide = 'bottom'; }
+                else { entX = cx; entY = by1; entSide = 'top'; }
+            } else {
+                const cy = corrY1 + (corrY2 - corrY1) * (0.3 + rng() * 0.4);
+                if (entranceEdge === 'left') { entX = bx1; entY = cy; entSide = 'left'; }
+                else { entX = bx2; entY = cy; entSide = 'right'; }
+            }
+            const gapW = 44;
+            let erx, ery, erw, erh;
+            if (entSide === 'bottom') { erx = entX - gapW/2; ery = by2 - 4; erw = gapW; erh = 12; }
+            else if (entSide === 'top') { erx = entX - gapW/2; ery = by1 - 4; erw = gapW; erh = 12; }
+            else if (entSide === 'left') { erx = bx1 - 4; ery = entY - gapW/2; erw = 12; erh = gapW; }
+            else { erx = bx2 - 4; ery = entY - gapW/2; erw = 12; erh = gapW; }
+            svg += `<rect x="${erx}" y="${ery}" width="${erw}" height="${erh}" fill="#fdfcf8" />`;
+            if (entSide === 'bottom' || entSide === 'top') {
+                const yy1 = entSide === 'bottom' ? by2 : by1;
+                const dir = entSide === 'bottom' ? 8 : -8;
+                svg += `<line x1="${entX-gapW/2}" y1="${yy1}" x2="${entX-gapW/2}" y2="${yy1+dir}" stroke="#3d2f1f" stroke-width="3" />`;
+                svg += `<line x1="${entX+gapW/2}" y1="${yy1}" x2="${entX+gapW/2}" y2="${yy1+dir}" stroke="#3d2f1f" stroke-width="3" />`;
+            } else {
+                const xx1 = entSide === 'left' ? bx1 : bx2;
+                const dir = entSide === 'left' ? 8 : -8;
+                svg += `<line x1="${xx1}" y1="${entY-gapW/2}" x2="${xx1+dir}" y2="${entY-gapW/2}" stroke="#3d2f1f" stroke-width="3" />`;
+                svg += `<line x1="${xx1}" y1="${entY+gapW/2}" x2="${xx1+dir}" y2="${entY+gapW/2}" stroke="#3d2f1f" stroke-width="3" />`;
+            }
+            let ax1, ay1, ax2, ay2, lx, ly;
+            if (entSide === 'bottom') { ax1 = entX; ay1 = entY + 55; ax2 = entX; ay2 = entY + 5; lx = entX; ly = entY + 78; }
+            else if (entSide === 'top') { ax1 = entX; ay1 = entY - 55; ax2 = entX; ay2 = entY - 5; lx = entX; ly = entY - 68; }
+            else if (entSide === 'left') { ax1 = entX - 55; ay1 = entY; ax2 = entX - 5; ay2 = entY; lx = entX - 68; ly = entY + 4; }
+            else { ax1 = entX + 55; ay1 = entY; ax2 = entX + 5; ay2 = entY; lx = entX + 68; ly = entY + 4; }
+            svg += `<line x1="${ax1}" y1="${ay1}" x2="${ax2}" y2="${ay2}" stroke="#c0392b" stroke-width="3" marker-end="url(#entr-arrow)" />`;
+            svg += `<text x="${lx}" y="${ly}" text-anchor="middle" font-size="11" fill="#c0392b" font-weight="700" letter-spacing="1">ENTRANCE</text>`;
+
+            let yx = entX, yy = entY;
+            if (entSide === 'bottom') yy = entY - 32;
+            else if (entSide === 'top') yy = entY + 32;
+            else if (entSide === 'left') yx = entX + 32;
+            else yx = entX - 32;
+            svg += `<circle cx="${yx}" cy="${yy}" r="7" fill="#2ecc71" stroke="#ffffff" stroke-width="2.5" />`;
+            svg += `<text x="${yx+12}" y="${yy+4}" font-size="10" fill="#1e8449" font-weight="700">★ You are here</text>`;
+
+            for (const r of rooms) {
+                const cx = (r.x1 + r.x2) / 2;
+                const cy = (r.y1 + r.y2) / 2;
+                svg += `<circle cx="${cx+1}" cy="${cy+1.5}" r="17" fill="#00000022" />`;
+                svg += `<circle cx="${cx}" cy="${cy}" r="17" fill="#ffffff" stroke="#1f618d" stroke-width="2.5" />`;
+                svg += `<text x="${cx}" y="${cy+6}" text-anchor="middle" font-size="17" font-weight="bold" fill="#1f618d">${r.letter}</text>`;
+            }
+
+            svg += `<g transform="translate(680, 480)">`;
+            svg += `<circle cx="0" cy="0" r="22" fill="#ffffff" stroke="#7f8d8d" stroke-width="1.5" />`;
+            svg += `<polygon points="0,-18 5,-5 0,-8 -5,-5" fill="#c0392b" />`;
+            svg += `<polygon points="0,18 5,5 0,8 -5,5" fill="#7f8d8d" />`;
+            svg += `<text x="0" y="-25" text-anchor="middle" font-size="12" font-weight="bold" fill="#2c3e50">N</text>`;
+            svg += `</g>`;
+
+            const sbX = 45, sbY = 478;
+            svg += `<rect x="${sbX}" y="${sbY}" width="55" height="6" fill="#2c3e50" />`;
+            svg += `<rect x="${sbX+55}" y="${sbY}" width="55" height="6" fill="#ffffff" stroke="#2c3e50" stroke-width="0.8" />`;
+            svg += `<text x="${sbX}" y="${sbY+20}" text-anchor="middle" font-size="9" fill="#2c3e50">0</text>`;
+            svg += `<text x="${sbX+55}" y="${sbY+20}" text-anchor="middle" font-size="9" fill="#2c3e50">10</text>`;
+            svg += `<text x="${sbX+110}" y="${sbY+20}" text-anchor="middle" font-size="9" fill="#2c3e50">20 m</text>`;
+
+            svg += `</svg>`;
+            return svg;
+        }
+
+        // ─── Extract Questions ──────────────────────────────────────────────
+        function extractQuestions(data, sectionNum) {
+            const questions = [];
+            const sectionIdx = sectionNum;
+
+            function deepSearch(obj, path) {
+                if (!obj) return;
+                if (Array.isArray(obj)) {
+                    if (path.includes('audio_urls') || path.includes('audio_paths') ||
+                        path.includes('script') || path.includes('context') || path.includes('metadata')) {
+                        return;
+                    }
+                    if (obj.length > 0 && typeof obj[0] === 'string') {
+                        obj.forEach((text, i) => {
+                            if (text && text.trim()) {
+                                const qId = `q_${sectionIdx}_${i}`;
+                                questions.push({
+                                    id: qId,
+                                    number: (sectionIdx - 1) * 10 + i + 1,
+                                    text: text.trim(),
+                                    question: text.trim(),
+                                    type: 'text'
+                                });
+                            }
+                        });
+                        return;
+                    }
+                    if (obj.length > 0 && typeof obj[0] === 'object' && obj[0] !== null) {
+                        const sample = obj[0];
+                        const keys = Object.keys(sample);
+                        const questionKeys = ['text', 'question', 'question_text', 'prompt', 'label', 'statement'];
+                        const hasQuestionKey = questionKeys.some(k => keys.includes(k));
+                        if (hasQuestionKey || keys.some(k => k.toLowerCase().includes('question'))) {
+                            obj.forEach((item, idx) => {
+                                const qText = item.text || item.question || item.question_text || item.prompt || item.statement || '';
+                                if (qText && qText.trim()) {
+                                    const num = item.number || (sectionIdx - 1) * 10 + idx + 1;
+                                    const qId = item.id || item.question_id || `q_${sectionIdx}_${idx}`;
+                                    questions.push({
+                                        id: String(qId),
+                                        number: parseInt(num),
+                                        text: qText.trim(),
+                                        question: qText.trim(),
+                                        type: item.type || 'text',
+                                        options: item.options || [],
+                                        map_locations: item.map_locations || [],
+                                        map_title: item.map_title || '',
+                                        answer: item.answer || item.correct_answer || ''
+                                    });
+                                }
+                            });
+                            return;
+                        }
+                    }
+                    obj.forEach((item, idx) => {
+                        deepSearch(item, path + `[${idx}]`);
+                    });
+                } else if (typeof obj === 'object' && obj !== null) {
+                    const qText = obj.text || obj.question || obj.question_text || obj.prompt || '';
+                    if (qText && qText.trim() && (typeof obj !== 'string')) {
+                        const num = obj.number || (sectionIdx - 1) * 10 + (questions.length + 1);
+                        const qId = obj.id || obj.question_id || `q_${sectionIdx}_${questions.length}`;
+                        questions.push({
+                            id: String(qId),
+                            number: parseInt(num),
+                            text: qText.trim(),
+                            question: qText.trim(),
+                            type: obj.type || 'text',
+                            options: obj.options || [],
+                            map_locations: obj.map_locations || [],
+                            map_title: obj.map_title || '',
+                            answer: obj.answer || obj.correct_answer || ''
+                        });
+                        return;
+                    }
+                    const priorityKeys = ['questions', 'question_sets', 'items', 'question_list'];
+                    for (let key of priorityKeys) {
+                        if (obj[key] !== undefined) {
+                            deepSearch(obj[key], path + '.' + key);
+                            return;
+                        }
+                    }
+                    for (let key of Object.keys(obj)) {
+                        const value = obj[key];
+                        if (value === null || typeof value === 'function') continue;
+                        if (key === 'id' || key === 'serial_number' || key === 'title' || key === 'topic' || key === 'difficulty') continue;
+                        deepSearch(value, path + '.' + key);
+                    }
+                }
+            }
+
+            deepSearch(data, 'root');
+
+            if (questions.length === 0) {
+                for (let i = 0; i < 10; i++) {
+                    const num = (sectionIdx - 1) * 10 + i + 1;
+                    questions.push({
+                        id: `q_${sectionIdx}_${i}`,
+                        number: num,
+                        text: `Question ${num}`,
+                        question: `Question ${num}`,
+                        type: 'text'
+                    });
+                }
+            }
+
+            questions.sort((a, b) => a.number - b.number);
+            return questions;
+        }
+
+        function aggregateMapLocationsForSection(questionsList) {
+            const seenLetters = new Set();
+            const aggLocations = [];
+            let mapTitle = '';
+            questionsList.forEach(q => {
+                if (q.type === 'map_labeling' && Array.isArray(q.map_locations) && q.map_locations.length) {
+                    if (!mapTitle && q.map_title) mapTitle = q.map_title;
+                    q.map_locations.forEach(loc => {
+                        const letter = (loc.letter || '').toUpperCase();
+                        if (letter && !seenLetters.has(letter)) {
+                            seenLetters.add(letter);
+                            aggLocations.push({ letter, name: loc.name || '' });
+                        }
+                    });
+                }
+            });
+            aggLocations.sort((a, b) => a.letter.localeCompare(b.letter));
+            return { aggLocations, mapTitle };
+        }
+
+        // ─── Render Section ────────────────────────────────────────────────
+        function renderSection(sectionNum, sectionData, savedAnswers) {
+            const container = document.getElementById('questions-container');
+            const loadingDiv = document.getElementById('loading-container');
+
+            if (!sectionData) return;
+
+            let card = document.querySelector(`.section-card[data-section="${sectionNum}"]`);
+            if (!card) {
+                card = document.createElement('div');
+                card.className = 'section-card';
+                card.dataset.section = sectionNum;
+                container.appendChild(card);
+            }
+
+            const questionsList = extractQuestions(sectionData, sectionNum);
+            const { aggLocations, mapTitle } = aggregateMapLocationsForSection(questionsList);
+
+            let html = `
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 15px;">
+                    <h3 style="margin: 0;">Section ${sectionNum}</h3>
+                    <span style="font-size:14px; color:#666;">Questions ${sectionNum*10-9}–${sectionNum*10}</span>
+                </div>
+            `;
+
+            if (aggLocations.length > 0) {
+                const extraSeed = 's' + sectionNum + '_' + (mapTitle || '');
+                const sharedMapSVG = generateRealisticMapSVG(aggLocations, extraSeed);
+                const lastLetter = aggLocations[aggLocations.length - 1].letter;
+                html += `
+                    <div class="section-map-wrapper">
+                        <h4>🗺️ ${escapeHtml(mapTitle || 'Map / Plan')}</h4>
+                        <div class="map-svg-wrapper">${sharedMapSVG}</div>
+                        <p class="map-hint">
+                            Look at the map above. For questions ${sectionNum*10-9}–${sectionNum*10}, 
+                            choose the correct letter (A–${lastLetter}) from the dropdown.
+                        </p>
+                    </div>
+                `;
+            }
+
+            if (questionsList.length === 0) {
+                html += `<p style="color: #ff6b6b; padding: 20px; text-align: center; font-weight: bold;">⚠️ No questions found for this section.</p>`;
+            } else {
+                questionsList.forEach((q) => {
+                    const qId = q.id;
+                    const qNumber = q.number;
+                    const qText = q.text || q.question || q.prompt || `Question ${qNumber}`;
+                    const saved = (savedAnswers && savedAnswers[qId]) || userAnswers[qId] || '';
+                    const qType = q.type || 'text';
+                    const options = q.options || [];
+                    const isMap = qType === 'map_labeling' && aggLocations.length > 0;
+
+                    html += `<div class="question-item" data-qid="${qId}">`;
+                    html += `<div><strong class="q-number">Q${qNumber}:</strong> ${escapeHtml(qText)}</div>`;
+
+                    if (isMap) {
+                        let optionsHtml = `<option value="">Select letter...</option>`;
+                        aggLocations.forEach(loc => {
+                            const selected = saved === loc.letter ? 'selected' : '';
+                            optionsHtml += `<option value="${loc.letter}" ${selected}>${loc.letter}</option>`;
+                        });
+                        html += `
+                            <div style="margin-top:10px;">
+                                <label for="ans_${qId}" style="font-weight:600; font-size:13.5px;">Choose the correct letter:</label>
+                                <select class="map-letter-select" id="ans_${qId}" onchange="saveAnswer('${qId}', this.value)">
+                                    ${optionsHtml}
+                                </select>
+                            </div>
+                        `;
+                    } else if (options && options.length > 0) {
+                        html += `<div class="options-row">`;
+                        options.forEach(opt => {
+                            const letter = extractLetter(opt);
+                            const displayText = stripOptionPrefix(opt);
+                            html += `<span class="option-item"><span class="opt-letter">${letter}</span> ${escapeHtml(displayText)}</span>`;
+                        });
+                        html += `</div>`;
+
+                        let selectHtml = `<option value="">Select answer...</option>`;
+                        options.forEach(opt => {
+                            const letter = extractLetter(opt);
+                            const selected = saved === letter ? 'selected' : '';
+                            selectHtml += `<option value="${letter}" ${selected}>${letter}</option>`;
+                        });
+                        html += `
+                            <select class="answer-select" id="ans_${qId}" onchange="saveAnswer('${qId}', this.value)">
+                                ${selectHtml}
+                            </select>
+                        `;
+                    } else {
+                        html += `
+                            <input type="text" class="answer-input" 
+                                   id="ans_${qId}"
+                                   value="${escapeHtml(saved)}"
+                                   placeholder="Type your answer here..."
+                                   oninput="saveAnswer('${qId}', this.value)">
+                        `;
+                    }
+
+                    html += `</div>`;
+                });
+            }
+
+            card.innerHTML = html;
+            updateSectionIndicators();
+            updateNavButtons();
+
+            if (sectionNum === 1) {
+                if (loadingDiv) loadingDiv.style.display = 'none';
+            }
+            card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        // ─── Show Start Overlay ─────────────────────────────────────────────
+        function showStartOverlay() {
+            const overlay = document.getElementById('start-overlay');
+            overlay.style.display = 'flex';
+            const startBtn = document.getElementById('start-test-btn');
+            startBtn.disabled = false;
+            countdownValue = 5;
+            document.getElementById('preview-timer-display').textContent = countdownValue;
+            document.getElementById('countdown-label').textContent = 'Click "Start Test" to begin';
+
+            startBtn.onclick = function() {
+                overlay.style.display = 'none';
+                testStarted = true;
+                startTimer();
+                showSection(1, false);
+                startCountdownAndPlay(5);
+            };
+        }
+
+        function startCountdownAndPlay(duration) {
+            if (previewTimerInterval) clearInterval(previewTimerInterval);
+            let countdown = duration;
+            const display = document.getElementById('preview-timer-display');
+            const label = document.querySelector('#start-overlay .ready-text');
+            const subLabel = document.getElementById('countdown-label');
+
+            const overlay = document.getElementById('start-overlay');
+            overlay.style.display = 'flex';
+            label.textContent = '🎧 Starting in...';
+            subLabel.textContent = 'Get ready!';
+            display.textContent = countdown;
+
+            previewTimerInterval = setInterval(() => {
+                countdown--;
+                display.textContent = countdown;
+
+                if (countdown <= 0) {
+                    clearInterval(previewTimerInterval);
+                    previewTimerInterval = null;
+                    label.textContent = '▶️ Playing...';
+                    display.textContent = '▶';
+                    subLabel.textContent = 'Audio is now playing';
+
+                    overlay.style.display = 'none';
+
+                    if (testStarted) {
+                        setTimeout(() => {
+                            playCurrentSectionAudio();
+                        }, 300);
+                    }
+                }
+            }, 1000);
+        }
+
+        // ─── Review Screen ──────────────────────────────────────────────────
+        function showReviewScreen() {
+            const container = document.getElementById('review-questions-container');
+            let html = '';
+            allQuestions = [];
+
+            for (let i = 0; i < sectionsData.length; i++) {
+                const secData = sectionsData[i];
+                if (secData) {
+                    const sectionNum = i + 1;
+                    const qs = extractQuestions(secData, sectionNum);
+                    qs.forEach((q, idx) => {
+                        const globalNumber = (sectionNum - 1) * 10 + idx + 1;
+                        q.globalNumber = globalNumber;
+                        if (!q.id) q.id = `q_${sectionNum}_${idx}`;
+                        allQuestions.push(q);
+                    });
+                }
+            }
+
+            allQuestions.sort((a, b) => a.globalNumber - b.globalNumber);
+
+            if (allQuestions.length === 0) {
+                container.innerHTML = '<p>No questions available.</p>';
+                return;
+            }
+
+            html = `<div style="margin-bottom:20px; background:#e3f2fd; padding:15px; border-radius:8px;">
+                        <h3 style="color:#003d6b; margin:0;">📋 Review Your Answers</h3>
+                        <p style="color:#555; margin-top:5px; font-size:14px;">
+                            Questions 1–40 are listed below. <strong>Edit any answer directly in the fields provided.</strong>
+                        </p>
+                    </div>`;
+
+            let currentSection = 0;
+
+            allQuestions.forEach((q, index) => {
+                const qNumber = q.globalNumber || (index + 1);
+                const qId = q.id;
+                const qText = q.text || q.question || `Question ${qNumber}`;
+                const saved = userAnswers[qId] || '';
+                const sectionNum = Math.floor((qNumber - 1) / 10) + 1;
+                const options = q.options || [];
+                const isMapQ = q.type === 'map_labeling' && Array.isArray(q.map_locations) && q.map_locations.length > 0;
+
+                if (sectionNum !== currentSection) {
+                    currentSection = sectionNum;
+
+                    const sectionQuestions = allQuestions.filter(x => Math.floor((x.globalNumber - 1) / 10) + 1 === sectionNum);
+                    const { aggLocations, mapTitle } = aggregateMapLocationsForSection(sectionQuestions);
+
+                    html += `<div class="review-section-header">Section ${currentSection} (Questions ${(currentSection-1)*10+1}–${currentSection*10})</div>`;
+
+                    if (aggLocations.length > 0) {
+                        const lastL = aggLocations[aggLocations.length - 1].letter;
+                        const extraSeed = 'rev_s' + currentSection + '_' + (mapTitle || '');
+                        html += `
+                            <div class="section-map-wrapper">
+                                <h4>🗺️ ${escapeHtml(mapTitle || 'Map / Plan')}</h4>
+                                <div class="map-svg-wrapper">${generateRealisticMapSVG(aggLocations, extraSeed)}</div>
+                                <p class="map-hint">Choose letters A–${lastL} for the map questions below.</p>
+                            </div>
+                        `;
+                    }
+                }
+
+                let answerInputHtml = '';
+                const emptyClass = saved ? '' : ' empty';
+
+                if (isMapQ) {
+                    const sectionQuestions = allQuestions.filter(x => Math.floor((x.globalNumber - 1) / 10) + 1 === sectionNum);
+                    const { aggLocations } = aggregateMapLocationsForSection(sectionQuestions);
+
+                    let optHtml = `<option value="">Select...</option>`;
+                    aggLocations.forEach(loc => {
+                        const selected = saved === loc.letter ? 'selected' : '';
+                        optHtml += `<option value="${loc.letter}" ${selected}>${loc.letter}</option>`;
+                    });
+                    answerInputHtml = `
+                        <select class="q-answer-select ${emptyClass}" data-qid="${qId}" onchange="saveAnswer('${qId}', this.value)">
+                            ${optHtml}
+                        </select>
+                    `;
+                } else if (options && options.length > 0) {
+                    let optHtml = `<option value="">Select...</option>`;
+                    options.forEach(opt => {
+                        const letter = extractLetter(opt);
+                        const selected = saved === letter ? 'selected' : '';
+                        optHtml += `<option value="${letter}" ${selected}>${letter}</option>`;
+                    });
+                    answerInputHtml = `
+                        <select class="q-answer-select ${emptyClass}" data-qid="${qId}" onchange="saveAnswer('${qId}', this.value)">
+                            ${optHtml}
+                        </select>
+                    `;
+                } else {
+                    answerInputHtml = `
+                        <input type="text" class="q-answer-input ${emptyClass}" 
+                               data-qid="${qId}" 
+                               value="${escapeHtml(saved)}"
+                               placeholder="Type your answer..."
+                               oninput="saveAnswer('${qId}', this.value)">
+                    `;
+                }
+
+                html += `<div class="review-question" data-qid="${qId}">
+                            <span class="q-number">Q${qNumber}</span>
+                            <span class="q-text">${escapeHtml(qText)}</span>
+                            ${answerInputHtml}
+                        </div>`;
+            });
+
+            container.innerHTML = html;
+            document.getElementById('test-screen').style.display = 'none';
+            document.getElementById('review-screen').style.display = 'block';
+            document.getElementById('results-screen').style.display = 'none';
+            isReviewShown = true;
+            updateSectionIndicators();
+            updateNavButtons();
+        }
+
+        function hideReviewScreen() {
+            document.getElementById('review-screen').style.display = 'none';
+            document.getElementById('test-screen').style.display = 'block';
+            isReviewShown = false;
+            if (sectionsData[currentSectionNum - 1]) {
+                renderSection(currentSectionNum, sectionsData[currentSectionNum - 1], userAnswers);
+            }
+            updateNavButtons();
+            updateSectionIndicators();
+        }
+
+        // ─── Section Navigation ─────────────────────────────────────────────
+        function showSection(sectionNum, autoPlay = false) {
+            if (sectionNum < 1 || sectionNum > totalSections) {
+                if (sectionNum === totalSections + 1) {
+                    showReviewScreen();
+                    return;
+                }
+                return;
+            }
+            stopAudio(true);
+            currentSectionNum = sectionNum;
+            document.getElementById('question-counter').textContent = `Section ${sectionNum} of ${totalSections}`;
+
+            if (sectionsData[sectionNum - 1]) {
+                displaySectionCard(sectionNum, autoPlay);
+            } else {
+                let card = document.querySelector(`.section-card[data-section="${sectionNum}"]`);
+                if (!card) {
+                    card = document.createElement('div');
+                    card.className = 'section-card';
+                    card.dataset.section = sectionNum;
+                    document.getElementById('questions-container').appendChild(card);
+                }
+                card.innerHTML = `
+                    <div class="section-loading">
+                        <div class="spinner-small"></div>
+                        <p>⏳ Loading Section ${sectionNum}...</p>
+                    </div>
+                `;
+                card.style.display = 'block';
+                document.querySelectorAll('.section-card').forEach(c => {
+                    if (parseInt(c.dataset.section) !== sectionNum) c.style.display = 'none';
+                });
+                updateSectionIndicators();
+                updateNavButtons();
+                updateMainPlayButton();
+
+                fetchSectionData(sectionNum).then(() => {
+                    displaySectionCard(sectionNum, autoPlay);
+                }).catch(err => {
+                    showError('Failed to load Section ' + sectionNum + ': ' + err.message);
+                    card.innerHTML = `<div class="section-loading" style="color:red;">❌ Error loading section. Please try again later.</div>`;
+                });
+            }
+        }
+
+        function displaySectionCard(sectionNum, autoPlay) {
+            const data = sectionsData[sectionNum - 1];
+            if (!data) return;
+            renderSection(sectionNum, data, userAnswers);
+            document.querySelectorAll('.section-card').forEach(c => {
+                c.style.display = (parseInt(c.dataset.section) === sectionNum) ? 'block' : 'none';
+            });
+            updateSectionIndicators();
+            updateNavButtons();
+            updateMainPlayButton();
+
+            if (autoPlay && testStarted) {
+                setTimeout(() => playCurrentSectionAudio(), 500);
+            }
+        }
+
+        function updateMainPlayButton() {
+            const btn = document.getElementById('play-audio-btn');
+            if (!btn) return;
+            if (testStarted && sectionsData[currentSectionNum-1]) {
+                btn.disabled = false;
+                btn.textContent = isAudioPlaying ? '⏸️ Pause' : '▶️ Play Audio';
+            } else {
+                btn.disabled = true;
+                btn.textContent = '⏳ Loading...';
+            }
+        }
+
+        function nextSection() {
+            stopAudio(true);
+            if (currentSectionNum < totalSections) {
+                showSection(currentSectionNum + 1, true);
+            } else if (currentSectionNum === totalSections) {
+                showReviewScreen();
+            }
+        }
+
+        function previousSection() {
+            stopAudio(true);
+            if (currentSectionNum > 1) {
+                showSection(currentSectionNum - 1);
+            }
+        }
+
+        function goToSection(sectionNum) {
+            stopAudio(true);
+            if (sectionNum >= 1 && sectionNum <= totalSections) {
+                showSection(sectionNum);
+            } else if (sectionNum === totalSections + 1) {
+                showReviewScreen();
+            }
+        }
+
+        function updateNavButtons() {
+            if (isReviewShown) {
+                document.getElementById('prev-section-btn').disabled = true;
+                document.getElementById('next-section-btn').disabled = true;
+                document.getElementById('next-section-btn').textContent = '📋 Review';
+                return;
+            }
+            document.getElementById('prev-section-btn').disabled = currentSectionNum === 1;
+            const nextBtn = document.getElementById('next-section-btn');
+            if (currentSectionNum === totalSections) {
+                nextBtn.textContent = '📋 Review Answers';
+                nextBtn.disabled = false;
+            } else {
+                nextBtn.textContent = 'Next Section →';
+                nextBtn.disabled = currentSectionNum === totalSections;
+            }
+        }
+
+        function updateSectionIndicators() {
+            const container = document.getElementById('section-indicators');
+            let html = '';
+            for (let i = 1; i <= totalSections; i++) {
+                const isActive = i === currentSectionNum;
+                const dataExists = !!sectionsData[i-1];
+                const isGenerating = !dataExists && sectionFetching[i];
+                let statusClass = 'ready';
+                if (isActive) statusClass = 'active';
+                else if (isGenerating) statusClass = 'generating';
+                else if (!dataExists) statusClass = '';
+
+                html += `<div class="section-dot ${statusClass}" 
+                         onclick="goToSection(${i})"
+                         title="Section ${i} ${!dataExists ? '(loading...)' : ''}">
+                         ${isGenerating ? '<span class="dot-spinner">⏳</span>' : ''}
+                         </div>`;
+            }
+            const isReviewActive = isReviewShown;
+            html += `<div class="section-dot ${isReviewActive ? 'active' : ''}" 
+                     onclick="goToSection(${totalSections+1})"
+                     title="Review Answers">
+                     📋
+                     </div>`;
+            container.innerHTML = html;
+        }
+
+        // ─── Resume Functions ───────────────────────────────────────────────
+        function continueResume() {
+            document.getElementById('resume-banner').classList.remove('show');
+            if (resumeData) renderResumeData(resumeData);
+        }
+
+        function startNewTest() {
+            document.getElementById('resume-banner').classList.remove('show');
+            isResuming = false;
+            resumeData = null;
+            const url = new URL(window.location.href);
+            url.searchParams.delete('resume');
+            window.location.href = url.toString();
+        }
+
+        function renderResumeData(data) {
+            const testData = data.test_data || {};
+            sectionsData = testData.sections || [];
+            if (sectionsData.length === 0 && testData.questions) {
+                const questions = testData.questions || [];
+                const sectionSize = 10;
+                for (let i = 0; i < questions.length; i += sectionSize) {
+                    sectionsData.push({
+                        section_num: Math.floor(i / sectionSize) + 1,
+                        questions: questions.slice(i, i + sectionSize),
+                    });
+                }
+            }
+
+            const audioUrls = data.audio_urls || {};
+            Object.keys(audioUrls).forEach(key => {
+                const idx = parseInt(key);
+                sectionAudioUrls[idx] = audioUrls[key];
+                if (sectionsData[idx - 1]) {
+                    sectionsData[idx - 1].audio_url = audioUrls[key];
+                }
+            });
+
+            const answers = data.answers_so_far || {};
+            Object.keys(answers).forEach(key => {
+                userAnswers[key] = answers[key];
+            });
+
+            currentTestId = data.test_id || null;
+            sessionId = data.session_id || null;
+            const currentIndex = data.current_question_index || 0;
+            const sectionNum = Math.floor(currentIndex / 10) + 1;
+
+            sectionsData.forEach((secData, idx) => {
+                const secNum = idx + 1;
+                renderSection(secNum, secData, userAnswers);
+            });
+
+            updateSectionIndicators();
+            updateNavButtons();
+
+            document.getElementById('loading-container').style.display = 'none';
+            document.getElementById('waiting-overlay').style.display = 'none';
+            document.getElementById('start-overlay').style.display = 'none';
+            testStarted = true;
+            startTimer();
+
+            document.getElementById('resume-banner').classList.add('show');
+            document.getElementById('resume-message').textContent = 
+                `📌 Resumed from Question ${currentIndex + 1} of Section ${sectionNum}`;
+
+            showSection(Math.min(sectionNum, totalSections), false);
+            isResuming = true;
+            showStatusBanner(`✅ Test resumed! You were on Section ${sectionNum}.`, 'success');
+            updateMainPlayButton();
+        }
+
+        async function fetchResumeData(resumeId) {
+            try {
+                const response = await fetch(`/listening/start?resume=${resumeId}`, {
+                    method: 'GET',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-Token': getCsrfToken()
+                    }
+                });
+                if (response.status === 402) { handle402(response); return; }
+                if (!response.ok) {
+                    if (response.status === 404) {
+                        showStatusBanner('🔄 Test not found. Starting new test.', 'info');
+                        setTimeout(() => {
+                            const url = new URL(window.location.href);
+                            url.searchParams.delete('resume');
+                            window.location.href = url.toString();
+                        }, 1500);
+                        return;
+                    }
+                    throw new Error(`Server error: ${response.status}`);
+                }
+                const data = await response.json();
+                if (data.resumed) {
+                    resumeData = data;
+                    renderResumeData(data);
+                } else {
+                    const url = new URL(window.location.href);
+                    url.searchParams.delete('resume');
+                    window.location.href = url.toString();
+                }
+            } catch (err) {
+                console.error('Resume fetch error:', err);
+                showError('Failed to resume test: ' + err.message);
+                setTimeout(() => {
+                    const url = new URL(window.location.href);
+                    url.searchParams.delete('resume');
+                    window.location.href = url.toString();
+                }, 2000);
+            }
+        }
+
+        function handle402(response) {
+            response.json().then(data => {
+                const redirectTo = data.redirect_to || '/subscription?module=ielts';
+                showStatusBanner('⚠️ ' + (data.error || 'Subscription required. Redirecting...'), 'warning');
+                setTimeout(() => { window.location.href = redirectTo; }, 1500);
+            }).catch(() => {
+                window.location.href = '/subscription?module=ielts';
+            });
+        }
+
+        // ─── fetchWithRetry ─────────────────────────────────────────────────
+        async function fetchWithRetry(url, options, retries = 3, delay = 1000) {
+            for (let attempt = 1; attempt <= retries; attempt++) {
+                try {
+                    const response = await fetch(url, { ...options, keepalive: true });
+                    if (response.ok || response.status === 202 || response.status === 402) return response;
+                    throw new Error(`Server error: ${response.status}`);
+                } catch (err) {
+                    if (attempt === retries) throw err;
+                    const waitTime = delay * Math.pow(2, attempt - 1);
+                    const progressEl = document.getElementById('waiting-progress');
+                    if (progressEl) {
+                        progressEl.textContent = `⏳ Retrying (${attempt}/${retries}) in ${waitTime/1000}s...`;
+                    }
+                    await sleep(waitTime);
+                }
+            }
+            throw new Error('All retry attempts failed.');
+        }
+
+        // ─── Fetch Section Data ─────────────────────────────────────────────
+        async function fetchSectionData(sectionNum) {
+            if (sectionsData[sectionNum - 1]) return Promise.resolve();
+            if (!sessionId) throw new Error('Session ID not available');
+            if (sectionFetching[sectionNum]) return sectionFetching[sectionNum];
+
+            const promise = (async () => {
+                const url = `/api/listening/section/${sessionId}/${sectionNum}`;
+                let attempts = 0;
+                const maxAttempts = 10;
+                let delay = 2000;
+
+                while (attempts < maxAttempts) {
+                    attempts++;
+                    try {
+                        const response = await fetch(url, {
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'X-CSRF-Token': getCsrfToken()
+                            }
+                        });
+                        if (response.status === 202) {
+                            const data = await response.json();
+                            showStatusBanner(`⏳ Generating Section ${sectionNum}... (${Math.round(data.progress || 0)}%)`, 'info');
+                            updateSectionIndicators();
+                            await sleep(delay);
+                            delay = Math.min(delay * 1.5, 5000);
+                            continue;
+                        }
+                        if (!response.ok) throw new Error(`Server error: ${response.status}`);
+                        const data = await response.json();
+                        if (!data.ready) {
+                            showStatusBanner(`⏳ Section ${sectionNum} is still generating...`, 'info');
+                            await sleep(delay);
+                            delay = Math.min(delay * 1.5, 5000);
+                            continue;
+                        }
+                        sectionsData[sectionNum - 1] = data.test_data || data.data || {};
+                        if (data.audio_urls) sectionAudioUrls[sectionNum] = data.audio_urls;
+                        if (data.audio_timings) sectionTimings[sectionNum] = data.audio_timings;
+                        if (sectionTimings[sectionNum]) updateDurations(sectionNum);
+                        renderSection(sectionNum, sectionsData[sectionNum-1], userAnswers);
+                        updateSectionIndicators();
+                        updateNavButtons();
+                        updateMainPlayButton();
+                        showStatusBanner(`✅ Section ${sectionNum} loaded.`, 'success');
+                        return;
+                    } catch (err) {
+                        if (attempts >= maxAttempts) throw err;
+                        await sleep(delay);
+                        delay = Math.min(delay * 2, 10000);
+                    }
+                }
+            })();
+
+            sectionFetching[sectionNum] = promise;
+            try { await promise; } finally { delete sectionFetching[sectionNum]; }
+        }
+
+        async function fetchLatestSectionData(sectionNum, maxRetries = 15) {
+            if (!sessionId) throw new Error('Session ID not available');
+            let attempts = 0;
+            let delay = 1000;
+            while (attempts < maxRetries) {
+                attempts++;
+                try {
+                    const url = `/api/listening/section/${sessionId}/${sectionNum}`;
+                    const response = await fetch(url, {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'X-CSRF-Token': getCsrfToken()
+                        }
+                    });
+                    if (response.status === 202) { await sleep(delay); delay = Math.min(delay * 1.5, 5000); continue; }
+                    if (!response.ok) throw new Error(`Server error: ${response.status}`);
+                    const data = await response.json();
+                    if (!data.ready) { await sleep(delay); delay = Math.min(delay * 1.5, 5000); continue; }
+                    const audioUrls = data.audio_urls || {};
+                    const hasMain = audioUrls.main !== undefined && audioUrls.main !== null && audioUrls.main !== '';
+                    if (!hasMain) { await sleep(delay); delay = Math.min(delay * 1.5, 5000); continue; }
+                    sectionsData[sectionNum - 1] = data.test_data || data.data || {};
+                    sectionAudioUrls[sectionNum] = audioUrls;
+                    if (data.audio_timings) sectionTimings[sectionNum] = data.audio_timings;
+                    if (sectionTimings[sectionNum]) updateDurations(sectionNum);
+                    renderSection(sectionNum, sectionsData[sectionNum-1], userAnswers);
+                    updateSectionIndicators();
+                    updateNavButtons();
+                    updateMainPlayButton();
+                    return sectionAudioUrls[sectionNum];
+                } catch (err) {
+                    if (attempts >= maxRetries) throw err;
+                    await sleep(delay);
+                    delay = Math.min(delay * 2, 10000);
+                }
+            }
+            throw new Error(`Failed to fetch Section ${sectionNum} after ${maxRetries} attempts`);
+        }
+
+        async function fetchAudioForSection(sectionNum) {
+            if (sectionAudioUrls[sectionNum] && sectionAudioUrls[sectionNum].main) {
+                return sectionAudioUrls[sectionNum];
+            }
+            try {
+                const urls = await fetchLatestSectionData(sectionNum);
+                if (urls && urls.main) return urls;
+                for (let i = 0; i < 5; i++) {
+                    await sleep(2000);
+                    const fresh = await fetchLatestSectionData(sectionNum);
+                    if (fresh && fresh.main) return fresh;
+                }
+                throw new Error('Audio URLs not found after multiple attempts');
+            } catch (err) {
+                console.error('Audio fetch error:', err);
+                showError('Failed to get audio: ' + err.message);
+                return null;
+            }
+        }
+
+        function skipAudio() {
+            stopAudio(true);
+            stopSequentialPlay = true;
+            const next = currentSectionNum + 1;
+            if (next <= totalSections) {
+                showSection(next, true);
+            } else {
+                showStatusBanner('🎉 All sections completed! Review your answers.', 'success');
+                setTimeout(() => showReviewScreen(), 1000);
+            }
+        }
+
+        // ─── Audio Playback ─────────────────────────────────────────────────
+        async function fetchAudioWithRetry(url, maxRetries = 3) {
+            for (let attempt = 1; attempt <= maxRetries; attempt++) {
+                try {
+                    const response = await fetch(url, {
+                        headers: { 'Range': 'bytes=0-' },
+                        cache: 'no-store'
+                    });
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    const blob = await response.blob();
+                    if (blob.size === 0) throw new Error('Empty blob');
+                    return blob;
+                } catch (err) {
+                    if (attempt === maxRetries) throw err;
+                    const delay = 1000 * Math.pow(2, attempt - 1);
+                    await new Promise(r => setTimeout(r, delay));
+                }
+            }
+            throw new Error('All retry attempts failed');
+        }
+
+        function playSingleAudio(url) {
+            return new Promise((resolve, reject) => {
+                if (!url || url === '') { resolve(); return; }
+
+                document.getElementById('audio-status').textContent = '📥 Loading audio...';
+
+                fetchAudioWithRetry(url, 3)
+                    .then(blob => {
+                        const blobUrl = URL.createObjectURL(blob);
+                        const audio = new Audio(blobUrl);
+                        audio.playbackRate = 1.0;
+                        window.audioElement = audio;
+                        audioElement = audio;
+
+                        let resolved = false;
+                        const onEnded = () => {
+                            if (!resolved) {
+                                resolved = true;
+                                audio.removeEventListener('ended', onEnded);
+                                audio.removeEventListener('error', onError);
+                                URL.revokeObjectURL(blobUrl);
+                                resolve();
+                            }
+                        };
+                        const onError = (e) => {
+                            if (!resolved) {
+                                resolved = true;
+                                audio.removeEventListener('ended', onEnded);
+                                audio.removeEventListener('error', onError);
+                                URL.revokeObjectURL(blobUrl);
+                                if (e && e.target && e.target.error && e.target.error.code === MediaError.MEDIA_ERR_ABORTED) {
+                                    resolve();
+                                } else {
+                                    reject(e);
+                                }
+                            }
+                        };
+                        audio.addEventListener('ended', onEnded);
+                        audio.addEventListener('error', onError);
+
+                        audio.play().then(() => {
+                            document.getElementById('audio-status').textContent = '▶️ Playing ' + currentAudioPart;
+                            const errContainer = document.getElementById('audio-error-container');
+                            errContainer.style.display = 'none';
+                            errContainer.innerHTML = '';
+                            activeRetryFn = null;
+                        }).catch(onError);
+                    })
+                    .catch(err => {
+                        if (err && err.name === 'AbortError') { resolve(); return; }
+                        const errContainer = document.getElementById('audio-error-container');
+                        errContainer.style.display = 'block';
+                        errContainer.innerHTML = `
+                            <div class="error-box">
+                                <span>⚠️ Audio load failed: ${err.message || 'Network error'}</span>
+                                <button class="retry-btn" onclick="retryCurrentPart()">🔄 Retry</button>
+                            </div>
+                        `;
+                        document.getElementById('audio-status').textContent = '❌ Audio error';
+                        activeRetryFn = () => {
+                            errContainer.style.display = 'none';
+                            errContainer.innerHTML = '';
+                            playCurrentSectionAudio();
+                        };
+                        reject(err);
+                    });
+            });
+        }
+
+        function retryCurrentPart() {
+            if (activeRetryFn) activeRetryFn();
+            else playCurrentSectionAudio();
+        }
+        window.retryCurrentPart = retryCurrentPart;
+
+        function silencePause(duration, label) {
+            return new Promise((resolve) => {
+                if (stopSequentialPlay) { resolve(); return; }
+                showSilenceTimer(label, duration, 'Please wait...');
+                setTimeout(() => {
+                    hideSilenceTimer();
+                    resolve();
+                }, duration * 1000 + 100);
+            });
+        }
+
+        function updateDurations(sectionNum) {
+            const timings = sectionTimings[sectionNum] || {};
+            let introDur = 0, mainDur = 0, outroDur = 0;
+            if (timings.intro) introDur = timings.intro[1] - timings.intro[0];
+            if (timings.main_audio) mainDur = timings.main_audio[1] - timings.main_audio[0];
+            if (timings.outro) outroDur = timings.outro[1] - timings.outro[0];
+            if (introDur === 0) introDur = 3.0;
+            if (mainDur === 0) mainDur = 30.0;
+            if (outroDur === 0) outroDur = 2.0;
+
+            partDurations.intro = introDur;
+            partDurations.main = mainDur;
+            partDurations.outro = outroDur;
+            partDurations.reading = 30;
+            partDurations.checking = 30;
+
+            totalDuration = introDur + 30 + mainDur + outroDur + 30;
+            partStartTimes = {
+                intro: 0,
+                reading: introDur,
+                main: introDur + 30,
+                outro: introDur + 30 + mainDur,
+                checking: introDur + 30 + mainDur + outroDur
+            };
+        }
+
+        async function playCurrentSectionAudio() {
+            if (!testStarted) {
+                showStatusBanner('Please click "Start Test" first.', 'warning');
+                return;
+            }
+            const btn = document.getElementById('play-audio-btn');
+            if (!btn) return;
+            const sectionNum = currentSectionNum;
+
+            if (!sectionsData[sectionNum - 1]) {
+                showStatusBanner(`⏳ Section ${sectionNum} is still loading. Please wait.`, 'info');
+                return;
+            }
+
+            if (isAudioPlaying) {
+                if (audioElement) audioElement.pause();
+                isAudioPlaying = false;
+                stopSequentialPlay = true;
+                btn.textContent = '▶️ Play Audio';
+                btn.classList.remove('playing');
+                document.getElementById('audio-status').textContent = '⏸️ Paused';
+                hideSilenceTimer();
+                if (silenceTimeouts.reading) { clearTimeout(silenceTimeouts.reading); silenceTimeouts.reading = null; }
+                if (silenceTimeouts.checking) { clearTimeout(silenceTimeouts.checking); silenceTimeouts.checking = null; }
+                const errContainer = document.getElementById('audio-error-container');
+                errContainer.style.display = 'none';
+                errContainer.innerHTML = '';
+                activeRetryFn = null;
+                return;
+            }
+
+            stopAudio(true);
+            stopSequentialPlay = false;
+            const errContainer = document.getElementById('audio-error-container');
+            errContainer.style.display = 'none';
+            errContainer.innerHTML = '';
+            activeRetryFn = null;
+
+            let audioUrls = sectionAudioUrls[sectionNum];
+            if (!audioUrls || !audioUrls.main) {
+                btn.textContent = '⏳ Loading...';
+                btn.disabled = true;
+                document.getElementById('audio-status').textContent = '⏳ Getting audio...';
+
+                audioUrls = await fetchAudioForSection(sectionNum);
+                if (!audioUrls) {
+                    btn.textContent = '❌ Error';
+                    btn.disabled = false;
+                    document.getElementById('audio-status').textContent = '❌ Audio unavailable';
+                    return;
+                }
+            }
+
+            const introUrl = audioUrls.intro || null;
+            const mainUrl = audioUrls.main;
+            const outroUrl = audioUrls.outro || null;
+
+            if (!mainUrl) {
+                showError('Main audio URL missing');
+                return;
+            }
+
+            if (typeof updateDurations === 'function') updateDurations(sectionNum);
+
+            try {
+                btn.textContent = '⏳ Loading...';
+                btn.disabled = true;
+                document.getElementById('audio-status').textContent = '📥 Loading audio...';
+
+                isPlayingSequentially = true;
+                isAudioPlaying = true;
+                btn.textContent = '⏸️ Pause';
+                btn.classList.add('playing');
+                btn.disabled = false;
+                document.getElementById('audio-status').textContent = '▶️ Playing...';
+
+                if (introUrl && !stopSequentialPlay) {
+                    currentAudioPart = 'intro';
+                    await playSingleAudio(introUrl);
+                }
+
+                if (!stopSequentialPlay) {
+                    currentAudioPart = 'reading';
+                    await silencePause(30, '📖 Reading time');
+                }
+
+                if (mainUrl && !stopSequentialPlay) {
+                    currentAudioPart = 'main';
+                    await playSingleAudio(mainUrl);
+                }
+
+                if (outroUrl && !stopSequentialPlay) {
+                    currentAudioPart = 'outro';
+                    await playSingleAudio(outroUrl);
+                }
+
+                if (!stopSequentialPlay) {
+                    currentAudioPart = 'checking';
+                    await silencePause(30, '📝 Checking time');
+                }
+
+                if (!stopSequentialPlay) {
+                    isAudioPlaying = false;
+                    isPlayingSequentially = false;
+                    btn.textContent = '▶️ Play Audio';
+                    btn.classList.remove('playing');
+                    document.getElementById('audio-status').textContent = '✅ Audio finished';
+                    hideSilenceTimer();
+
+                    const next = sectionNum + 1;
+                    if (next <= totalSections) {
+                        showStatusBanner(`⏳ Moving to Section ${next}...`, 'info');
+                        setTimeout(() => { showSection(next, true); }, 800);
+                    } else {
+                        showStatusBanner('🎉 All sections completed! Review your answers.', 'success');
+                        setTimeout(() => showReviewScreen(), 1000);
+                    }
+                } else {
+                    isAudioPlaying = false;
+                    isPlayingSequentially = false;
+                    btn.textContent = '▶️ Play Audio';
+                    btn.classList.remove('playing');
+                    document.getElementById('audio-status').textContent = '⏹️ Stopped';
+                    hideSilenceTimer();
+                }
+
+            } catch (error) {
+                console.warn('⚠️ Audio sequence error (non-critical):', error);
+                hideSilenceTimer();
+                isAudioPlaying = false;
+                isPlayingSequentially = false;
+                btn.textContent = '▶️ Play Audio';
+                btn.classList.remove('playing');
+                document.getElementById('audio-status').textContent = '⏹️ Stopped';
+                if (error && error.message && !error.message.includes('abort')) {
+                    showError('Audio playback error. Please try again.');
+                }
+            }
+        }
+
+        function stopAudio(silent = false) {
+            stopSequentialPlay = true;
+            if (audioElement) {
+                audioElement.pause();
+                audioElement.currentTime = 0;
+                audioElement.src = '';
+                audioElement = null;
+                window.audioElement = null;
+            }
+            isAudioPlaying = false;
+            isPlayingSequentially = false;
+            if (!silent) hideStatusBanner();
+            hideSilenceTimer();
+            if (silenceTimeouts.reading) { clearTimeout(silenceTimeouts.reading); silenceTimeouts.reading = null; }
+            if (silenceTimeouts.checking) { clearTimeout(silenceTimeouts.checking); silenceTimeouts.checking = null; }
+            const btn = document.getElementById('play-audio-btn');
+            if (btn) {
+                btn.textContent = '▶️ Play Audio';
+                btn.classList.remove('playing');
+                btn.disabled = false;
+            }
+            document.getElementById('audio-status').textContent = '⏹️ Stopped';
+            const errContainer = document.getElementById('audio-error-container');
+            errContainer.style.display = 'none';
+            errContainer.innerHTML = '';
+            activeRetryFn = null;
+        }
+
+        function replayAudio() {
+            stopAudio(true);
+            stopSequentialPlay = false;
+            setTimeout(() => { playCurrentSectionAudio(); }, 500);
+        }
+
+        function showAudioError(message) {
+            showStatusBanner('Audio error: ' + message, 'error');
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // ✅ UPDATED TIMER: Auto-submit at 0:00 (no confirm dialog)
+        // ═══════════════════════════════════════════════════════════
+        function startTimer() {
+            if (testTimer) return;
+            testTimer = setInterval(() => {
+                timeLeft--;
+                const minutes = Math.floor(Math.max(0, timeLeft) / 60);
+                const seconds = Math.max(0, timeLeft) % 60;
+                const timerEl = document.getElementById('timer');
+                if (timerEl) {
+                    timerEl.textContent = `⏱️ Time: ${String(minutes).padStart(2,'0')}:${String(seconds).padStart(2,'0')}`;
+
+                    timerEl.classList.remove('warning', 'expired');
+                    if (timeLeft <= 60) {
+                        timerEl.classList.add('expired');
+                    } else if (timeLeft <= 300) {
+                        timerEl.classList.add('warning');
+                    }
+                }
+
+                if (timeLeft <= 0) {
+                    if (!_graceUsed && GRACE_SECONDS > 0) {
+                        _graceUsed = true;
+                        timeLeft = GRACE_SECONDS;
+                        showStatusBanner(`⏳ +${GRACE_SECONDS/60} min grace added`, 'warning');
+                        return;
+                    }
+
+                    clearInterval(testTimer);
+                    testTimer = null;
+                    console.log('⏰ Time up — auto-submitting listening test');
+                    showStatusBanner('⏰ Time is up — submitting your answers…', 'warning');
+                    isAutoSubmitting = true;
+                    submitTest();
+                }
+            }, 1000);
+        }
+
+        // ─── Submit Test ────────────────────────────────────────────────────
+        async function submitTest() {
+            if (isSubmitting) return;
+
+            if (!isAutoSubmitting && FULL_TEST_MODE) {
+                if (!confirm('Submit Listening and continue to the Reading phase?\n\nYou will not be able to change your listening answers after this.')) {
+                    return;
+                }
+            } else if (isAutoSubmitting) {
+                console.log('⏰ Auto-submit mode — skipping confirmation dialog');
+            }
+
+            clearInterval(testTimer);
+            testTimer = null;
+            const submitBtn = document.getElementById('submit-btn-review');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.textContent = FULL_TEST_MODE ? '⏳ Submitting listening...' : 'Submitting...';
+            }
+            isSubmitting = true;
+
+            try {
+                const answers = {};
+
+                const mainInputs = document.querySelectorAll('.answer-input, .answer-select, .map-select, .map-letter-select');
+                mainInputs.forEach(el => {
+                    const id = el.id;
+                    if (id && id.startsWith('ans_')) {
+                        const qId = id.replace('ans_', '');
+                        answers[qId] = el.value || '';
+                    }
+                });
+
+                const reviewInputs = document.querySelectorAll('.q-answer-input, .q-answer-select');
+                reviewInputs.forEach(el => {
+                    const qId = el.dataset.qid;
+                    if (qId) answers[qId] = el.value || '';
+                });
+
+                const mergedAnswers = { ...userAnswers, ...answers };
+                for (const [key, val] of Object.entries(answers)) {
+                    mergedAnswers[key] = val;
+                }
+
+                const testId = currentTestId || sessionId;
+                const requestBody = {
+                    answers: mergedAnswers,
+                    test_id: testId,
+                    is_full_test: FULL_TEST_MODE,
+                };
+
+                const response = await fetch('/listening/submit', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': getCsrfToken()
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+
+                if (response.status === 402) { handle402(response); return; }
+
+                const data = await response.json();
+
+                const shouldRedirect =
+                    FULL_TEST_MODE
+                    || data.is_full_test === true
+                    || (typeof data.redirect === 'string' && data.redirect.length > 0);
+
+                if (shouldRedirect) {
+                    showStatusBanner('✅ Listening phase complete! Returning to full test…', 'success');
+                    const redirectUrl = (typeof data.redirect === 'string' && data.redirect)
+                        ? data.redirect
+                        : '/ielts-full-test?completed=listening';
+                    setTimeout(() => { window.location.href = redirectUrl; }, 800);
+                    return;
+                }
+
+                document.getElementById('test-screen').style.display = 'none';
+                document.getElementById('review-screen').style.display = 'none';
+                document.getElementById('results-screen').style.display = 'block';
+
+                document.getElementById('score-pct').textContent = (data.score || 0).toFixed(1);
+                document.getElementById('band-score').textContent = data.band_score || 0;
+                document.getElementById('correct-count').textContent = data.correct || 0;
+                document.getElementById('total-count').textContent = data.total || 0;
+                document.getElementById('unanswered-count').textContent = data.unanswered || 0;
+
+                const sectionScores = data.section_scores || {};
+                const sectionList = document.getElementById('section-scores-list');
+                let sectionHtml = '';
+                for (let sec = 1; sec <= totalSections; sec++) {
+                    const secKey = `section_${sec}`;
+                    const secData = sectionScores[secKey] || { correct: 0, total: 0, percentage: 0 };
+                    sectionHtml += `
+                        <div class="section-score-card">
+                            <div class="sec-label">Section ${sec}</div>
+                            <div class="sec-value">${secData.percentage || 0}%</div>
+                            <div style="font-size:12px; color:#666;">${secData.correct || 0}/${secData.total || 10}</div>
+                        </div>
+                    `;
+                }
+                sectionList.innerHTML = sectionHtml || '<p style="text-align:center;width:100%;color:#666;">No section data available.</p>';
+
+                let allQ = [];
+                for (let i = 0; i < sectionsData.length; i++) {
+                    const secData = sectionsData[i];
+                    if (secData) {
+                        const sectionNum = i + 1;
+                        const qs = extractQuestions(secData, sectionNum);
+                        qs.forEach((q, idx) => {
+                            const globalNumber = (sectionNum - 1) * 10 + idx + 1;
+                            q.globalNumber = globalNumber;
+                            if (!q.id) q.id = `q_${sectionNum}_${idx}`;
+                            allQ.push(q);
+                        });
+                    }
+                }
+                allQ.sort((a, b) => a.globalNumber - b.globalNumber);
+
+                const correctAnswers = data.correct_answers || {};
+                let reviewHtml = '';
+                let lastSectionShown = 0;
+
+                allQ.forEach((q) => {
+                    const qId = q.id;
+                    const qNumber = q.globalNumber;
+                    const qText = q.text || q.question || `Question ${qNumber}`;
+                    const userAns = mergedAnswers[qId] || '';
+                    const correctAns = correctAnswers[qId] || '';
+                    const isCorrect = userAns && correctAns && userAns.toLowerCase() === correctAns.toLowerCase();
+                    const isUnanswered = !userAns;
+                    const options = q.options || [];
+                    const isMap = q.type === 'map_labeling' && Array.isArray(q.map_locations) && q.map_locations.length > 0;
+
+                    let statusClass = isCorrect ? 'correct' : (isUnanswered ? 'unanswered' : 'incorrect');
+                    let statusText = isCorrect ? '✅ Correct' : (isUnanswered ? '⏳ Unanswered' : '❌ Incorrect');
+
+                    const secNum = Math.floor((qNumber - 1) / 10) + 1;
+                    if (secNum !== lastSectionShown) {
+                        lastSectionShown = secNum;
+                        reviewHtml += `<div class="review-section-header" style="margin-top:20px;">Section ${secNum} (Questions ${(secNum-1)*10+1}–${secNum*10})</div>`;
+                        const sectionQs = allQ.filter(x => Math.floor((x.globalNumber - 1) / 10) + 1 === secNum);
+                        const { aggLocations, mapTitle } = aggregateMapLocationsForSection(sectionQs);
+                        if (aggLocations.length > 0) {
+                            const extraSeed = 'res_s' + secNum + '_' + (mapTitle || '');
+                            reviewHtml += `
+                                <div class="section-map-wrapper">
+                                    <h4>🗺️ ${escapeHtml(mapTitle || 'Map / Plan')}</h4>
+                                    <div class="map-svg-wrapper">${generateRealisticMapSVG(aggLocations, extraSeed)}</div>
+                                </div>
+                            `;
+                        }
+                    }
+
+                    let answerInputHtml = '';
+                    if (isMap) {
+                        const sectionQs = allQ.filter(x => Math.floor((x.globalNumber - 1) / 10) + 1 === secNum);
+                        const { aggLocations } = aggregateMapLocationsForSection(sectionQs);
+                        let optHtml = `<option value="">Select...</option>`;
+                        aggLocations.forEach(loc => {
+                            const selected = userAns === loc.letter ? 'selected' : '';
+                            optHtml += `<option value="${loc.letter}" ${selected}>${loc.letter}</option>`;
+                        });
+                        answerInputHtml = `
+                            <select class="q-answer-select" data-qid="${qId}" disabled>
+                                ${optHtml}
+                            </select>
+                        `;
+                    } else if (options && options.length > 0) {
+                        let optHtml = `<option value="">Select...</option>`;
+                        options.forEach(opt => {
+                            const letter = extractLetter(opt);
+                            const selected = userAns === letter ? 'selected' : '';
+                            optHtml += `<option value="${letter}" ${selected}>${letter}</option>`;
+                        });
+                        answerInputHtml = `
+                            <select class="q-answer-select" data-qid="${qId}" disabled>
+                                ${optHtml}
+                            </select>
+                        `;
+                    } else {
+                        answerInputHtml = `
+                            <input type="text" class="q-answer-input" data-qid="${qId}" 
+                                   value="${escapeHtml(userAns)}" 
+                                   placeholder="(not answered)"
+                                   readonly>
+                        `;
+                    }
+
+                    reviewHtml += `
+                        <div class="answer-review-item ${statusClass}">
+                            <div class="q-info">
+                                <span class="q-number">Q${qNumber}</span>
+                                <span class="q-text">${escapeHtml(qText)}</span>
+                                <div style="display:flex; gap:15px; flex-wrap:wrap; margin-top:2px; align-items:center;">
+                                    <span>Your answer: ${userAns ? '<strong>' + escapeHtml(userAns) + '</strong>' : '<em style="color:#999;">(not answered)</em>'}</span>
+                                    <span>Correct answer: <span class="correct-answer">${escapeHtml(correctAns)}</span></span>
+                                </div>
+                            </div>
+                            <span class="status-badge ${statusClass}">${statusText}</span>
+                        </div>
+                    `;
+                });
+
+                document.getElementById('detailed-answers-list').innerHTML = reviewHtml || '<p>No answer details available.</p>';
+
+                let unanswered = data.unanswered || 0;
+                let correctCount = data.correct || 0;
+                let totalCount = data.total || 0;
+                document.getElementById('feedback-text').textContent = data.feedback || 'Test completed.';
+                document.getElementById('feedback-stats').innerHTML = `
+                    <li>✅ Correct: ${correctCount} (${totalCount ? (correctCount/totalCount*100).toFixed(1) : 0}%)</li>
+                    <li>❌ Incorrect: ${totalCount - correctCount - unanswered} (${totalCount ? ((totalCount - correctCount - unanswered)/totalCount*100).toFixed(1) : 0}%)</li>
+                    <li>⏳ Unanswered: ${unanswered} (${totalCount ? (unanswered/totalCount*100).toFixed(1) : 0}%)</li>
+                    <li>🎯 Accuracy: ${totalCount ? (correctCount/totalCount*100).toFixed(1) : 0}%</li>
+                `;
+
+                localStorage.removeItem('listening_answers_backup');
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Submit Test';
+                }
+                isSubmitting = false;
+
+            } catch(e) {
+                console.error('Submit error:', e);
+                alert('Error submitting test');
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = FULL_TEST_MODE
+                        ? '📝 Submit Listening → Reading Phase'
+                        : 'Submit Test';
+                }
+                isSubmitting = false;
+            }
+        }
+
+        // ─── Keyboard Shortcuts ─────────────────────────────────────────────
+        document.addEventListener('keydown', function(e) {
+            if (e.key === ' ' && !e.target.matches('input, textarea, select')) {
+                e.preventDefault();
+                if (testStarted) playCurrentSectionAudio();
+            }
+        });
+
+        // ─── Favicon ────────────────────────────────────────────────────────
+        (function addFavicon() {
+            const link = document.createElement('link');
+            link.rel = 'icon';
+            link.href = "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎧</text></svg>";
+            document.head.appendChild(link);
+        })();
+
+        // ═══════════════════════════════════════════════════════════════════
+        //  ✅ FIXED startTest() — v2 with 202 WAITING handling
+        //
+        //  Previous bug: fetchWithRetry treated 202 as success, but then
+        //  the response body had `success: false`, so we threw
+        //  "Unknown error" and user 2 saw an error whenever user 1 was
+        //  already generating the same module.
+        //
+        //  This version:
+        //    • Loops up to 25 times
+        //    • On 202 → reads retry_after, sleeps, retries (NO error)
+        //    • On 503 → explicit error message
+        //    • On 402 → subscription redirect
+        //    • On 200 → success, load test
+        //    • On network error → retry with 2s backoff
+        // ═══════════════════════════════════════════════════════════════════
+        async function startTest() {
+            const loadingDiv = document.getElementById('loading-container');
+            loadingDiv.style.display = 'block';
+            const waitingOverlay = document.getElementById('waiting-overlay');
+            waitingOverlay.style.display = 'flex';
+
+            const accent = document.getElementById('accent-select')?.value || 'british';
+            const difficulty = document.getElementById('difficulty-select')?.value || 'medium';
+            const forceNew = document.getElementById('force-new-check').checked;
+
+            const body = {
+                difficulty,
+                accent,
+                force_new: forceNew,
+                num_sections: 4,
+                from_full_test: FULL_TEST_MODE,
+            };
+
+            // ✅ Forward retake flag (backend clones last completed test)
+            if (RETAKE) body.retake = true;
+            // ✅ Honor ?new=true
+            if (FORCE_NEW_URL) body.force_new = true;
+
+            const progressEl = document.getElementById('waiting-progress');
+            progressEl.textContent = '⏳ Connecting to server...';
+
+            const MAX_ATTEMPTS = 25;   // ~75 s worst case (3 s × 25)
+            let attempt = 0;
+
+            while (attempt < MAX_ATTEMPTS) {
+                attempt++;
+
+                try {
+                    const response = await fetch('/listening/start', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-Token': getCsrfToken()
+                        },
+                        body: JSON.stringify(body),
+                        keepalive: true,
+                    });
+
+                    // ─── 202 — Another user is generating ─────────
+                    if (response.status === 202) {
+                        const data = await response.json().catch(() => ({}));
+                        const retryAfter = Number(data.retry_after) || 3;
+                        progressEl.textContent =
+                            `⏳ Another user is preparing a test — ` +
+                            `retry ${attempt}/${MAX_ATTEMPTS} in ${retryAfter}s...`;
+                        console.log(`[startTest] 202 waiting — retry ${attempt}/${MAX_ATTEMPTS} in ${retryAfter}s`);
+                        await sleep(retryAfter * 1000);
+                        continue;
+                    }
+
+                    // ─── 402 — Subscription required ───────────────
+                    if (response.status === 402) {
+                        handle402(response);
+                        return;
+                    }
+
+                    // ─── 503 — Exhausted / failed ─────────────────
+                    if (response.status === 503) {
+                        const data = await response.json().catch(() => ({}));
+                        throw new Error(data.error || 'Test generation failed. Please try again.');
+                    }
+
+                    // ─── 200 — Success ────────────────────────────
+                    if (response.ok) {
+                        const data = await response.json();
+
+                        if (data.success) {
+                            sessionId = data.session_id;
+                            currentTestId = data.test_id || data.session_id || data.test_data?.id || null;
+
+                            if (data.retake === true) {
+                                console.log('🔄 Retake served — session', data.session_id);
+                                showStatusBanner('🔄 Retake loaded — same sections, fresh timer.', 'success');
+                            }
+
+                            const section1Data = data.test_data || data;
+                            sectionsData = new Array(totalSections).fill(null);
+                            sectionsData[0] = section1Data;
+
+                            let audioUrls = data.audio_urls || (data.test_data && data.test_data.audio_urls) || null;
+                            if (audioUrls) sectionAudioUrls[1] = audioUrls;
+                            if (data.audio_timings) sectionTimings[1] = data.audio_timings;
+
+                            renderSection(1, section1Data, userAnswers);
+
+                            loadingDiv.style.display = 'none';
+                            waitingOverlay.style.display = 'none';
+
+                            if (typeof updateDurations === 'function') updateDurations(1);
+
+                            showStartOverlay();
+                            updateSectionIndicators();
+                            updateNavButtons();
+                            updateMainPlayButton();
+                            return;
+                        }
+
+                        // Sometimes 200 also returns { success:false, source:'waiting' }
+                        if (data.source === 'waiting') {
+                            const retryAfter = Number(data.retry_after) || 3;
+                            progressEl.textContent =
+                                `⏳ ${data.message || 'Waiting for another user'} — ` +
+                                `retry ${attempt}/${MAX_ATTEMPTS} in ${retryAfter}s...`;
+                            await sleep(retryAfter * 1000);
+                            continue;
+                        }
+
+                        // Other 200 but data.success=false — treat as failure
+                        throw new Error(data.error || data.message || 'Unknown response');
+                    }
+
+                    // Other HTTP status — treat as failure (retry once)
+                    throw new Error(`Server error: ${response.status}`);
+
+                } catch (err) {
+                    console.warn(`[startTest] attempt ${attempt} error:`, err);
+
+                    if (attempt >= MAX_ATTEMPTS) {
+                        console.error('Start test error (final):', err);
+                        showError('Failed to start test: ' + err.message);
+                        loadingDiv.innerHTML = `
+                            <div style="text-align:center;padding:40px;">
+                                <p style="color:red; font-size:18px;">⏰ Failed to start test.</p>
+                                <p style="color:#666; margin-top:10px;">${err.message}</p>
+                                <p style="color:#888; margin-top:5px; font-size:13px;">
+                                    This may be due to a network interruption or high server load. Please try again.
+                                </p>
+                                <button class="btn btn-primary" onclick="location.reload()" style="margin-top:20px;">🔄 Retry</button>
+                            </div>
+                        `;
+                        waitingOverlay.style.display = 'none';
+                        return;
+                    }
+
+                    progressEl.textContent =
+                        `⏳ Retrying (${attempt}/${MAX_ATTEMPTS}) in 2s...`;
+                    await sleep(2000);
+                }
+            }
+
+            showError('Test preparation timed out. Please refresh the page and try again.');
+            waitingOverlay.style.display = 'none';
+        }
+
+        // ─── Init ────────────────────────────────────────────────────────────
+        document.addEventListener('DOMContentLoaded', function() {
+            applyFullTestMode();
+            applyRetakeMode();
+
+            if (window.speechSynthesis) {
+                window.speechSynthesis.getVoices();
+                window.speechSynthesis.onvoiceschanged = function() {
+                    window.speechSynthesis.getVoices();
+                };
+            }
+            if (RESUME_ID && !RETAKE) {
+                fetchResumeData(RESUME_ID);
+            } else {
+                if (typeof startTest === 'function') {
+                    startTest();
+                } else {
+                    console.error('startTest is not defined');
+                    document.getElementById('loading-container').innerHTML = `
+                        <div style="text-align:center;padding:40px;color:red;">
+                            <p>⚠️ Error: test function not available.</p>
+                            <p>Please refresh the page or contact support.</p>
+                        </div>
+                    `;
+                }
+            }
+        });
+    </script>
+</body>
+</html>

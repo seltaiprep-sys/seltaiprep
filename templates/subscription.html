@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subscription Plans</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            max-width: 900px;
+            margin: 30px auto;
+            padding: 20px;
+            background: #f8f9fc;
+        }
+        h1 {
+            text-align: center;
+            color: #1a2b4a;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #6c757d;
+            margin-bottom: 30px;
+        }
+        .plans-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 20px;
+        }
+        .plan {
+            background: #fff;
+            border-radius: 12px;
+            padding: 24px 20px 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+            display: flex;
+            flex-direction: column;
+            border: 1px solid #e9ecf0;
+            transition: 0.2s;
+        }
+        .plan:hover { border-color: #007bff; box-shadow: 0 6px 16px rgba(0,123,255,0.08); }
+        .plan h2 {
+            margin-top: 0;
+            color: #1a2b4a;
+            font-size: 1.5rem;
+            border-bottom: 2px solid #eef2f7;
+            padding-bottom: 8px;
+        }
+        .price {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #28a745;
+            margin: 12px 0;
+        }
+        .price small {
+            font-size: 1rem;
+            font-weight: normal;
+            color: #6c757d;
+        }
+        .plan ul {
+            padding-left: 20px;
+            margin: 12px 0 20px;
+            flex: 1;
+        }
+        .plan ul li {
+            margin-bottom: 6px;
+            color: #2c3e50;
+        }
+        .btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .btn {
+            display: inline-block;
+            padding: 10px 16px;
+            border-radius: 6px;
+            font-weight: 600;
+            text-align: center;
+            text-decoration: none;
+            transition: 0.2s;
+            border: none;
+            cursor: pointer;
+            font-size: 0.95rem;
+        }
+        .btn-qr {
+            background: #28a745;
+            color: #fff;
+        }
+        .btn-qr:hover { background: #218838; }
+        .info-box {
+            background: #e9f7ef;
+            padding: 14px 18px;
+            border-radius: 8px;
+            border-left: 4px solid #28a745;
+            margin: 12px 0 20px;
+            font-size: 0.95rem;
+            color: #1a3c2a;
+        }
+        .info-box strong { color: #0b2b1a; }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+        }
+        .footer a {
+            color: #007bff;
+            text-decoration: none;
+        }
+        .footer a:hover { text-decoration: underline; }
+
+        @media (max-width: 600px) {
+            .plans-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>📚 Subscription Plans</h1>
+    <p class="subtitle">Choose your module and start practicing with full access.</p>
+
+    <div class="plans-grid">
+
+        <!-- IELTS -->
+        <div class="plan">
+            <h2>IELTS</h2>
+            <div class="price">NPR 1,499 <small>/ month</small></div>
+            <ul>
+                <li>Unlimited Listening, Reading, Writing, Speaking</li>
+                <li>Full mock tests</li>
+                <li>AI evaluation for Writing & Speaking</li>
+            </ul>
+            <div class="btn-group">
+                <a href="{{ url_for('manual_payment', module='ielts') }}" class="btn btn-qr">Pay with QR (Manual)</a>
+            </div>
+            <div class="info-box">
+                <strong>Manual payment:</strong> Scan QR → pay via eSewa → upload screenshot → admin activates.
+            </div>
+        </div>
+
+        <!-- PTE -->
+        <div class="plan">
+            <h2>PTE</h2>
+            <div class="price">NPR 1,499 <small>/ month</small></div>
+            <ul>
+                <li>Unlimited Listening, Reading, Speaking &amp; Writing</li>
+                <li>Full mock tests</li>
+                <li>AI scoring</li>
+            </ul>
+            <div class="btn-group">
+                <a href="{{ url_for('manual_payment', module='pte') }}" class="btn btn-qr">Pay with QR (Manual)</a>
+            </div>
+            <div class="info-box">
+                <strong>Manual payment:</strong> Scan QR → pay via eSewa → upload screenshot → admin activates.
+            </div>
+        </div>
+
+        <!-- UKVI -->
+        <div class="plan">
+            <h2>UKVI</h2>
+            <div class="price">NPR 999 <small>/ month</small></div>
+            <ul>
+                <li>Unlimited UKVI interview practice</li>
+                <li>Realistic scenarios</li>
+                <li>Feedback on responses</li>
+            </ul>
+            <div class="btn-group">
+                <a href="{{ url_for('manual_payment', module='ukvi') }}" class="btn btn-qr">Pay with QR (Manual)</a>
+            </div>
+            <div class="info-box">
+                <strong>Manual payment:</strong> Scan QR → pay via eSewa → upload screenshot → admin activates.
+            </div>
+        </div>
+
+    </div>
+
+    <div class="footer">
+        <a href="{{ url_for('dashboard') }}">← Back to Dashboard</a>
+        &nbsp;|&nbsp;
+        <a href="{{ url_for('subscription_status_legacy') }}">Check my subscription status</a>
+    </div>
+
+</body>
+</html>

@@ -1,0 +1,31 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Saved Tests</title>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box;}
+        body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f2f5;}
+        .header{background:#003d6b;color:white;padding:15px 30px;}
+        .header-content{display:flex;justify-content:space-between;align-items:center;max-width:1200px;margin:0 auto;}
+        .logo h1{font-size:20px;}.logo p{font-size:11px;opacity:0.8;}
+        .nav-links a{color:white;text-decoration:none;margin-left:25px;}
+        .container{max-width:1000px;margin:30px auto;padding:0 20px;}
+        .card{background:white;border-radius:16px;padding:25px;box-shadow:0 2px 10px rgba(0,0,0,0.08);}
+        h2{color:#003d6b;margin-bottom:20px;}
+        table{width:100%;border-collapse:collapse;}
+        th{background:#003d6b;color:white;padding:12px;text-align:left;}
+        td{padding:12px;border-bottom:1px solid #eee;}
+        tr:hover{background:#f5f5f5;cursor:pointer;}
+        .score{font-weight:bold;color:#28a745;}
+        .type{text-transform:capitalize;font-weight:600;color:#003d6b;}
+        .empty{text-align:center;padding:40px;color:#888;}
+        .btn{padding:10px 20px;background:#003d6b;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:600;text-decoration:none;display:inline-block;}
+    </style>
+</head>
+<body>
+    <div class="header"><div class="header-content"><div class="logo"><h1>IELTS Practice Platform</h1><p>Saved Tests</p></div><div class="nav-links"><a href="/dashboard">Dashboard</a><a href="/logout">Logout</a></div></div></div>
+    <div class="container"><div class="card"><h2>📁 Saved Tests</h2>{% if results %}<table><tr><th>Type</th><th>Date</th><th>Band</th></tr>{% for r in results %}<tr onclick="location.href='/results/{{ r.id }}'"><td class="type">{{ r.test_type }}</td><td>{{ r.created_at.strftime('%Y-%m-%d') }}</td><td class="score">Band {{ r.band_score }}</td></tr>{% endfor %}</table>{% else %}<div class="empty"><p>No saved tests.</p><a href="/dashboard" class="btn">Take a Test</a></div>{% endif %}</div></div>
+</body>
+</html>

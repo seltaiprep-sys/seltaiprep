@@ -1,0 +1,1821 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>UKVI Interview – 3D Avatar</title>
+    <style>
+        /* ═══════════════════════════════════════════════════════
+           RESET & BASE
+           ═══════════════════════════════════════════════════════ */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body {
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Segoe UI', -apple-system, Arial, sans-serif;
+            background: #0a0e17;
+            color: #e6edf3;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ═══════════════════════════════════════════════════════
+           LAYOUT — Split Screen
+           ═══════════════════════════════════════════════════════ */
+        #app {
+            display: grid;
+            grid-template-columns: 1fr 460px;
+            height: 100vh;
+        }
+
+        /* ─── LEFT: 3D STAGE ────────────────────────────────── */
+        #stage {
+            position: relative;
+            background: radial-gradient(ellipse at 50% 35%, #1a2334 0%, #0a0e17 65%);
+            overflow: hidden;
+        }
+        #three-container {
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+        }
+        #stage-vignette {
+            position: absolute;
+            inset: 0;
+            background:
+                linear-gradient(180deg, rgba(10,14,23,0.6) 0%, transparent 25%, transparent 70%, rgba(10,14,23,0.85) 100%);
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        /* Stage top-left chip: progress */
+        .stage-chip {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(15,20,31,0.75);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(108,99,255,0.25);
+            border-radius: 10px;
+            padding: 8px 14px;
+            font-size: 12px;
+            letter-spacing: 0.3px;
+            z-index: 5;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .stage-chip .dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: #10b981;
+            box-shadow: 0 0 10px #10b981;
+            animation: pulse 1.8s infinite;
+        }
+        .stage-chip .dot.idle { background: #64748b; box-shadow: none; animation: none; }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+        #chip-progress { font-weight: 600; color: #a5b4fc; }
+
+        /* Stage top-right chip: timer */
+        .stage-timer {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(15,20,31,0.75);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255,183,77,0.3);
+            border-radius: 10px;
+            padding: 8px 14px;
+            font-size: 14px;
+            font-weight: 700;
+            color: #ffb74d;
+            min-width: 80px;
+            text-align: center;
+            z-index: 5;
+            font-variant-numeric: tabular-nums;
+        }
+        .stage-timer.warning {
+            color: #ff6b6b;
+            border-color: rgba(255,107,107,0.5);
+            animation: blink 1s infinite;
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.45; }
+        }
+
+        /* ─── SUBTITLE-STYLE QUESTION OVERLAY ──────────────── */
+        #caption-overlay {
+            position: absolute;
+            bottom: 32px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: min(720px, 90%);
+            z-index: 6;
+            opacity: 0;
+            transition: opacity 0.35s ease, transform 0.35s ease;
+            pointer-events: none;
+        }
+        #caption-overlay.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        #caption-overlay .category {
+            display: inline-block;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: #a5b4fc;
+            background: rgba(108,99,255,0.18);
+            border: 1px solid rgba(108,99,255,0.35);
+            padding: 4px 12px;
+            border-radius: 20px;
+            margin-bottom: 10px;
+        }
+        #caption-overlay .text {
+            background: rgba(10,14,23,0.85);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 16px;
+            padding: 18px 24px;
+            font-size: 19px;
+            line-height: 1.55;
+            font-weight: 500;
+            color: #fff;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+            text-align: center;
+            min-height: 3em;
+        }
+        #caption-overlay .attempt {
+            display: block;
+            text-align: center;
+            margin-top: 10px;
+            font-size: 13px;
+            color: #ffb74d;
+            font-weight: 600;
+        }
+
+        /* ─── RIGHT: CONTROL PANEL ─────────────────────────── */
+        #panel {
+            background: #0d121c;
+            border-left: 1px solid rgba(108,99,255,0.12);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Header */
+        .panel-header {
+            padding: 16px 22px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255,255,255,0.015);
+        }
+        .logo h1 { font-size: 17px; font-weight: 700; letter-spacing: -0.3px; }
+        .logo h1 span { color: #6c63ff; }
+        .logo p { font-size: 11px; opacity: 0.5; margin-top: 2px; letter-spacing: 0.5px; }
+        .panel-header .nav {
+            display: flex;
+            gap: 14px;
+        }
+        .panel-header .nav a {
+            color: #94a3b8;
+            text-decoration: none;
+            font-size: 12px;
+            transition: 0.15s;
+        }
+        .panel-header .nav a:hover { color: #fff; }
+
+        /* Scrollable body */
+        .panel-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px 22px 30px;
+        }
+        .panel-body::-webkit-scrollbar { width: 6px; }
+        .panel-body::-webkit-scrollbar-thumb {
+            background: rgba(108,99,255,0.4);
+            border-radius: 4px;
+        }
+        .panel-body::-webkit-scrollbar-thumb:hover {
+            background: rgba(108,99,255,0.6);
+        }
+
+        /* Subscription bar */
+        .sub-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            background: rgba(108,99,255,0.08);
+            border: 1px solid rgba(108,99,255,0.15);
+            border-radius: 10px;
+            padding: 10px 14px;
+            margin-bottom: 20px;
+            font-size: 12px;
+            flex-wrap: wrap;
+        }
+        .badge {
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.4px;
+            text-transform: uppercase;
+        }
+        .badge-free { background: rgba(245,158,11,0.2); color: #fbbf24; border: 1px solid rgba(245,158,11,0.35); }
+        .badge-active { background: rgba(16,185,129,0.18); color: #34d399; border: 1px solid rgba(16,185,129,0.35); }
+        .badge-expired { background: rgba(239,68,68,0.18); color: #f87171; border: 1px solid rgba(239,68,68,0.35); }
+        .btn-subscribe {
+            background: linear-gradient(135deg, #f093fb, #f5576c);
+            color: #fff;
+            border: none;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 10px;
+            cursor: pointer;
+            text-decoration: none;
+            letter-spacing: 0.3px;
+        }
+        .btn-subscribe:hover { transform: scale(1.03); }
+
+        /* Step headings */
+        .step-title {
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+            margin-bottom: 4px;
+        }
+        .step-sub {
+            font-size: 12px;
+            opacity: 0.55;
+            margin-bottom: 18px;
+        }
+
+        /* Section labels */
+        .section-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: #6c63ff;
+            font-weight: 700;
+            margin: 16px 0 10px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid rgba(108,99,255,0.15);
+        }
+        .section-label:first-of-type { margin-top: 4px; }
+
+        /* Form */
+        .form-group { margin-bottom: 12px; }
+        .form-group label {
+            display: block;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            opacity: 0.65;
+            margin-bottom: 5px;
+        }
+        .form-control {
+            width: 100%;
+            padding: 10px 13px;
+            border-radius: 9px;
+            border: 1px solid rgba(255,255,255,0.08);
+            background: rgba(255,255,255,0.03);
+            color: #fff;
+            font-size: 13px;
+            font-family: inherit;
+            transition: 0.15s;
+        }
+        .form-control:focus {
+            outline: none;
+            border-color: #6c63ff;
+            background: rgba(108,99,255,0.06);
+            box-shadow: 0 0 0 3px rgba(108,99,255,0.12);
+        }
+        .form-control::placeholder { color: rgba(255,255,255,0.25); }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 9px 18px;
+            border: none;
+            border-radius: 10px;
+            font-family: inherit;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            transition: 0.15s;
+            letter-spacing: 0.2px;
+            white-space: nowrap;
+        }
+        .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+        .btn-primary {
+            background: linear-gradient(135deg, #6c63ff, #8b7dff);
+            color: #fff;
+        }
+        .btn-primary:hover:not(:disabled) {
+            box-shadow: 0 6px 20px rgba(108,99,255,0.4);
+            transform: translateY(-1px);
+        }
+        .btn-success {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: #fff;
+        }
+        .btn-success:hover:not(:disabled) {
+            box-shadow: 0 6px 20px rgba(16,185,129,0.4);
+            transform: translateY(-1px);
+        }
+        .btn-ghost {
+            background: rgba(255,255,255,0.04);
+            color: #cbd5e1;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+        .btn-ghost:hover { background: rgba(255,255,255,0.08); color: #fff; }
+        .btn-danger {
+            background: rgba(239,68,68,0.12);
+            color: #f87171;
+            border: 1px solid rgba(239,68,68,0.3);
+        }
+        .btn-danger:hover { background: rgba(239,68,68,0.2); }
+        .btn-block { width: 100%; padding: 14px; font-size: 14px; }
+
+        /* Interview panel */
+        .interview-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+        }
+        .interview-head .title { font-size: 15px; font-weight: 700; }
+        .interview-head .progress {
+            font-size: 11px;
+            font-weight: 700;
+            color: #a5b4fc;
+            background: rgba(108,99,255,0.15);
+            padding: 4px 12px;
+            border-radius: 20px;
+            letter-spacing: 0.4px;
+        }
+
+        .status-line {
+            font-size: 12px;
+            color: #94a3b8;
+            margin: 12px 0;
+            min-height: 20px;
+            line-height: 1.5;
+        }
+
+        .answer-area {
+            display: flex;
+            gap: 8px;
+            margin: 12px 0;
+        }
+        .answer-area textarea {
+            flex: 1;
+            padding: 12px 14px;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.08);
+            background: rgba(255,255,255,0.03);
+            color: #fff;
+            font-family: inherit;
+            font-size: 13px;
+            resize: vertical;
+            min-height: 70px;
+            line-height: 1.5;
+        }
+        .answer-area textarea:focus {
+            outline: none;
+            border-color: #6c63ff;
+            background: rgba(108,99,255,0.06);
+        }
+        .answer-area textarea::placeholder { color: rgba(255,255,255,0.25); }
+
+        .controls {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 14px;
+        }
+
+        .feedback {
+            display: none;
+            background: rgba(16,185,129,0.08);
+            border-left: 3px solid #10b981;
+            padding: 12px 14px;
+            border-radius: 10px;
+            margin-top: 14px;
+        }
+        .feedback.visible { display: block; }
+        .feedback .score {
+            font-size: 15px;
+            font-weight: 700;
+            color: #34d399;
+            margin-bottom: 4px;
+        }
+        .feedback .text {
+            font-size: 12px;
+            color: #cbd5e1;
+            line-height: 1.5;
+        }
+
+        /* Results panel */
+        .result-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+            margin: 16px 0;
+        }
+        .result-item {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.06);
+            padding: 16px 10px;
+            border-radius: 12px;
+            text-align: center;
+        }
+        .result-item .value {
+            font-size: 22px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            margin-bottom: 4px;
+        }
+        .result-item .label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            opacity: 0.55;
+            font-weight: 600;
+        }
+        .rec-list {
+            max-height: 180px;
+            overflow-y: auto;
+            padding-right: 6px;
+            margin-top: 8px;
+        }
+        .rec-list::-webkit-scrollbar { width: 4px; }
+        .rec-list::-webkit-scrollbar-thumb { background: rgba(108,99,255,0.4); border-radius: 2px; }
+        .rec-list .rec-item {
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            font-size: 12.5px;
+            color: #cbd5e1;
+            line-height: 1.5;
+        }
+        .rec-list .rec-item:last-child { border-bottom: none; }
+
+        /* ═══════════════════════════════════════════════════════
+           RESPONSIVE
+           ═══════════════════════════════════════════════════════ */
+        @media (max-width: 900px) {
+            #app {
+                grid-template-columns: 1fr;
+                grid-template-rows: 40vh 60vh;
+            }
+            #stage { border-bottom: 1px solid rgba(108,99,255,0.15); }
+            #panel { border-left: none; }
+            #caption-overlay { bottom: 16px; width: 92%; }
+            #caption-overlay .text { font-size: 15px; padding: 12px 16px; }
+            .stage-chip, .stage-timer { padding: 6px 10px; font-size: 11px; }
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+
+    <!-- ═══════════════════════════════════════════════════════
+         LEFT: 3D STAGE
+         ═══════════════════════════════════════════════════════ -->
+    <div id="stage">
+        <div id="three-container"></div>
+        <div id="stage-vignette"></div>
+
+        <div class="stage-chip">
+            <span class="dot idle" id="live-dot"></span>
+            <span id="chip-status">Ready</span>
+            <span id="chip-progress"></span>
+        </div>
+
+        <div class="stage-timer" id="stage-timer">— —</div>
+
+        <!-- Subtitle-style question overlay -->
+        <div id="caption-overlay">
+            <div style="text-align:center;">
+                <span class="category" id="overlay-category"></span>
+            </div>
+            <div class="text" id="overlay-text"></div>
+            <span class="attempt" id="overlay-attempt"></span>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════
+         RIGHT: CONTROL PANEL
+         ═══════════════════════════════════════════════════════ -->
+    <div id="panel">
+        <div class="panel-header">
+            <div class="logo">
+                <h1>🎓 <span>UKVI</span> Interview</h1>
+                <p>AI Examiner · 3D Avatar</p>
+            </div>
+            <div class="nav">
+                <a href="/dashboard">Dashboard</a>
+                <a href="/logout">Logout</a>
+            </div>
+        </div>
+
+        <div class="panel-body">
+            <input type="hidden" id="user-id" value="{{ current_user.id }}" />
+
+            <!-- Subscription bar -->
+            <div class="sub-bar" id="sub-status-bar">
+                <span style="opacity:0.6;">⏳ Loading subscription...</span>
+            </div>
+
+            <!-- ═══ STEP 1: PROFILE ═══ -->
+            <div id="step-profile">
+                <div class="step-title">📋 Your Profile</div>
+                <div class="step-sub">Fill in your details to generate realistic UKVI questions.</div>
+
+                <div class="section-label">Applicant</div>
+                <div class="form-group">
+                    <label>Full Name *</label>
+                    <input type="text" id="fullname" class="form-control" placeholder="e.g. Ram Bahadur" />
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Father's Name</label>
+                        <input type="text" id="father_name" class="form-control" placeholder="e.g. Hari Bahadur" />
+                    </div>
+                    <div class="form-group">
+                        <label>Mother's Name</label>
+                        <input type="text" id="mother_name" class="form-control" placeholder="e.g. Sita Devi" />
+                    </div>
+                </div>
+
+                <div class="section-label">University & Course</div>
+                <div class="form-group">
+                    <label>University *</label>
+                    <input type="text" id="university" class="form-control" placeholder="e.g. University of East London" />
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>University City</label>
+                        <input type="text" id="university_city" class="form-control" placeholder="e.g. London" />
+                    </div>
+                    <div class="form-group">
+                        <label>Course *</label>
+                        <input type="text" id="course" class="form-control" placeholder="e.g. MSc Computer Science" />
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Course Duration</label>
+                        <input type="text" id="course_duration" class="form-control" placeholder="e.g. 1 year" />
+                    </div>
+                    <div class="form-group">
+                        <label>IELTS Score</label>
+                        <input type="text" id="ielts_score" class="form-control" placeholder="e.g. 6.5" />
+                    </div>
+                </div>
+
+                <div class="section-label">Financial</div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Tuition Fee</label>
+                        <input type="text" id="tuition_fee" class="form-control" placeholder="e.g. £15,000" />
+                    </div>
+                    <div class="form-group">
+                        <label>Living Cost</label>
+                        <input type="text" id="living_cost" class="form-control" placeholder="e.g. £12,000/year" />
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Sponsor Name</label>
+                        <input type="text" id="sponsor_name" class="form-control" placeholder="e.g. Father" />
+                    </div>
+                    <div class="form-group">
+                        <label>Sponsor Income</label>
+                        <input type="text" id="sponsor_income" class="form-control" placeholder="e.g. NPR 15,00,000/yr" />
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Sponsor Savings</label>
+                        <input type="text" id="sponsor_savings" class="form-control" placeholder="e.g. NPR 50,00,000" />
+                    </div>
+                    <div class="form-group">
+                        <label>Home Country</label>
+                        <input type="text" id="home_country" class="form-control" value="Nepal" />
+                    </div>
+                </div>
+
+                <button class="btn btn-primary btn-block" id="start-btn" style="margin-top:16px;">
+                    🚀 Start Interview
+                </button>
+            </div>
+
+            <!-- ═══ STEP 2: INTERVIEW ═══ -->
+            <div id="step-interview" style="display:none;">
+                <div class="interview-head">
+                    <span class="title">🛂 Live Interview</span>
+                    <span class="progress" id="progress-text">Q 0/0</span>
+                </div>
+
+                <div class="status-line" id="status-text">🔊 Listening...</div>
+
+                <div class="answer-area">
+                    <textarea id="answer-input" placeholder="Your answer will appear here..." readonly></textarea>
+                </div>
+                <button class="btn btn-success" id="manual-submit" style="display:none;width:100%;">
+                    ✅ Submit Answer
+                </button>
+
+                <div class="controls">
+                    <button class="btn btn-ghost" id="repeat-btn">🔁 Repeat</button>
+                    <button class="btn btn-danger" id="exit-btn">🚪 Exit Test</button>
+                </div>
+
+                <div class="feedback" id="feedback-area">
+                    <div class="score" id="score-display"></div>
+                    <div class="text" id="feedback-text"></div>
+                </div>
+            </div>
+
+            <!-- ═══ STEP 3: RESULTS ═══ -->
+            <div id="step-results" style="display:none;">
+                <div class="step-title">📊 Interview Results</div>
+                <div class="step-sub">Here's how you performed.</div>
+
+                <div class="result-grid">
+                    <div class="result-item">
+                        <div class="value" id="result-prediction" style="color:#34d399;">--</div>
+                        <div class="label">Prediction</div>
+                    </div>
+                    <div class="result-item">
+                        <div class="value" id="result-score" style="color:#8b7dff;">--</div>
+                        <div class="label">Score</div>
+                    </div>
+                    <div class="result-item">
+                        <div class="value" id="result-credibility" style="color:#fbbf24;">--</div>
+                        <div class="label">Credibility</div>
+                    </div>
+                </div>
+
+                <div class="section-label">💡 Recommendations</div>
+                <div class="rec-list" id="rec-list"></div>
+
+                <div style="display:flex; gap:10px; margin-top:20px;">
+                    <button class="btn btn-primary" id="restart-btn" style="flex:1;">
+                        🔄 Another Interview
+                    </button>
+                    <a href="/dashboard" class="btn btn-ghost" style="flex:1; text-decoration:none;">
+                        📜 Dashboard
+                    </a>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     THREE.JS IMPORT MAP
+     ═══════════════════════════════════════════════════════════════ -->
+<script type="importmap">
+{
+    "imports": {
+        "three": "/static/js/three/three.module.js",
+        "three/addons/controls/OrbitControls.js": "/static/js/three/OrbitControls.js",
+        "three/addons/loaders/GLTFLoader.js": "/static/js/three/GLTFLoader.js"
+    }
+}
+</script>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     3D SCENE
+     ═══════════════════════════════════════════════════════════════ -->
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const container = document.getElementById('three-container');
+
+// ─── SCENE ───────────────────────────────────────────────────────
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0a0e17);
+scene.fog = new THREE.Fog(0x0a0e17, 3.5, 9);
+
+// ─── CAMERA (chest-up, video-call framing) ──────────────────────
+const camera = new THREE.PerspectiveCamera(
+    28,
+    container.clientWidth / container.clientHeight,
+    0.1,
+    100
+);
+camera.position.set(0, 1.35, 1.55);
+camera.lookAt(0, 1.15, 0);
+
+// ─── RENDERER ────────────────────────────────────────────────────
+const renderer = new THREE.WebGLRenderer({
+    antialias: true,
+    alpha: false,
+    powerPreference: 'high-performance',
+});
+renderer.setSize(container.clientWidth, container.clientHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
+container.appendChild(renderer.domElement);
+
+// ─── CONTROLS (locked-ish orbit) ────────────────────────────────
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 1.15, 0);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.enablePan = false;
+controls.enableZoom = true;
+controls.minDistance = 1.2;
+controls.maxDistance = 2.5;
+controls.minPolarAngle = Math.PI / 3;
+controls.maxPolarAngle = Math.PI / 1.75;
+controls.minAzimuthAngle = -Math.PI / 10;
+controls.maxAzimuthAngle = Math.PI / 10;
+controls.update();
+
+// ─── LIGHTS (3-point studio setup) ──────────────────────────────
+const ambient = new THREE.AmbientLight(0x8899bb, 0.35);
+scene.add(ambient);
+
+const keyLight = new THREE.DirectionalLight(0xfff0dd, 2.0);
+keyLight.position.set(1.8, 2.8, 1.8);
+keyLight.castShadow = true;
+keyLight.shadow.mapSize.set(1024, 1024);
+keyLight.shadow.camera.near = 0.5;
+keyLight.shadow.camera.far = 6;
+keyLight.shadow.camera.left = -1.5;
+keyLight.shadow.camera.right = 1.5;
+keyLight.shadow.camera.top = 2;
+keyLight.shadow.camera.bottom = -1;
+keyLight.shadow.bias = -0.0005;
+scene.add(keyLight);
+
+const fillLight = new THREE.DirectionalLight(0x8ba7ff, 0.7);
+fillLight.position.set(-1.8, 1.6, 1.2);
+scene.add(fillLight);
+
+const rimLight = new THREE.DirectionalLight(0xff9977, 0.9);
+rimLight.position.set(-0.8, 2.2, -2.2);
+scene.add(rimLight);
+
+// Subtle floor bounce
+const bounce = new THREE.HemisphereLight(0x6c63ff, 0x0a0e17, 0.25);
+scene.add(bounce);
+
+// ─── ENVIRONMENT ─────────────────────────────────────────────────
+// Ground reflection circle (soft)
+const groundGeo = new THREE.CircleGeometry(1.2, 32);
+const groundMat = new THREE.MeshStandardMaterial({
+    color: 0x1a2334,
+    roughness: 0.9,
+    metalness: 0.1,
+    transparent: true,
+    opacity: 0.6,
+});
+const ground = new THREE.Mesh(groundGeo, groundMat);
+ground.rotation.x = -Math.PI / 2;
+ground.position.y = -0.02;
+ground.receiveShadow = true;
+scene.add(ground);
+
+// Subtle grid
+const grid = new THREE.GridHelper(2.4, 12, 0x6c63ff, 0x2a3550);
+grid.position.y = 0;
+grid.material.opacity = 0.25;
+grid.material.transparent = true;
+scene.add(grid);
+
+// ─── AVATAR ──────────────────────────────────────────────────────
+let character = null;
+let mixer = null;
+let headBone = null;
+let jawBone = null;
+let isTalking = false;
+let talkInterval = null;
+let idleInterval = null;
+let modelLoaded = false;
+
+const loader = new GLTFLoader();
+const MODEL_URL = '/static/models/RobotExpressive.glb';
+
+function createFallbackCharacter() {
+    if (character) { scene.remove(character); character = null; mixer = null; }
+    const group = new THREE.Group();
+
+    const bodyMat = new THREE.MeshStandardMaterial({
+        color: 0x4a6fa5, roughness: 0.5, metalness: 0.15,
+    });
+    const skinMat = new THREE.MeshStandardMaterial({
+        color: 0xe8c9a0, roughness: 0.6,
+    });
+
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.44, 0.85, 12), bodyMat);
+    body.position.y = 0.42;
+    body.castShadow = true;
+    group.add(body);
+
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 24, 24), skinMat);
+    head.position.y = 1.0;
+    head.castShadow = true;
+    group.add(head);
+
+    const eyeMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
+    const pupilMat = new THREE.MeshStandardMaterial({ color: 0x1a2334 });
+    for (const side of [-1, 1]) {
+        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.045, 12, 12), eyeMat);
+        eye.position.set(side * 0.085, 1.02, 0.19);
+        group.add(eye);
+        const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.022, 10, 10), pupilMat);
+        pupil.position.set(side * 0.09, 1.02, 0.225);
+        group.add(pupil);
+    }
+
+    for (const side of [-1, 1]) {
+        const arm = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.045, 0.045, 0.5, 8),
+            bodyMat
+        );
+        arm.position.set(side * 0.38, 0.65, 0);
+        arm.rotation.z = side * 0.18;
+        arm.castShadow = true;
+        group.add(arm);
+    }
+
+    scene.add(group);
+    character = group;
+    headBone = null;
+    jawBone = null;
+    modelLoaded = true;
+    startIdleAnimation();
+}
+
+function loadAvatar() {
+    if (character) { scene.remove(character); character = null; mixer = null; }
+    headBone = null; jawBone = null; modelLoaded = false;
+
+    loader.load(
+        MODEL_URL,
+        (gltf) => {
+            const root = gltf.scene;
+            root.scale.set(1, 1, 1);
+            root.position.y = 0;
+            root.traverse((node) => {
+                if (node.isMesh) {
+                    node.castShadow = true;
+                    node.receiveShadow = true;
+                }
+                if (node.isBone) {
+                    const n = node.name.toLowerCase();
+                    if (n.includes('head') || n.includes('mixamorighead')) headBone = node;
+                    if (n.includes('jaw') || n.includes('mixamorigjaw')) jawBone = node;
+                }
+            });
+            scene.add(root);
+            character = root;
+
+            mixer = new THREE.AnimationMixer(root);
+            if (gltf.animations && gltf.animations.length) {
+                const idle =
+                    gltf.animations.find((a) => /idle/i.test(a.name)) ||
+                    gltf.animations[0];
+                const action = mixer.clipAction(idle);
+                action.play();
+            }
+            modelLoaded = true;
+            startIdleAnimation();
+            console.log('✅ 3D avatar loaded');
+        },
+        undefined,
+        (err) => {
+            console.warn('Model load failed, using fallback:', err);
+            createFallbackCharacter();
+        }
+    );
+
+    setTimeout(() => {
+        if (!modelLoaded && !character) createFallbackCharacter();
+    }, 5000);
+}
+
+// ─── IDLE BREATHING ─────────────────────────────────────────────
+function startIdleAnimation() {
+    if (idleInterval) clearInterval(idleInterval);
+    if (!character) return;
+    let phase = 0;
+    const baseY = character.position.y;
+    idleInterval = setInterval(() => {
+        if (!character) return;
+        phase += 0.02;
+        character.position.y = baseY + Math.sin(phase) * 0.008;
+    }, 50);
+}
+
+// ─── TALKING (jaw/mouth animation) ──────────────────────────────
+function startTalking() {
+    if (isTalking) return;
+    isTalking = true;
+    if (talkInterval) clearInterval(talkInterval);
+
+    if (jawBone) {
+        talkInterval = setInterval(() => {
+            if (!isTalking) return;
+            jawBone.rotation.x = 0.08 + Math.sin(Date.now() / 130) * 0.1;
+        }, 45);
+    } else if (headBone) {
+        talkInterval = setInterval(() => {
+            if (!isTalking) return;
+            headBone.rotation.x = Math.sin(Date.now() / 160) * 0.035;
+        }, 45);
+    } else if (character) {
+        let headMesh = null;
+        character.traverse((n) => {
+            if (n.isMesh && /head/i.test(n.name)) headMesh = n;
+        });
+        const target = headMesh || character;
+        const baseScale = target.scale.y;
+        talkInterval = setInterval(() => {
+            if (!isTalking) return;
+            target.scale.y = baseScale * (1 + Math.sin(Date.now() / 140) * 0.02);
+        }, 45);
+    }
+}
+
+function stopTalking() {
+    isTalking = false;
+    if (talkInterval) { clearInterval(talkInterval); talkInterval = null; }
+    if (jawBone) jawBone.rotation.x = 0;
+    if (headBone) headBone.rotation.x = 0;
+    if (character) {
+        character.traverse((n) => {
+            if (n.isMesh && /head/i.test(n.name)) n.scale.y = 1;
+        });
+        character.scale.y = 1;
+    }
+}
+
+// ─── THINKING (head tilt) ───────────────────────────────────────
+let thinkInterval = null;
+function startThinking() {
+    if (thinkInterval) return;
+    if (!character) return;
+    const originalZ = character.rotation.z;
+    let phase = 0;
+    thinkInterval = setInterval(() => {
+        if (!character) return;
+        phase += 0.04;
+        character.rotation.z = originalZ + Math.sin(phase) * 0.025;
+    }, 50);
+}
+function stopThinking() {
+    if (thinkInterval) {
+        clearInterval(thinkInterval);
+        thinkInterval = null;
+        if (character) character.rotation.z = 0;
+    }
+}
+
+// Expose to UI script
+window.startTalking = startTalking;
+window.stopTalking = stopTalking;
+window.startThinking = startThinking;
+window.stopThinking = stopThinking;
+
+// ─── LOAD ───────────────────────────────────────────────────────
+loadAvatar();
+
+// ─── ANIMATION LOOP ─────────────────────────────────────────────
+const clock = new THREE.Clock();
+function animate() {
+    requestAnimationFrame(animate);
+    const delta = clock.getDelta();
+    if (mixer) mixer.update(delta);
+    controls.update();
+    renderer.render(scene, camera);
+}
+animate();
+
+// ─── RESIZE ─────────────────────────────────────────────────────
+function onResize() {
+    const w = container.clientWidth;
+    const h = container.clientHeight;
+    if (w === 0 || h === 0) return;
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    renderer.setSize(w, h);
+}
+window.addEventListener('resize', onResize);
+// Also observe container size changes (split layout)
+if (window.ResizeObserver) {
+    new ResizeObserver(onResize).observe(container);
+}
+</script>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     UI LOGIC
+     ═══════════════════════════════════════════════════════════════ -->
+<script>
+// ─── GLOBALS ─────────────────────────────────────────────────────
+let sessionId = null;
+let questions = [];
+let responses = {};
+let currentQ = 0;
+let totalQ = 0;
+let isSubmitting = false;
+let timerInterval = null;
+let prepTimerInterval = null;
+let prepTime = 15;
+let answerTime = 45;
+let currentQuestionText = '';
+let currentCategory = '';
+let isPlaying = false;
+let recognition = null;
+let isListening = false;
+let questionAttempts = {};
+let isPrepPhase = false;
+
+// ─── DOM REFS ────────────────────────────────────────────────────
+const $ = (id) => document.getElementById(id);
+
+const subStatusBar    = $('sub-status-bar');
+const stepProfile     = $('step-profile');
+const stepInterview   = $('step-interview');
+const stepResults     = $('step-results');
+const startBtn        = $('start-btn');
+const answerInput     = $('answer-input');
+const manualSubmit    = $('manual-submit');
+const repeatBtn       = $('repeat-btn');
+const exitBtn         = $('exit-btn');
+const statusText      = $('status-text');
+const feedbackArea    = $('feedback-area');
+const scoreDisplay    = $('score-display');
+const feedbackText    = $('feedback-text');
+const progressText    = $('progress-text');
+const restartBtn      = $('restart-btn');
+const resultPrediction = $('result-prediction');
+const resultScore     = $('result-score');
+const resultCredibility = $('result-credibility');
+const recList         = $('rec-list');
+
+// Stage chips
+const chipStatus   = $('chip-status');
+const chipProgress = $('chip-progress');
+const liveDot      = $('live-dot');
+const stageTimer   = $('stage-timer');
+
+// Caption overlay
+const overlay          = $('caption-overlay');
+const overlayCategory  = $('overlay-category');
+const overlayText      = $('overlay-text');
+const overlayAttempt   = $('overlay-attempt');
+
+// ─── CHIP HELPERS ────────────────────────────────────────────────
+function setChipStatus(text, live = false) {
+    chipStatus.textContent = text;
+    liveDot.classList.toggle('idle', !live);
+}
+function setChipProgress(text) {
+    chipProgress.textContent = text ? '· ' + text : '';
+}
+
+// ─── CAPTION OVERLAY ─────────────────────────────────────────────
+function showOverlay(category, text, attempt = 0) {
+    overlayCategory.textContent = category || '';
+    overlayText.textContent = text;
+    if (attempt > 0) {
+        overlayAttempt.textContent = `Attempt ${attempt}/3`;
+    } else {
+        overlayAttempt.textContent = '';
+    }
+    overlay.classList.add('visible');
+}
+function hideOverlay() {
+    overlay.classList.remove('visible');
+}
+function setOverlayText(text) {
+    overlayText.textContent = text;
+}
+function appendOverlayText(text) {
+    overlayText.textContent += text;
+}
+
+// ─── LIVE CAPTION TYPEWRITER ─────────────────────────────────────
+let captionInterval = null;
+let captionWords = [];
+let captionIndex = 0;
+let fullCaptionText = '';
+
+function startCaptions(text) {
+    stopCaptions();
+    fullCaptionText = text;
+    captionWords = text.split(/\s+/);
+    captionIndex = 0;
+    overlayText.textContent = '';
+    if (captionWords.length) {
+        overlayText.textContent = captionWords[0];
+        captionIndex = 1;
+    }
+    captionInterval = setInterval(() => {
+        if (captionIndex < captionWords.length) {
+            overlayText.textContent += ' ' + captionWords[captionIndex];
+            captionIndex++;
+        }
+    }, 180);
+}
+function stopCaptions() {
+    if (captionInterval) { clearInterval(captionInterval); captionInterval = null; }
+    if (fullCaptionText) overlayText.textContent = fullCaptionText;
+}
+
+// ─── HELPERS ─────────────────────────────────────────────────────
+function getUserId() {
+    const el = $('user-id');
+    return el ? el.value : null;
+}
+
+// ─── PROFILE ─────────────────────────────────────────────────────
+function collectProfile() {
+    return {
+        full_name:        $('fullname').value.trim(),
+        father_name:      $('father_name').value.trim(),
+        mother_name:      $('mother_name').value.trim(),
+        university:       $('university').value.trim(),
+        university_city:  $('university_city').value.trim(),
+        course:           $('course').value.trim(),
+        course_duration:  $('course_duration').value.trim(),
+        ielts_score:      $('ielts_score').value.trim(),
+        tuition_fee:      $('tuition_fee').value.trim(),
+        living_cost:      $('living_cost').value.trim(),
+        sponsor_name:     $('sponsor_name').value.trim(),
+        sponsor_income:   $('sponsor_income').value.trim(),
+        sponsor_savings:  $('sponsor_savings').value.trim(),
+        home_country:     $('home_country').value.trim() || 'Nepal',
+    };
+}
+
+function applyProfile(p) {
+    if (!p) return;
+    $('fullname').value        = p.full_name || '';
+    $('father_name').value     = p.father_name || '';
+    $('mother_name').value     = p.mother_name || '';
+    $('university').value      = p.university || '';
+    $('university_city').value = p.university_city || '';
+    $('course').value          = p.course || '';
+    $('course_duration').value = p.course_duration || '';
+    $('ielts_score').value     = p.ielts_score || '';
+    $('tuition_fee').value     = p.tuition_fee || '';
+    $('living_cost').value     = p.living_cost || '';
+    $('sponsor_name').value    = p.sponsor_name || '';
+    $('sponsor_income').value  = p.sponsor_income || '';
+    $('sponsor_savings').value = p.sponsor_savings || '';
+    $('home_country').value    = p.home_country || 'Nepal';
+}
+
+function loadSavedProfile() {
+    const userId = getUserId();
+    if (!userId) return;
+    fetch(`/api/ukvi/profile?user_id=${userId}`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.success && data.profile) applyProfile(data.profile);
+        })
+        .catch(() => {});
+}
+
+// ─── SUBSCRIPTION STATUS ─────────────────────────────────────────
+function fetchSubscriptionStatus() {
+    fetch('/ukvi/subscription/status')
+        .then(r => r.json())
+        .then(data => {
+            const isActive = data.has_subscription;
+            const used = data.free_used || 0;
+            const limit = data.free_limit || 2;
+            const remaining = limit - used;
+            let html = '';
+            if (isActive) {
+                html = `<span class="badge badge-active">✅ Active</span>
+                        <span style="opacity:0.8;">${data.plan || 'Premium'} · ${data.tests_remaining || 'Unlimited'} tests left</span>`;
+                startBtn.disabled = false;
+                startBtn.textContent = '🚀 Start Interview';
+            } else if (remaining > 0) {
+                html = `<span class="badge badge-free">⚡ Free</span>
+                        <span style="opacity:0.8;"><strong>${remaining}</strong> of ${limit} free interviews left</span>`;
+                startBtn.disabled = false;
+                startBtn.textContent = '🚀 Start Interview';
+            } else {
+                html = `<span class="badge badge-expired">🔒 Limit Reached</span>
+                        <span style="opacity:0.8;">Used all free interviews. <a href="/subscription?module=ukvi" class="btn-subscribe">Subscribe</a></span>`;
+                startBtn.disabled = true;
+                startBtn.textContent = '🔒 Subscribe to Start';
+            }
+            subStatusBar.innerHTML = html;
+        })
+        .catch(() => {
+            subStatusBar.innerHTML = `<span style="color:#f87171;">⚠️ Could not load status</span>`;
+        });
+}
+
+// ─── START INTERVIEW (v3.0 pool + async) ─────────────────────────
+async function startInterview() {
+    const profile = collectProfile();
+    if (!profile.full_name || !profile.university) {
+        alert('Full Name and University are required.');
+        return;
+    }
+    if (!profile.course) {
+        alert('Course is required for realistic UKVI questions.');
+        return;
+    }
+    const userId = getUserId();
+    if (!userId) {
+        alert('User ID not available. Please log in.');
+        return;
+    }
+    if (startBtn.disabled) {
+        alert('Please subscribe to continue.');
+        window.location.href = '/subscription?module=ukvi';
+        return;
+    }
+
+    startBtn.disabled = true;
+    startBtn.textContent = '⏳ Saving profile...';
+    setChipStatus('Starting…', true);
+
+    try {
+        const saveRes = await fetch('/api/ukvi/profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: parseInt(userId), profile }),
+        });
+        const saveData = await saveRes.json();
+        if (!saveData.success) throw new Error(saveData.error || 'Profile save failed');
+
+        startBtn.textContent = '⏳ Starting...';
+        const startRes = await fetch('/api/ukvi/start-async', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: parseInt(userId), difficulty: 'medium' }),
+        });
+
+        if (startRes.status === 402) {
+            const data = await startRes.json();
+            alert(data.error || 'Free limit reached.');
+            window.location.href = '/subscription?module=ukvi';
+            throw new Error('Subscription required');
+        }
+
+        const startData = await startRes.json();
+        if (!startData.success) throw new Error(startData.error || 'Start failed');
+
+        if (startData.source === 'cache') {
+            console.log('✅ Pool HIT — instant start');
+            beginInterviewWithQuestions(
+                startData.session_id,
+                startData.questions,
+                startData.total_questions
+            );
+            return;
+        }
+
+        if (startData.job_id) {
+            console.log(`⏳ Job ${startData.job_id} (${startData.source}) — polling`);
+            await pollJobStatus(startData.job_id);
+            return;
+        }
+
+        throw new Error('Unexpected response from server');
+    } catch (err) {
+        if (err.message !== 'Subscription required') {
+            alert('Error: ' + err.message);
+        }
+        setChipStatus('Error', false);
+    } finally {
+        if (startBtn && startBtn.textContent !== '🚀 Start Interview') {
+            startBtn.disabled = false;
+            startBtn.textContent = '🚀 Start Interview';
+        }
+    }
+}
+
+// ─── POLL JOB STATUS ─────────────────────────────────────────────
+async function pollJobStatus(jobId) {
+    setChipStatus('Preparing…', true);
+    statusText.textContent = '⏳ Preparing your questions...';
+    let attempts = 0;
+    const maxAttempts = 60;
+
+    while (attempts < maxAttempts) {
+        await new Promise(r => setTimeout(r, 2000));
+        attempts++;
+
+        try {
+            const res = await fetch(`/api/ukvi/job-status/${jobId}`);
+            const data = await res.json();
+
+            if (data.status === 'complete') {
+                beginInterviewWithQuestions(
+                    data.session_id,
+                    data.questions,
+                    data.total_questions
+                );
+                return;
+            }
+
+            if (data.status === 'failed') {
+                alert('Generation failed: ' + (data.error || 'Unknown error'));
+                setChipStatus('Failed', false);
+                if (startBtn) {
+                    startBtn.disabled = false;
+                    startBtn.textContent = '🚀 Start Interview';
+                }
+                return;
+            }
+
+            if (data.status === 'queued') {
+                const pos = data.position || '?';
+                startBtn.textContent = `⏳ Queue #${pos}`;
+                statusText.textContent = `⏳ Waiting in queue (position ${pos})...`;
+                setChipStatus(`Queue #${pos}`, true);
+            } else if (data.status === 'generating') {
+                startBtn.textContent = '⏳ Generating...';
+                statusText.textContent = '⏳ AI is generating your questions...';
+                setChipStatus('Generating…', true);
+            }
+        } catch (err) {
+            console.warn('Poll error:', err);
+        }
+    }
+
+    alert('Timeout — could not generate questions in time. Please try again.');
+    if (startBtn) {
+        startBtn.disabled = false;
+        startBtn.textContent = '🚀 Start Interview';
+    }
+    setChipStatus('Timeout', false);
+}
+
+// ─── BEGIN INTERVIEW ─────────────────────────────────────────────
+function beginInterviewWithQuestions(sessionIdVal, questionsArr, total) {
+    sessionId = sessionIdVal;
+    questions = questionsArr || [];
+    totalQ = total || questions.length;
+    currentQ = 0;
+    responses = {};
+    questionAttempts = {};
+
+    stepProfile.style.display = 'none';
+    stepInterview.style.display = 'block';
+    stepResults.style.display = 'none';
+
+    if (startBtn) {
+        startBtn.disabled = false;
+        startBtn.textContent = '🚀 Start Interview';
+    }
+
+    setChipStatus('Live interview', true);
+    showQuestion();
+}
+
+// ─── SHOW QUESTION ───────────────────────────────────────────────
+function showQuestion() {
+    if (isSubmitting) return;
+    if (currentQ >= totalQ) { finishInterview(); return; }
+
+    const q = questions[currentQ];
+    currentQuestionText = q.question || 'No question';
+    currentCategory = q.category || '';
+    questionAttempts[currentQ] = 0;
+
+    progressText.textContent = `Q ${currentQ + 1}/${totalQ}`;
+    setChipProgress(`Q ${currentQ + 1}/${totalQ}`);
+    answerInput.value = '';
+    feedbackArea.classList.remove('visible');
+    manualSubmit.style.display = 'none';
+    statusText.textContent = '🔊 Speaking question...';
+    stageTimer.textContent = '— —';
+    stageTimer.classList.remove('warning');
+
+    speakQuestion(currentQuestionText, currentCategory, 0);
+}
+
+// ─── SPEAK (TTS) ─────────────────────────────────────────────────
+function speakQuestion(text, category, attempt = 0) {
+    stopCurrentAudio();
+    if (recognition) recognition.abort();
+    isListening = false;
+    clearInterval(timerInterval);
+    clearInterval(prepTimerInterval);
+    isPrepPhase = false;
+
+    showOverlay(category, '', attempt);
+    startCaptions(text);
+    if (window.startTalking) window.startTalking();
+    setChipStatus('Speaking…', true);
+
+    fetch('/api/ukvi/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+    })
+        .then(r => r.json())
+        .then(data => {
+            if (data.audio_url) {
+                const audio = new Audio(data.audio_url);
+                audio.onplay = () => {
+                    isPlaying = true;
+                    statusText.textContent = '🔊 Speaking...';
+                };
+                audio.onended = () => {
+                    isPlaying = false;
+                    if (window.stopTalking) window.stopTalking();
+                    stopCaptions();
+                    setTimeout(() => startPrepPhase(attempt), 400);
+                };
+                audio.onerror = () => {
+                    isPlaying = false;
+                    if (window.stopTalking) window.stopTalking();
+                    stopCaptions();
+                    startPrepPhase(attempt);
+                };
+                audio.play().catch(() => fallbackSpeak(text, category, attempt));
+            } else {
+                fallbackSpeak(text, category, attempt);
+            }
+        })
+        .catch(() => fallbackSpeak(text, category, attempt));
+}
+
+function fallbackSpeak(text, category, attempt) {
+    if (!window.speechSynthesis) {
+        if (window.stopTalking) window.stopTalking();
+        stopCaptions();
+        startPrepPhase(attempt);
+        return;
+    }
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'en-GB';
+    u.rate = 0.9;
+    const voices = window.speechSynthesis.getVoices();
+    const uk = voices.find(v => v.lang.startsWith('en-GB'));
+    if (uk) u.voice = uk;
+    u.onstart = () => { isPlaying = true; statusText.textContent = '🔊 Speaking...'; };
+    u.onend = () => {
+        isPlaying = false;
+        if (window.stopTalking) window.stopTalking();
+        stopCaptions();
+        setTimeout(() => startPrepPhase(attempt), 400);
+    };
+    u.onerror = () => {
+        isPlaying = false;
+        if (window.stopTalking) window.stopTalking();
+        stopCaptions();
+        startPrepPhase(attempt);
+    };
+    window.speechSynthesis.speak(u);
+}
+
+function stopCurrentAudio() {
+    window.speechSynthesis.cancel();
+    document.querySelectorAll('audio').forEach(a => a.pause());
+    isPlaying = false;
+    if (window.stopTalking) window.stopTalking();
+    stopCaptions();
+    hideOverlay();
+}
+
+// ─── PREP PHASE ──────────────────────────────────────────────────
+function startPrepPhase(attempt) {
+    isPrepPhase = true;
+    let remaining = prepTime;
+    stageTimer.textContent = `⏱ ${remaining}s`;
+    statusText.textContent = `⏳ Preparing... ${remaining}s to think.`;
+    overlayAttempt.textContent = attempt > 0 ? `Attempt ${attempt}/3` : '';
+    setChipStatus('Thinking time', false);
+
+    prepTimerInterval = setInterval(() => {
+        remaining--;
+        stageTimer.textContent = `⏱ ${remaining}s`;
+        statusText.textContent = `⏳ Preparing... ${remaining}s to think.`;
+        if (remaining <= 0) {
+            clearInterval(prepTimerInterval);
+            isPrepPhase = false;
+            startListeningPhase(attempt);
+        }
+    }, 1000);
+}
+
+// ─── LISTENING PHASE ─────────────────────────────────────────────
+function startListeningPhase(attempt) {
+    stageTimer.textContent = `⏱ ${answerTime}s`;
+    statusText.textContent = '🎙️ Listening... speak now';
+    setChipStatus('Listening…', true);
+
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+        statusText.textContent = '🎙️ Please type your answer.';
+        manualSubmit.style.display = 'block';
+        return;
+    }
+
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new SR();
+    recognition.lang = 'en-GB';
+    recognition.interimResults = false;
+    recognition.continuous = false;
+
+    recognition.onstart = () => {
+        isListening = true;
+        statusText.textContent = '🎙️ Listening... speak now';
+    };
+
+    recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        answerInput.value = transcript;
+        statusText.textContent = `📝 You said: "${transcript}"`;
+        questionAttempts[currentQ] = 0;
+        setTimeout(() => submitManualText(), 1400);
+    };
+
+    recognition.onerror = (event) => {
+        console.warn('Speech error:', event.error);
+        if (event.error === 'not-allowed') {
+            alert('Microphone access denied. Please use the text input.');
+            manualSubmit.style.display = 'block';
+            statusText.textContent = '⛔ Mic denied — type answer';
+        }
+        isListening = false;
+    };
+
+    recognition.onend = () => {
+        isListening = false;
+        if (!isSubmitting && !answerInput.value.trim()) handleNoAnswer(attempt);
+    };
+
+    try {
+        recognition.start();
+    } catch (e) {
+        console.warn('Recognition start error:', e);
+        manualSubmit.style.display = 'block';
+        statusText.textContent = '⛔ Speech error — type answer';
+    }
+
+    let timeLeft = answerTime;
+    stageTimer.textContent = `⏱ ${timeLeft}s`;
+    timerInterval = setInterval(() => {
+        timeLeft--;
+        stageTimer.textContent = `⏱ ${timeLeft}s`;
+        if (timeLeft <= 10) stageTimer.classList.add('warning');
+        if (timeLeft <= 0) {
+            clearInterval(timerInterval);
+            if (isListening && recognition) {
+                recognition.abort();
+                isListening = false;
+            }
+            if (!answerInput.value.trim()) handleNoAnswer(attempt);
+        }
+    }, 1000);
+}
+
+// ─── NO ANSWER ───────────────────────────────────────────────────
+function handleNoAnswer(attempt) {
+    if (isSubmitting) return;
+    const attempts = (questionAttempts[currentQ] || 0) + 1;
+    questionAttempts[currentQ] = attempts;
+
+    if (attempts >= 3) {
+        statusText.textContent = '❌ Interview stopped — no responses.';
+        speakWarning('You are not answering questions. The interview is being stopped.');
+        setTimeout(() => forceExit('You did not answer the questions. The interview has been stopped.'), 3000);
+        return;
+    }
+
+    const msg = `You have not answered. Let me repeat the question. Attempt ${attempts} of 3.`;
+    statusText.textContent = `🔄 ${msg}`;
+    speakWarning(msg);
+    setTimeout(() => speakQuestion(currentQuestionText, currentCategory, attempts), 2000);
+}
+
+function forceExit(message) {
+    if (timerInterval) clearInterval(timerInterval);
+    if (prepTimerInterval) clearInterval(prepTimerInterval);
+    stepInterview.style.display = 'none';
+    stepResults.style.display = 'block';
+    resultPrediction.textContent = 'Stopped';
+    resultScore.textContent = '--';
+    resultCredibility.textContent = '--';
+    recList.innerHTML = `<div class="rec-item">⚠️ ${message}</div>`;
+    setChipStatus('Stopped', false);
+    fetch('/api/ukvi/finish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            user_id: parseInt(getUserId()),
+            session_id: sessionId,
+            force_exit: true,
+            message,
+        }),
+    }).catch(() => {});
+}
+
+function speakWarning(text) {
+    fetch('/api/ukvi/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+    })
+        .then(r => r.json())
+        .then(data => {
+            if (data.audio_url) new Audio(data.audio_url).play();
+        })
+        .catch(() => {
+            if (window.speechSynthesis) {
+                const u = new SpeechSynthesisUtterance(text);
+                u.lang = 'en-GB';
+                u.rate = 0.9;
+                window.speechSynthesis.speak(u);
+            }
+        });
+}
+
+// ─── REPEAT ──────────────────────────────────────────────────────
+function repeatQuestion() {
+    if (isSubmitting) return;
+    if (isListening && recognition) recognition.abort();
+    isListening = false;
+    stopCurrentAudio();
+    clearInterval(timerInterval);
+    clearInterval(prepTimerInterval);
+    isPrepPhase = false;
+    const attempts = questionAttempts[currentQ] || 0;
+    stageTimer.textContent = '— —';
+    stageTimer.classList.remove('warning');
+    speakQuestion(currentQuestionText, currentCategory, attempts);
+}
+
+// ─── SUBMIT ANSWER ───────────────────────────────────────────────
+function submitManualText() {
+    const txt = answerInput.value.trim();
+    if (!txt) {
+        alert('Please type or speak an answer.');
+        return;
+    }
+    if (isSubmitting) return;
+    questionAttempts[currentQ] = 0;
+    isSubmitting = true;
+    statusText.textContent = '🤔 Thinking...';
+    setChipStatus('Thinking…', false);
+    if (window.startThinking) window.startThinking();
+
+    fetch('/api/ukvi/answer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            user_id: parseInt(getUserId()),
+            session_id: sessionId,
+            question_index: currentQ,
+            question_text: currentQuestionText,
+            answer: txt,
+        }),
+    })
+        .then(r => r.json())
+        .then(data => {
+            isSubmitting = false;
+            if (window.stopThinking) window.stopThinking();
+            if (data.error) { alert('Submit error: ' + data.error); return; }
+
+            const evalData = data.evaluation || {};
+            const nextQ = data.next_question;
+            responses[currentQ] = { response: txt, evaluation: evalData };
+            showFeedback(evalData);
+            if (nextQ) {
+                questions.splice(currentQ + 1, 0, { question: nextQ, category: 'Follow-up' });
+                totalQ++;
+            }
+            setTimeout(() => { currentQ++; showQuestion(); }, 1500);
+        })
+        .catch(err => {
+            isSubmitting = false;
+            if (window.stopThinking) window.stopThinking();
+            alert('Error: ' + err);
+        });
+}
+
+function showFeedback(evalData) {
+    feedbackArea.classList.add('visible');
+    const score = (evalData.overall_score || 0).toFixed(1);
+    scoreDisplay.textContent = `Score: ${score}/9`;
+    feedbackText.textContent = evalData.feedback || '';
+}
+
+// ─── EXIT ────────────────────────────────────────────────────────
+function exitTest() {
+    if (isListening && recognition) recognition.abort();
+    if (timerInterval) clearInterval(timerInterval);
+    if (prepTimerInterval) clearInterval(prepTimerInterval);
+    if (confirm('Are you sure you want to exit? Your progress will be saved.')) {
+        window.location.href = '/dashboard';
+    }
+}
+
+// ─── FINISH ──────────────────────────────────────────────────────
+function finishInterview() {
+    if (isListening && recognition) recognition.abort();
+    if (timerInterval) clearInterval(timerInterval);
+    if (prepTimerInterval) clearInterval(prepTimerInterval);
+    stepInterview.style.display = 'none';
+    stepResults.style.display = 'block';
+    setChipStatus('Completed', false);
+    setChipProgress('');
+
+    fetch('/api/ukvi/finish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            user_id: parseInt(getUserId()),
+            session_id: sessionId,
+        }),
+    })
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) { alert('Finish error: ' + data.error); return; }
+            const ev = data.evaluation || {};
+            resultPrediction.textContent = ev.prediction || 'Completed';
+            resultScore.textContent = ev.overall_score ? ev.overall_score.toFixed(1) : '--';
+            resultCredibility.textContent = ev.credibility_avg ? ev.credibility_avg.toFixed(0) + '%' : '--';
+            recList.innerHTML = '';
+            (ev.recommendations || []).forEach(r => {
+                const div = document.createElement('div');
+                div.className = 'rec-item';
+                div.textContent = '• ' + r;
+                recList.appendChild(div);
+            });
+        })
+        .catch(console.error);
+}
+
+// ─── RESTART ─────────────────────────────────────────────────────
+function restart() {
+    if (isListening && recognition) recognition.abort();
+    if (timerInterval) clearInterval(timerInterval);
+    if (prepTimerInterval) clearInterval(prepTimerInterval);
+    stepProfile.style.display = 'block';
+    stepInterview.style.display = 'none';
+    stepResults.style.display = 'none';
+    sessionId = null;
+    questions = [];
+    responses = {};
+    currentQ = 0;
+    totalQ = 0;
+    questionAttempts = {};
+    answerInput.value = '';
+    feedbackArea.classList.remove('visible');
+    manualSubmit.style.display = 'none';
+    statusText.textContent = '🔊 Listening...';
+    stageTimer.textContent = '— —';
+    stageTimer.classList.remove('warning');
+    hideOverlay();
+    isListening = false;
+    isPrepPhase = false;
+    stopCaptions();
+    setChipStatus('Ready', false);
+    setChipProgress('');
+}
+
+// ─── EVENTS ──────────────────────────────────────────────────────
+startBtn.addEventListener('click', startInterview);
+manualSubmit.addEventListener('click', submitManualText);
+repeatBtn.addEventListener('click', repeatQuestion);
+exitBtn.addEventListener('click', exitTest);
+restartBtn.addEventListener('click', restart);
+
+// ─── INIT ────────────────────────────────────────────────────────
+fetchSubscriptionStatus();
+loadSavedProfile();
+if (window.speechSynthesis) window.speechSynthesis.getVoices();
+setChipStatus('Ready', false);
+console.log('✅ UKVI 3D Interview ready (v3.0 — redesigned)');
+</script>
+</body>
+</html>

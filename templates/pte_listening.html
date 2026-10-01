@@ -1,0 +1,2508 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <title>PTE Academic – Listening Test</title>
+    <link rel="icon" href="data:,">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f0f2f5;
+            color: #1a2332;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .pte-header {
+            background: #003057;
+            color: white;
+            padding: 12px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            border-bottom: 3px solid #ffb81c;
+        }
+        .pte-header .brand .logo { font-size: 22px; font-weight: 700; }
+        .pte-header .brand .logo span { color: #ffb81c; }
+        .pte-header .brand .sub { font-size: 12px; opacity: 0.7; }
+        .pte-header .nav-links a { color: #b3d4f0; text-decoration: none; margin-left: 24px; font-size: 13px; font-weight: 500; }
+        .pte-header .nav-links a:hover { color: white; }
+        .pte-container { max-width: 960px; margin: 24px auto; padding: 0 20px; flex: 1; width: 100%; }
+        #start-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 48, 87, 0.92);
+            display: none; justify-content: center; align-items: center;
+            z-index: 2000; backdrop-filter: blur(6px);
+        }
+        #start-overlay.show { display: flex; }
+        .start-card {
+            background: white; padding: 48px 56px; border-radius: 20px;
+            text-align: center; max-width: 520px; width: 92%;
+            box-shadow: 0 30px 80px rgba(0,0,0,0.35);
+        }
+        .start-card h1 { font-size: 28px; color: #003057; margin-bottom: 6px; }
+        .start-card p { color: #475569; font-size: 15px; line-height: 1.6; margin-bottom: 24px; }
+        .start-card .test-meta { display: flex; justify-content: center; gap: 40px; margin: 16px 0 28px; font-size: 14px; color: #475569; }
+        .start-card .test-meta .label { font-weight: 300; font-size: 11px; text-transform: uppercase; color: #94a3b8; display: block; }
+        .start-card .test-meta .value { font-weight: 700; font-size: 18px; color: #003057; }
+        .start-card .auto-note {
+            background: #fef9c3; border: 1px solid #facc15; border-radius: 10px;
+            padding: 10px 16px; font-size: 13px; color: #854d0e; margin-bottom: 20px; text-align: left;
+        }
+        .start-card .audio-rule {
+            background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px;
+            padding: 10px 16px; font-size: 13px; color: #1e40af; margin-bottom: 20px; text-align: left;
+        }
+        .btn-start {
+            padding: 14px 52px; border: none; border-radius: 50px;
+            font-size: 18px; font-weight: 700;
+            background: linear-gradient(135deg, #003057, #1a5276);
+            color: white; cursor: pointer; transition: 0.3s;
+            box-shadow: 0 4px 16px rgba(0,48,87,0.35);
+        }
+        .btn-start:hover { transform: scale(1.04); }
+        .pte-subscription-widget {
+            background: white; border-radius: 12px; padding: 12px 20px;
+            margin-bottom: 18px; box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            display: flex; flex-wrap: wrap; align-items: center;
+            justify-content: space-between; border-left: 4px solid #003057;
+            gap: 10px;
+        }
+        .pte-subscription-widget .badge-active { background: #10b981; color: white; padding: 2px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+        .pte-subscription-widget .badge-free { background: #f59e0b; color: white; padding: 2px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+        .pte-subscription-widget .btn-subscribe {
+            background: linear-gradient(135deg, #f093fb, #f5576c);
+            color: white; border: none; padding: 6px 20px; border-radius: 30px;
+            font-weight: 600; font-size: 13px; cursor: pointer;
+            box-shadow: 0 4px 12px rgba(245,87,108,0.3);
+        }
+        .pte-subscription-widget .btn-subscribe:hover { transform: scale(1.03); }
+        .module-breakdown { font-size: 14px; color: #475569; margin-top: 4px; display: flex; flex-wrap: wrap; gap: 8px 16px; }
+        .module-breakdown .mod-item { display: flex; align-items: center; gap: 4px; }
+        .module-breakdown .mod-item .mod-label { font-weight: 600; color: #1e293b; }
+        .module-breakdown .mod-item .mod-count { font-weight: 700; color: #6c63ff; }
+        .module-breakdown .mod-item .mod-limit { color: #94a3b8; }
+        #test-screen { display: none; }
+        #test-screen.active { display: block; }
+        .test-topbar {
+            background: white; border-radius: 12px; padding: 14px 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            display: flex; justify-content: space-between; align-items: center;
+            flex-wrap: wrap; gap: 12px; margin-bottom: 20px;
+        }
+        .test-topbar .test-name { font-weight: 700; font-size: 17px; color: #003057; }
+        .test-topbar .test-sub { font-size: 12px; color: #94a3b8; }
+        .test-topbar .timer {
+            background: #f1f5f9; padding: 6px 18px; border-radius: 30px;
+            font-size: 18px; font-weight: 700; color: #003057;
+        }
+        .test-topbar .timer.warning { background: #fee2e2; color: #b91c1c; animation: pulse-timer 1.5s infinite; }
+        @keyframes pulse-timer { 0%,100%{transform:scale(1)}50%{transform:scale(1.04)} }
+        .progress-track { width: 120px; height: 5px; background: #e2e8f0; border-radius: 4px; overflow: hidden; }
+        .progress-track .fill { height: 100%; background: linear-gradient(90deg,#003057,#1a5276); transition: width 0.4s ease; width: 0%; }
+        .loading-container { text-align: center; padding: 80px 20px; background: white; border-radius: 16px; }
+        .loading-container .spinner {
+            border: 4px solid #e2e8f0; border-top: 4px solid #003057; border-radius: 50%;
+            width: 48px; height: 48px; animation: spin 0.8s linear infinite; margin: 20px auto;
+        }
+        @keyframes spin { 0%{transform:rotate(0)}100%{transform:rotate(360deg)} }
+        .error-box {
+            background: #fef2f2; border-radius: 16px; padding: 40px; text-align: center;
+            border: 1px solid #fca5a5; margin-top: 16px;
+        }
+        .error-box h2 { color: #b91c1c; margin-bottom: 8px; }
+        .error-box .error-detail { color: #475569; font-size: 14px; margin: 12px 0; background: #f8fafc; padding: 12px; border-radius: 8px; text-align: left; overflow: auto; max-height: 300px; }
+        .debug-toggle { cursor: pointer; color: #94a3b8; font-size: 12px; text-decoration: underline; margin-top: 20px; display: inline-block; }
+        .debug-box { display: none; background: #0f172a; color: #e2e8f0; padding: 16px; border-radius: 10px; font-family: monospace; font-size: 12px; max-height: 400px; overflow: auto; margin-top: 10px; white-space: pre-wrap; word-break: break-all; }
+        .question-card {
+            background: white; border-radius: 16px; padding: 28px 32px 32px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06); margin-bottom: 20px;
+        }
+        .q-header {
+            display: flex; justify-content: space-between; align-items: flex-start;
+            flex-wrap: wrap; gap: 10px; border-bottom: 1px solid #eef2f6;
+            padding-bottom: 14px; margin-bottom: 18px;
+        }
+        .q-header .q-number { font-weight: 700; font-size: 20px; color: #003057; }
+        .q-header .q-badge {
+            background: #e8edf3; padding: 3px 14px; border-radius: 30px;
+            font-size: 11px; font-weight: 600; color: #1a5276; text-transform: uppercase;
+        }
+        .q-header .q-badge.listening { background: #e0f2f1; color: #00695c; }
+        .q-header .q-timer {
+            background: #f1f5f9; padding: 3px 14px; border-radius: 30px;
+            font-size: 14px; font-weight: 600; color: #003057;
+        }
+        .q-header .q-timer.warning { background: #fee2e2; color: #b91c1c; animation: pulse-timer 1.5s infinite; }
+        .audio-player {
+            background: #f8fafc; border-radius: 12px; padding: 16px 20px;
+            margin-bottom: 20px; border: 1px solid #e2e8f0;
+            display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+        }
+        .audio-player .play-btn {
+            width: 44px; height: 44px; border-radius: 50%; border: none;
+            background: #003057; color: white; font-size: 18px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+        }
+        .audio-player .play-btn:hover:not(:disabled) { background: #1a5276; transform: scale(1.05); }
+        .audio-player .play-btn.playing { background: #dc2626; }
+        .audio-player .play-btn:disabled { opacity: 0.5; cursor: not-allowed; background: #94a3b8; }
+        .audio-player .progress-wrap { flex: 1; min-width: 140px; }
+        .audio-player .progress-wrap .bar { height: 4px; background: #d1d5db; border-radius: 2px; overflow: hidden; }
+        .audio-player .progress-wrap .bar .fill { height: 100%; background: #003057; width: 0%; }
+        .audio-player .time-display { font-size: 13px; color: #64748b; min-width: 80px; text-align: center; }
+        .audio-player .status-badge { font-size: 11px; padding: 3px 12px; border-radius: 30px; font-weight: 600; }
+        .status-badge.ready { background: #dcfce7; color: #166534; }
+        .status-badge.pending { background: #f1f5f9; color: #475569; }
+        .audio-player .extra-btns { display: flex; gap: 6px; }
+        .audio-player .extra-btns button {
+            background: transparent; border: 1px solid #d1d5db; border-radius: 30px;
+            padding: 4px 14px; font-size: 12px; font-weight: 500; color: #475569; cursor: pointer;
+        }
+        .audio-player .extra-btns button:hover:not(:disabled) { background: #f1f5f9; }
+        .audio-player .extra-btns button:disabled { opacity: 0.4; cursor: not-allowed; }
+        .audio-play-count {
+            font-size: 11px; padding: 4px 14px; border-radius: 30px;
+            background: #dcfce7; color: #166534; font-weight: 700;
+            white-space: nowrap; letter-spacing: 0.3px;
+        }
+        .audio-play-count.exhausted { background: #fee2e2; color: #b91c1c; }
+        .audio-play-count.single { background: #e0e7ff; color: #3730a3; }
+        .audio-play-count.single.exhausted { background: #fee2e2; color: #b91c1c; }
+        .audio-status-text { font-size: 12px; color: #94a3b8; margin-top: 4px; padding-left: 4px; }
+        .audio-status-text.error { color: #dc2626; }
+        .audio-status-text.success { color: #16a34a; }
+        .audio-status-text.warning { color: #d97706; }
+        .audio-status-text.playing { color: #003057; font-weight: 600; }
+        .q-content { margin-top: 4px; }
+        .q-content .prompt-text {
+            background: #f8fafc; padding: 14px 18px; border-radius: 10px;
+            border-left: 3px solid #003057; font-size: 15px; line-height: 2; color: #1e293b; margin-bottom: 14px;
+        }
+        .q-content .prompt-text .inline-select {
+            padding: 2px 6px; border: 2px solid #003057; border-radius: 6px;
+            background: white; font-size: 14px; font-family: inherit;
+            cursor: pointer; margin: 0 2px;
+        }
+        .q-content .prompt-text .inline-select.has-value { border-color: #10b981; background: #f0fdf4; }
+        .q-content .instruction-text { font-size: 13px; color: #475569; margin-bottom: 12px; font-weight: 500; }
+        .answer-textarea {
+            width: 100%; padding: 14px 16px; border: 2px solid #e2e8f0; border-radius: 10px;
+            font-size: 15px; resize: vertical; min-height: 100px; font-family: inherit;
+        }
+        .answer-textarea:focus { border-color: #003057; outline: none; }
+        .answer-input {
+            width: 100%; padding: 12px 16px; border: 2px solid #e2e8f0; border-radius: 10px; font-size: 15px;
+        }
+        .answer-input:focus { border-color: #003057; outline: none; }
+        .blank-select {
+            width: 100%; padding: 10px 14px; border: 2px solid #e2e8f0; border-radius: 10px;
+            font-size: 14px; background: white; cursor: pointer;
+        }
+        .blank-select:focus { border-color: #003057; outline: none; }
+        .blank-select.has-value { border-color: #10b981; background: #f0fdf4; }
+        .blank-container { display: flex; align-items: center; gap: 12px; margin: 8px 0; flex-wrap: wrap; }
+        .blank-number { font-weight: 600; color: #334155; min-width: 70px; font-size: 13px; }
+        .option-item {
+            padding: 10px 16px; margin: 6px 0; background: white;
+            border: 2px solid #e2e8f0; border-radius: 10px; cursor: pointer;
+            display: flex; align-items: center; gap: 12px;
+        }
+        .option-item:hover { border-color: #94a3b8; background: #f8fafc; }
+        .option-item.selected { border-color: #003057; background: #eff6ff; }
+        .option-item .opt-letter { font-weight: 700; color: #003057; width: 22px; flex-shrink: 0; }
+        .word-count { font-size: 13px; color: #64748b; margin-top: 6px; }
+        .word-count .count { font-weight: 600; color: #003057; }
+        .word-count .min { color: #dc2626; font-weight: 500; }
+        .word-count .ok { color: #10b981; font-weight: 500; }
+        .word-highlight { cursor: pointer; padding: 2px 4px; border-radius: 4px; display: inline-block; transition: 0.15s; }
+        .word-highlight:hover { background: #e2e8f0; }
+        .word-highlight.selected { background: #dc2626; color: white !important; }
+        .nav-buttons { display: flex; justify-content: space-between; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
+        .btn {
+            padding: 10px 24px; border: none; border-radius: 10px;
+            font-size: 14px; font-weight: 600; cursor: pointer;
+            display: inline-flex; align-items: center; gap: 6px;
+        }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .btn-primary { background: #003057; color: white; }
+        .btn-primary:hover:not(:disabled) { background: #1a5276; }
+        .btn-secondary { background: #e8edf3; color: #1e293b; }
+        .btn-secondary:hover:not(:disabled) { background: #d1d9e6; }
+        .btn-success { background: #10b981; color: white; }
+        .btn-success:hover:not(:disabled) { background: #059669; }
+        .review-screen { display: none; background: white; border-radius: 16px; padding: 28px 32px 32px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+        .review-screen.show { display: block; }
+        .review-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin: 16px 0; }
+        .review-item {
+            background: #f8fafc; padding: 10px 14px; border-radius: 10px;
+            border-left: 4px solid #e2e8f0; cursor: pointer;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .review-item:hover { background: #f1f5f9; }
+        .review-item.answered { border-left-color: #10b981; }
+        .review-item.unanswered { border-left-color: #f59e0b; }
+        .review-item .status { font-size: 11px; font-weight: 600; padding: 2px 10px; border-radius: 30px; }
+        .review-item .status.answered { background: #dcfce7; color: #166534; }
+        .review-item .status.unanswered { background: #fef9c3; color: #854d0e; }
+        .results-card {
+            background: white; border-radius: 16px; padding: 40px;
+            text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+        }
+        .results-card .score-circle {
+            width: 160px; height: 160px; border-radius: 50%;
+            background: linear-gradient(135deg, #003057, #1a5276);
+            display: flex; align-items: center; justify-content: center;
+            margin: 24px auto; flex-direction: column;
+        }
+        .results-card .score-circle .num { font-size: 48px; font-weight: 700; color: white; }
+        .results-card .score-circle .label { font-size: 12px; color: rgba(255,255,255,0.7); }
+        .score-details { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 16px; margin: 24px 0; }
+        .score-details .item { background: #f8fafc; padding: 14px; border-radius: 12px; }
+        .score-details .item .val { font-size: 24px; font-weight: 700; color: #003057; }
+        .score-details .item h4 { font-size: 12px; color: #64748b; margin-bottom: 6px; }
+        .feedback-box { background: #f8fafc; padding: 16px 20px; border-radius: 10px; text-align: left; font-size: 14px; color: #1e293b; border-left: 3px solid #003057; margin-top: 16px; }
+        #detailed-answers { margin-top: 20px; text-align: left; background: #f8fafc; border-radius: 12px; padding: 16px 20px; border: 1px solid #e2e8f0; }
+        #detailed-answers .answer-comparison { padding: 12px 15px; margin: 8px 0; background: white; border-radius: 6px; border-left: 4px solid #475569; }
+        #detailed-answers .answer-comparison.correct { border-left-color: #28a745; }
+        #detailed-answers .answer-comparison.incorrect { border-left-color: #dc2626; }
+        #detailed-answers .answer-comparison .user-ans { color: #003d6b; font-weight: 600; }
+        #detailed-answers .answer-comparison .correct-ans { color: #28a745; font-weight: 600; }
+        .detail-toggle-btn { margin-top: 15px; }
+
+        #auto-submit-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 48, 87, 0.95);
+            display: none; justify-content: center; align-items: center;
+            z-index: 3000; backdrop-filter: blur(8px);
+        }
+        #auto-submit-overlay.active { display: flex; }
+        .auto-submit-card {
+            background: white; padding: 40px 60px; border-radius: 20px;
+            text-align: center; max-width: 500px; width: 92%;
+            box-shadow: 0 30px 80px rgba(0,0,0,0.4);
+            animation: fadeIn 0.3s ease;
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        .auto-submit-card .icon { font-size: 64px; display: block; margin-bottom: 12px; }
+        .auto-submit-card h2 { font-size: 24px; color: #003057; margin-bottom: 8px; }
+        .auto-submit-card p { font-size: 15px; color: #475569; line-height: 1.6; margin-bottom: 16px; }
+        .auto-submit-card .spinner {
+            border: 4px solid #e2e8f0; border-top: 4px solid #003057;
+            border-radius: 50%; width: 40px; height: 40px;
+            animation: spin 0.8s linear infinite; margin: 20px auto 0;
+        }
+
+        @media (max-width: 768px) {
+            .pte-header { padding: 10px 16px; }
+            .pte-header .brand .logo { font-size: 18px; }
+            .pte-container { padding: 0 12px; margin: 16px auto; }
+            .test-topbar { flex-direction: column; align-items: stretch; gap: 8px; padding: 14px 16px; }
+            .question-card { padding: 18px 16px 22px; }
+            .q-header { flex-direction: column; align-items: stretch; gap: 8px; }
+            .audio-player { flex-direction: column; align-items: stretch; padding: 14px; }
+            .nav-buttons { flex-direction: column; align-items: stretch; }
+            .start-card { padding: 30px 20px; }
+            .results-card { padding: 24px; }
+            .review-grid { grid-template-columns: 1fr; }
+            .pte-subscription-widget { flex-direction: column; align-items: stretch; text-align: center; }
+            .module-breakdown { justify-content: center; }
+            .auto-submit-card { padding: 30px 24px; }
+        }
+        @media (max-width: 480px) {
+            .pte-header .nav-links a { margin-left: 12px; font-size: 12px; }
+            .question-card { padding: 14px 12px 18px; }
+            .btn { padding: 8px 16px; font-size: 13px; }
+            .blank-container { flex-direction: column; align-items: stretch; }
+        }
+    </style>
+</head>
+<body>
+
+    <header class="pte-header">
+        <div class="brand">
+            <div class="logo">📘 <span>PTE</span> Academic</div>
+            <div class="sub">Practice Test · Listening (Auto Mode)</div>
+        </div>
+        <div class="nav-links">
+            <a href="/dashboard?module=pte">Dashboard</a>
+            <a href="/logout">Logout</a>
+        </div>
+    </header>
+
+    <div class="pte-container">
+
+        <div id="pte-subscription-status" class="pte-subscription-widget">
+            <span class="status-text">⏳ Loading subscription status...</span>
+        </div>
+
+        <div id="start-overlay">
+            <div class="start-card">
+                <span class="icon">🎧</span>
+                <h1>Ready to begin?</h1>
+                <p>You will hear a number of different recordings. You will have time to read the questions before each recording.</p>
+
+                <div class="audio-rule">
+                    🔊 <strong>Audio play limits:</strong><br>
+                    • <strong>Question 1 &amp; Question 2</strong> — up to <strong>2 plays</strong> each.<br>
+                    • <strong>All remaining questions</strong> — <strong>1 play only</strong> (the play button is permanently blocked afterwards).
+                </div>
+
+                <div class="auto-note">
+                    ⚡ <strong>Auto Mode Enabled:</strong> Each question's audio will play automatically 2 seconds after loading (this counts as your 1st play). For Q1 &amp; Q2 you may replay <strong>once more</strong> if needed. When the timer reaches zero, the test advances to the next question.
+                </div>
+
+                <div class="test-meta">
+                    <div><span class="label">Questions</span><span class="value" id="start-total">0</span></div>
+                    <div><span class="label">Total Time</span><span class="value" id="start-duration">— min</span></div>
+                    <div><span class="label">Sections</span><span class="value">1–2</span></div>
+                </div>
+                <button class="btn-start" id="btn-start-test">▶ Start Test</button>
+            </div>
+        </div>
+
+        <div id="test-screen">
+            <div class="test-topbar">
+                <div class="title-section">
+                    <span class="test-name">Listening</span>
+                    <span class="test-sub">PTE Academic 2026 · Auto Mode</span>
+                </div>
+                <div class="timer" id="timer-box">
+                    <span>⏱️</span>
+                    <span id="timer">--:--</span>
+                </div>
+                <div class="progress-info">
+                    <span class="qcount">Q <strong id="cn">1</strong>/<span id="tq">0</span></span>
+                    <div class="progress-track">
+                        <div class="fill" id="pb" style="width:0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="qc">
+                <div class="loading-container">
+                    <div class="spinner"></div>
+                    <p>⏳ Generating your PTE Listening test...</p>
+                </div>
+            </div>
+
+            <div class="nav-buttons" id="nav-buttons" style="display:none;">
+                <div class="left">
+                    <button class="btn btn-secondary" id="prev-btn" onclick="prevQ()" disabled>
+                        <span>←</span> Previous
+                    </button>
+                </div>
+                <div class="right">
+                    <button class="btn btn-secondary" id="review-btn" onclick="showReview()">📋 Review</button>
+                    <button class="btn btn-primary" id="next-btn" onclick="nextQ()">Next <span>→</span></button>
+                    <button class="btn btn-success" id="submit-btn" onclick="confirmSubmit()" style="display:none">✅ Submit</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="review-screen" class="review-screen">
+            <div class="review-header">
+                <h2>📋 Review All Questions</h2>
+                <button class="btn btn-secondary" onclick="hideReview()">← Back to Test</button>
+            </div>
+            <p style="color:#475569;margin-bottom:16px;font-size:14px;">Click a question to jump to it. <span style="color:#10b981;">●</span> Answered · <span style="color:#f59e0b;">●</span> Unanswered</p>
+            <div id="review-grid" class="review-grid"></div>
+            <div style="margin-top:20px;text-align:center;">
+                <button class="btn btn-success" onclick="confirmSubmit()" style="padding:12px 40px;">✅ Submit Test</button>
+            </div>
+        </div>
+
+        <div id="results" style="display:none;">
+            <div class="results-card">
+                <h2>🎯 Test Completed</h2>
+                <div class="score-circle">
+                    <div class="num" id="overall-score">0</div>
+                    <div class="label">PTE Score / 90</div>
+                </div>
+                <p style="font-size:17px;margin-bottom:6px;">
+                    PTE: <strong id="pte-score">0</strong> &nbsp;·&nbsp; IELTS: <strong id="ielts-score">N/A</strong>
+                </p>
+                <div class="score-details" id="score-details"></div>
+                <div class="feedback-box" id="feedback-box"></div>
+
+                <button class="btn btn-secondary detail-toggle-btn" onclick="toggleAnswers()">📝 Show Detailed Answers</button>
+                <div id="detailed-answers" style="display:none;"></div>
+
+                <div style="margin-top:24px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+                    <button class="btn btn-primary" onclick="window.location.href='/pte/listening?retake=true'">🔄 Retake</button>
+                    <button class="btn btn-success" onclick="window.location.href='/pte/listening?new=true'">🆕 New Test</button>
+                    <button class="btn btn-secondary" onclick="location.href='/dashboard?module=pte'">📊 Dashboard</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="error-box" style="display:none;">
+            <div class="error-box">
+                <h2>❌ Error Loading Test</h2>
+                <p id="error-message">An error occurred.</p>
+                <div class="error-detail" id="error-detail"></div>
+                <button class="btn btn-primary" onclick="location.reload()" style="margin-top:14px;">🔄 Try Again</button>
+            </div>
+        </div>
+
+        <div style="margin-top:20px;">
+            <span class="debug-toggle" onclick="toggleDebug()">🔍 Debug Info</span>
+            <div id="debug-box" class="debug-box"></div>
+        </div>
+    </div>
+
+    <div id="auto-submit-overlay">
+        <div class="auto-submit-card">
+            <span class="icon">⏰</span>
+            <h2 id="auto-submit-title">Time's Up!</h2>
+            <p id="auto-submit-message">Submitting your test automatically. Please wait...</p>
+            <div class="spinner"></div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            'use strict';
+
+            const AUTO_ADVANCE_ON_TIMEOUT = true;
+            const AUTO_SUBMIT_ON_END = true;
+            const LAST_QUESTION_GRACE_SECONDS = 30;
+            const AUTO_SUBMIT_DELAY_MS = 800;
+            const AUTO_PLAY_DELAY_MS = 2000;
+
+            // ═══════════════════════════════════════════════════════════════
+            // ✅ PATCH #1: MAX_GEN_ATTEMPTS increased 30 → 60
+            //    Listening generation takes ~1-2 min; 30×2.5s=75s was tight.
+            // ═══════════════════════════════════════════════════════════════
+            const MAX_GEN_ATTEMPTS = 60;
+            const GEN_RETRY_BASE_MS = 2500;
+            const GEN_RETRY_MAX_MS = 15000;
+            const GEN_RETRY_JITTER_MS = 2000;
+
+            const FIRST_N_DOUBLE_PLAY = 2;
+            const MAX_AUDIO_PLAYS_FIRST_N = 2;
+            const MAX_AUDIO_PLAYS_DEFAULT = 1;
+            const MAX_AUDIO_PLAYS = MAX_AUDIO_PLAYS_FIRST_N;
+
+            const TIME_DIVISOR = 1.3;
+            const TIME_BUFFER_SECONDS = 120;
+            const TIME_MIN_SECONDS = 20 * 60;
+            const TIME_MAX_SECONDS = 50 * 60;
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const forceNew = urlParams.get('new') === 'true';
+            const retake = urlParams.get('retake') === 'true';
+            const RESUME_ID = (forceNew || retake) ? null : urlParams.get('resume');
+
+            const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+            const CSRF_TOKEN = csrfMeta ? csrfMeta.getAttribute('content') : '';
+
+            // ═══════════════════════════════════════════════════════════════
+            // ✅ PATCH #2: USER_ID uses integer fallback (0) instead of 'null'
+            //    Prevents comparison bugs when current_user is falsy.
+            // ═══════════════════════════════════════════════════════════════
+            const USER_ID = {{ (current_user.id if current_user else 0) | int }};
+
+            const DRAFT_KEY = 'pte_listening_draft_v9';
+            const DRAFT_EXPIRY_MS = 2 * 60 * 60 * 1000;
+
+            const TIME_LIMITS = {
+                'summarize_spoken_text': 600,
+                'multiple_choice_multiple': 120,
+                'fill_blanks': 120,
+                'highlight_correct_summary': 120,
+                'multiple_choice_single': 90,
+                'write_from_dictation': 90,
+                'highlight_incorrect_words': 120,
+                'select_missing_word': 90,
+                'default': 90
+            };
+
+            let questions = [];
+            let currentIndex = 0;
+            let userAnswers = {};
+            let overallTimerInterval = null;
+            let timeLeft = 0;
+            let totalExamTime = 0;
+            let isSubmitting = false;
+            let testId = null;
+            let sessionId = null;
+            let testStarted = false;
+            let testLoaded = false;
+            let debugLogs = [];
+            let audioPlayer = new Audio();
+            let isAudioPlaying = false;
+            let currentAudioUrl = null;
+            let questionTimerInterval = null;
+            let questionTimeRemaining = {};
+            let autoSubmitting = false;
+            let graceInterval = null;
+            let autoAdvanceTimeoutId = null;
+            let autoPlayTimeoutId = null;
+
+            let audioPlayCounts = {};
+            let currentPlayWasAuto = false;
+
+            let genStartTime = null;
+
+            const startOverlay = document.getElementById('start-overlay');
+            const startBtn = document.getElementById('btn-start-test');
+            const startTotal = document.getElementById('start-total');
+            const startDuration = document.getElementById('start-duration');
+            const testScreen = document.getElementById('test-screen');
+            const qc = document.getElementById('qc');
+            const timerEl = document.getElementById('timer');
+            const timerBox = document.getElementById('timer-box');
+            const cn = document.getElementById('cn');
+            const tq = document.getElementById('tq');
+            const pb = document.getElementById('pb');
+            const prevBtn = document.getElementById('prev-btn');
+            const nextBtn = document.getElementById('next-btn');
+            const submitBtn = document.getElementById('submit-btn');
+            const navButtons = document.getElementById('nav-buttons');
+            const reviewScreen = document.getElementById('review-screen');
+            const reviewGrid = document.getElementById('review-grid');
+            const resultsScreen = document.getElementById('results');
+            const debugBox = document.getElementById('debug-box');
+            const errorBox = document.getElementById('error-box');
+            const errorMsg = document.getElementById('error-message');
+            const errorDetail = document.getElementById('error-detail');
+            const feedbackBox = document.getElementById('feedback-box');
+            const autoSubmitOverlay = document.getElementById('auto-submit-overlay');
+            const autoSubmitTitle = document.getElementById('auto-submit-title');
+            const autoSubmitMessage = document.getElementById('auto-submit-message');
+
+            function logDebug(msg, data) {
+                debugLogs.push({ msg, data });
+                console.log('[PTE]', msg, data || '');
+                if (debugBox) {
+                    debugBox.innerHTML = debugLogs.map(e =>
+                        `<div><strong>${e.msg}</strong> ${e.data !== undefined ? JSON.stringify(e.data, null, 2) : ''}</div>`
+                    ).join('\n');
+                }
+            }
+
+            function toggleDebug() {
+                if (debugBox) debugBox.style.display = debugBox.style.display === 'none' ? 'block' : 'none';
+            }
+
+            function getCsrfToken() { return CSRF_TOKEN; }
+
+            function formatTime(s) {
+                if (s === null || s === undefined || isNaN(s)) return '0:00';
+                if (s < 0) s = 0;
+                const m = Math.floor(s / 60);
+                const sec = Math.floor(s % 60);
+                return String(m).padStart(2, '0') + ':' + String(sec).padStart(2, '0');
+            }
+
+            function formatDuration(seconds) {
+                const mins = Math.round(seconds / 60);
+                return `${mins} min`;
+            }
+
+            function getTimeLimit(q) {
+                return TIME_LIMITS[q.type] || TIME_LIMITS.default;
+            }
+
+            function calculateTotalExamTime() {
+                if (!questions || questions.length === 0) return 35 * 60;
+                let sumLimits = 0;
+                for (let q of questions) sumLimits += getTimeLimit(q);
+                const adjusted = Math.ceil(sumLimits / TIME_DIVISOR);
+                const autoPlayPerQ = Math.round(AUTO_PLAY_DELAY_MS / 1000);
+                const autoPlayTotal = questions.length * autoPlayPerQ;
+                let total = adjusted + TIME_BUFFER_SECONDS + autoPlayTotal;
+                if (total < TIME_MIN_SECONDS) total = TIME_MIN_SECONDS;
+                if (total > TIME_MAX_SECONDS) total = TIME_MAX_SECONDS;
+                logDebug('🧮 Total time calc', {
+                    questions: questions.length,
+                    sumLimits: sumLimits,
+                    adjusted: adjusted,
+                    total: total,
+                    display: formatTime(total)
+                });
+                return total;
+            }
+
+            function escapeHtml(text) {
+                if (text === null || text === undefined) return '';
+                const div = document.createElement('div');
+                div.textContent = String(text);
+                return div.innerHTML;
+            }
+
+            function jsonAttr(v) {
+                return String(JSON.stringify(v))
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;');
+            }
+
+            function transformQuestion(q) {
+                let t = { ...q };
+                if (t.prompt && typeof t.prompt === 'object') {
+                    const p = t.prompt;
+                    if (t.type === 'summarize_spoken_text') {
+                        t.passage = p.passage || '';
+                        t.script = p.script || '';
+                        t.instruction = p.instruction || 'Summarize the lecture.';
+                    } else if (t.type === 'multiple_choice_single' || t.type === 'multiple_choice_multiple') {
+                        t.question = p.question || '';
+                        t.text = p.question || '';
+                        t.options = p.options || [];
+                        t.correct = p.correct || [];
+                        t.correct_answer = p.correct || [];
+                    } else if (t.type === 'fill_blanks') {
+                        t.text = p.text || '';
+                        t.blanks = p.blanks || [];
+                        t.options = p.options || [];
+                        t.correct = p.correct || p.blanks || [];
+                        t.correct_answer = t.correct;
+                    } else if (t.type === 'highlight_correct_summary') {
+                        t.passage = p.passage || '';
+                        t.summaries = p.summaries || [];
+                        t.correct = p.correct || 0;
+                        t.correct_answer = t.correct;
+                    } else if (t.type === 'select_missing_word') {
+                        t.passage = p.passage || '';
+                        t.options = p.options || [];
+                        t.correct = p.correct || 0;
+                        t.correct_answer = t.correct;
+                    } else if (t.type === 'highlight_incorrect_words') {
+                        t.text = p.text || '';
+                        t.incorrect_words = p.incorrect_words || [];
+                        t.correct_words = p.correct_words || [];
+                        t.correct_answer = p.incorrect_words || [];
+                    } else if (t.type === 'write_from_dictation') {
+                        t.sentence = p.sentence || '';
+                        t.correct_answer = p.correct_answer || p.sentence || '';
+                    }
+                    delete t.prompt;
+                }
+                return t;
+            }
+
+            function showToast(message, durationMs = 2200) {
+                const existing = document.getElementById('pte-toast');
+                if (existing) existing.remove();
+                const toast = document.createElement('div');
+                toast.id = 'pte-toast';
+                toast.style.cssText = `
+                    position: fixed; top: 90px; left: 50%;
+                    transform: translateX(-50%); background: #003057;
+                    color: white; padding: 12px 28px; border-radius: 30px;
+                    font-weight: 600; font-size: 14px;
+                    box-shadow: 0 8px 24px rgba(0,48,87,0.4);
+                    z-index: 2500; animation: fadeIn 0.3s ease;
+                    max-width: 90vw; text-align: center;
+                `;
+                toast.textContent = message;
+                document.body.appendChild(toast);
+                setTimeout(() => {
+                    if (toast.parentNode) toast.parentNode.removeChild(toast);
+                }, durationMs);
+            }
+
+            function showGeneratingMessage(attempt) {
+                if (!qc) return;
+
+                const elapsedSec = genStartTime
+                    ? Math.round((Date.now() - genStartTime) / 1000)
+                    : 0;
+
+                const pct = Math.min(95, Math.round(95 * (1 - Math.exp(-attempt / 5))));
+
+                let elapsedStr;
+                if (elapsedSec < 60) {
+                    elapsedStr = elapsedSec + 's';
+                } else {
+                    const m = Math.floor(elapsedSec / 60);
+                    const s = elapsedSec % 60;
+                    elapsedStr = m + 'm ' + s + 's';
+                }
+
+                let hintText;
+                if (elapsedSec < 120) {
+                    hintText = 'Typically takes 2–3 minutes';
+                } else if (elapsedSec < 300) {
+                    hintText = 'Taking longer than usual — still working';
+                } else {
+                    hintText = 'High demand right now — thanks for your patience';
+                }
+
+                const wrapper = document.getElementById('gen-waiting-wrapper');
+                if (wrapper) {
+                    const elapsedEl = document.getElementById('gen-elapsed');
+                    const pctEl     = document.getElementById('gen-pct');
+                    const barEl     = document.getElementById('gen-bar');
+                    const attemptEl = document.getElementById('gen-attempt');
+                    if (elapsedEl) elapsedEl.textContent = '⏱️ ' + elapsedStr + ' elapsed';
+                    if (pctEl)     pctEl.textContent     = pct + '%';
+                    if (barEl)     barEl.style.width     = pct + '%';
+                    if (attemptEl) attemptEl.textContent = 'Attempt ' + attempt + '/' + MAX_GEN_ATTEMPTS + ' — ' + hintText;
+                    return;
+                }
+
+                qc.style.display = '';
+                qc.innerHTML =
+                    '<div id="gen-waiting-wrapper" class="loading-container" style="max-width:560px;margin:0 auto;">' +
+                        '<div class="spinner"></div>' +
+                        '<p style="color:#0f172a;font-size:18px;font-weight:700;margin:16px 0 8px;">' +
+                            '⏳ Preparing your listening test…' +
+                        '</p>' +
+                        '<p style="color:#64748b;font-size:14px;line-height:1.7;margin-bottom:18px;">' +
+                            'Another user is generating a test right now.<br>' +
+                            'Yours will be ready automatically in a moment.' +
+                        '</p>' +
+                        '<div style="max-width:280px;margin:0 auto 8px;height:8px;' +
+                             'background:#e2e8f0;border-radius:4px;overflow:hidden;">' +
+                            '<div id="gen-bar" style="height:100%;width:' + pct + '%;' +
+                                 'background:linear-gradient(90deg,#003057,#1a5276);' +
+                                 'transition:width 0.5s ease;"></div>' +
+                        '</div>' +
+                        '<div style="max-width:280px;margin:0 auto 18px;display:flex;' +
+                             'justify-content:space-between;font-size:12px;color:#94a3b8;">' +
+                            '<span id="gen-elapsed">⏱️ ' + elapsedStr + ' elapsed</span>' +
+                            '<span id="gen-pct">' + pct + '%</span>' +
+                        '</div>' +
+                        '<div style="background:#fef9c3;border:1px solid #facc15;' +
+                             'border-radius:10px;padding:12px 16px;text-align:left;' +
+                             'font-size:13px;color:#854d0e;line-height:1.6;max-width:320px;margin:0 auto;">' +
+                            '⚠️ <strong>Do not refresh this page.</strong><br>' +
+                            'Refreshing will send you to the back of the queue.' +
+                        '</div>' +
+                        '<p id="gen-attempt" style="color:#cbd5e1;font-size:11px;margin-top:14px;">' +
+                            'Attempt ' + attempt + '/' + MAX_GEN_ATTEMPTS + ' — ' + hintText +
+                        '</p>' +
+                    '</div>';
+            }
+
+            function computeRetryDelay(attempt, serverRetryAfterSec) {
+                const serverMin = (serverRetryAfterSec || 0) * 1000;
+                const exp = GEN_RETRY_BASE_MS * Math.pow(1.5, Math.max(0, attempt - 1));
+                const capped = Math.min(exp, GEN_RETRY_MAX_MS);
+                const jitter = Math.random() * GEN_RETRY_JITTER_MS;
+                return Math.max(serverMin, capped + jitter);
+            }
+
+            function cancelPendingAutoPlay() {
+                if (autoPlayTimeoutId) {
+                    clearTimeout(autoPlayTimeoutId);
+                    autoPlayTimeoutId = null;
+                }
+            }
+
+            function getPlayCount(qid) { return audioPlayCounts[qid] || 0; }
+
+            function getMaxPlaysForIndex(index) {
+                return (index < FIRST_N_DOUBLE_PLAY) ? MAX_AUDIO_PLAYS_FIRST_N : MAX_AUDIO_PLAYS_DEFAULT;
+            }
+
+            function getMaxPlaysForQid(qid) {
+                const idx = questions.findIndex(q => String(q.id) === String(qid));
+                if (idx === -1) return MAX_AUDIO_PLAYS_DEFAULT;
+                return getMaxPlaysForIndex(idx);
+            }
+
+            function updateAudioPlayCountDisplay(qid) {
+                const maxPlays = getMaxPlaysForQid(qid);
+                const used = getPlayCount(qid);
+                const remaining = Math.max(0, maxPlays - used);
+                const isSingle = (maxPlays === 1);
+
+                const counterEl = document.getElementById('audio-play-count');
+                if (counterEl) {
+                    counterEl.textContent = `🔊 Plays: ${used}/${maxPlays}`;
+                    counterEl.classList.toggle('single', isSingle);
+                    if (remaining === 0) counterEl.classList.add('exhausted');
+                    else counterEl.classList.remove('exhausted');
+                }
+                const btn = document.getElementById('audio-btn');
+                if (btn) {
+                    if (remaining === 0) {
+                        btn.disabled = true;
+                        btn.title = `Audio already played ${maxPlays}/${maxPlays} time${maxPlays > 1 ? 's' : ''}`;
+                    } else {
+                        btn.disabled = false;
+                        btn.title = '';
+                    }
+                }
+                const replayBtn = document.getElementById('audio-replay-btn');
+                if (replayBtn) {
+                    replayBtn.disabled = (remaining === 0);
+                    replayBtn.title = replayBtn.disabled
+                        ? `Audio already played ${maxPlays}/${maxPlays} time${maxPlays > 1 ? 's' : ''}`
+                        : '';
+                }
+            }
+
+            function incrementPlayCount(qid) {
+                audioPlayCounts[qid] = (audioPlayCounts[qid] || 0) + 1;
+                updateAudioPlayCountDisplay(qid);
+            }
+
+            function refundPlayCount(qid) {
+                if (!qid) return;
+                if ((audioPlayCounts[qid] || 0) > 0) {
+                    audioPlayCounts[qid]--;
+                    updateAudioPlayCountDisplay(qid);
+                }
+            }
+
+            function playQuestionAudio(isAuto) {
+                const btn = document.getElementById('audio-btn');
+                if (!btn) return;
+                const q = questions[currentIndex];
+                if (!q) { updateAudioStatus('No question', 'error'); return; }
+                if (!testStarted) { updateAudioStatus('Start test first', 'warning'); return; }
+
+                const qid = q.id;
+                const maxPlays = getMaxPlaysForQid(qid);
+
+                if (isAudioPlaying && currentAudioUrl === q.audio_url) {
+                    audioPlayer.pause();
+                    isAudioPlaying = false;
+                    btn.textContent = '▶';
+                    btn.classList.remove('playing');
+                    updateAudioStatus('Paused', 'warning');
+                    const bar = document.getElementById('audio-progress-bar');
+                    if (bar) bar.style.width = '0%';
+                    const cur = document.getElementById('audio-current-time');
+                    if (cur) cur.textContent = '0:00';
+                    return;
+                }
+
+                const used = getPlayCount(qid);
+                if (used >= maxPlays) {
+                    updateAudioStatus(`Audio played ${maxPlays}/${maxPlays} time${maxPlays > 1 ? 's' : ''}`, 'error');
+                    showToast(
+                        maxPlays === 1
+                            ? '🚫 This question\'s audio can only be played once — play button locked'
+                            : `⚠️ Audio can only be played ${maxPlays} times per question`
+                    );
+                    updateAudioPlayCountDisplay(qid);
+                    return;
+                }
+
+                currentPlayWasAuto = !!isAuto;
+                incrementPlayCount(qid);
+
+                if (q.audio_url) {
+                    playAudioUrl(q.audio_url, btn, qid);
+                } else {
+                    const text = getQuestionText(q);
+                    if (!text) { updateAudioStatus('No text', 'error'); return; }
+                    fallbackToBrowserSpeech(text, qid);
+                }
+            }
+
+            function playAudioUrl(url, btn, qid) {
+                if (isAudioPlaying) { audioPlayer.pause(); isAudioPlaying = false; }
+                audioPlayer.src = url;
+                currentAudioUrl = url;
+                audioPlayer.volume = 1.0;
+                audioPlayer.currentTime = 0;
+                btn.textContent = '⏳';
+                btn.disabled = true;
+                updateAudioStatus('Loading...', 'warning');
+
+                let playbackStarted = false;
+
+                const metadataTimeout = setTimeout(() => {
+                    if (btn.disabled && !playbackStarted) {
+                        btn.disabled = false;
+                        btn.textContent = '▶';
+                        updateAudioStatus('Load timeout', 'error');
+                        refundPlayCount(qid);
+                        updateAudioPlayCountDisplay(qid);
+                    }
+                }, 8000);
+
+                audioPlayer.onloadedmetadata = function() {
+                    clearTimeout(metadataTimeout);
+                    document.getElementById('audio-duration').textContent = formatTime(audioPlayer.duration);
+                    btn.disabled = false;
+                    tryPlay();
+                };
+                audioPlayer.onplay = function() {
+                    clearTimeout(metadataTimeout);
+                    playbackStarted = true;
+                    btn.textContent = '⏸';
+                    btn.classList.add('playing');
+                    isAudioPlaying = true;
+                    updateAudioStatus('Playing', 'playing');
+                };
+                audioPlayer.onpause = function() {
+                    if (!audioPlayer.ended) {
+                        btn.textContent = '▶';
+                        btn.classList.remove('playing');
+                        isAudioPlaying = false;
+                        updateAudioStatus('Paused', 'warning');
+                    }
+                };
+                audioPlayer.onended = function() {
+                    btn.textContent = '▶';
+                    btn.classList.remove('playing');
+                    isAudioPlaying = false;
+                    currentAudioUrl = null;
+                    updateAudioStatus('Finished', 'success');
+                    document.getElementById('audio-progress-bar').style.width = '100%';
+                    document.getElementById('audio-current-time').textContent = document.getElementById('audio-duration').textContent;
+                    const q = questions[currentIndex];
+                    if (q) updateAudioPlayCountDisplay(q.id);
+                };
+                audioPlayer.onerror = function() {
+                    clearTimeout(metadataTimeout);
+                    btn.textContent = '❌';
+                    btn.classList.remove('playing');
+                    btn.disabled = false;
+                    isAudioPlaying = false;
+                    updateAudioStatus('Playback error', 'error');
+                    if (!playbackStarted) refundPlayCount(qid);
+                    updateAudioPlayCountDisplay(qid);
+                };
+                audioPlayer.ontimeupdate = function() {
+                    if (audioPlayer.duration) {
+                        const pct = (audioPlayer.currentTime / audioPlayer.duration) * 100;
+                        document.getElementById('audio-progress-bar').style.width = pct + '%';
+                        document.getElementById('audio-current-time').textContent = formatTime(audioPlayer.currentTime);
+                    }
+                };
+
+                function tryPlay() {
+                    const p = audioPlayer.play();
+                    if (p !== undefined) {
+                        p.catch(function() {
+                            if (!playbackStarted) refundPlayCount(qid);
+                            const q = questions[currentIndex];
+                            const remaining = q ? (getMaxPlaysForQid(q.id) - getPlayCount(q.id)) : 1;
+                            btn.textContent = '▶';
+                            btn.disabled = (remaining <= 0);
+                            updateAudioStatus('Click play', 'warning');
+                            isAudioPlaying = false;
+                            updateAudioPlayCountDisplay(qid);
+                        });
+                    }
+                }
+                if (audioPlayer.readyState >= 1) tryPlay();
+            }
+
+            function fallbackToBrowserSpeech(text, qid) {
+                const btn = document.getElementById('audio-btn');
+                if (!window.speechSynthesis) {
+                    btn.textContent = '❌';
+                    updateAudioStatus('Speech not supported', 'error');
+                    refundPlayCount(qid);
+                    updateAudioPlayCountDisplay(qid);
+                    return;
+                }
+                window.speechSynthesis.cancel();
+                updateAudioStatus('Speaking', 'warning');
+                btn.textContent = '🔊';
+                const utt = new SpeechSynthesisUtterance(text);
+                utt.lang = 'en-US';
+                utt.rate = 0.9;
+                utt.pitch = 1.05;
+                const voices = window.speechSynthesis.getVoices();
+                if (voices.length) {
+                    const pref = voices.find(v => v.lang.startsWith('en')) || voices[0];
+                    if (pref) utt.voice = pref;
+                }
+                const duration = Math.max(3, text.split(/\s+/).length / 2.2);
+                document.getElementById('audio-duration').textContent = formatTime(duration);
+                let progress = 0;
+                const interval = setInterval(() => {
+                    if (!window.speechSynthesis || !window.speechSynthesis.speaking) {
+                        clearInterval(interval);
+                        return;
+                    }
+                    progress += 2;
+                    if (progress > 100) progress = 100;
+                    document.getElementById('audio-progress-bar').style.width = progress + '%';
+                    document.getElementById('audio-current-time').textContent = formatTime((progress / 100) * duration);
+                }, 200);
+                utt.onstart = function() { btn.textContent = '⏸'; btn.classList.add('playing'); };
+                utt.onend = function() {
+                    clearInterval(interval);
+                    btn.textContent = '▶';
+                    btn.classList.remove('playing');
+                    updateAudioStatus('Finished', 'success');
+                    document.getElementById('audio-progress-bar').style.width = '100%';
+                    document.getElementById('audio-current-time').textContent = formatTime(duration);
+                    const q = questions[currentIndex];
+                    if (q) updateAudioPlayCountDisplay(q.id);
+                };
+                utt.onerror = function() {
+                    clearInterval(interval);
+                    btn.textContent = '❌';
+                    updateAudioStatus('Speech error', 'error');
+                    refundPlayCount(qid);
+                    updateAudioPlayCountDisplay(qid);
+                    setTimeout(() => { btn.textContent = '▶'; }, 3000);
+                };
+                window.speechSynthesis.speak(utt);
+            }
+
+            function stopAudio() {
+                if (isAudioPlaying) { audioPlayer.pause(); isAudioPlaying = false; }
+                if (window.speechSynthesis) window.speechSynthesis.cancel();
+                const btn = document.getElementById('audio-btn');
+                if (btn) { btn.textContent = '▶'; btn.classList.remove('playing'); }
+                const q = questions[currentIndex];
+                if (q) updateAudioPlayCountDisplay(q.id);
+                else if (btn) btn.disabled = false;
+                updateAudioStatus('Stopped', 'warning');
+                const bar = document.getElementById('audio-progress-bar');
+                const cur = document.getElementById('audio-current-time');
+                if (bar) bar.style.width = '0%';
+                if (cur) cur.textContent = '0:00';
+                currentAudioUrl = null;
+            }
+
+            function replayAudio() {
+                stopAudio();
+                setTimeout(() => playQuestionAudio(false), 300);
+            }
+
+            function updateAudioStatus(msg, type) {
+                const el = document.getElementById('audio-status');
+                if (!el) return;
+                el.textContent = msg;
+                el.className = 'audio-status-text' + (type ? ' ' + type : '');
+            }
+
+            function getQuestionText(q) {
+                if (!q) return '';
+                const p = q.prompt || {};
+                let text = p.audio_script || p.sentence || p.passage || p.text || p.question || q.text || q.question || q.passage || '';
+                if (typeof text === 'object') text = JSON.stringify(text);
+                return text.replace(/\[BLANK\]/g, '').replace(/_{3,}/g, '').replace(/\s+/g, ' ').trim();
+            }
+
+            function renderQuestion(index) {
+                if (index < 0 || index >= questions.length) return;
+                currentIndex = index;
+                const q = questions[index];
+                const qtype = q.type || 'text';
+                const p = q.prompt || {};
+                const qid = q.id;
+
+                cancelPendingAutoPlay();
+                stopQuestionTimer();
+
+                cn.textContent = index + 1;
+                tq.textContent = questions.length;
+                pb.style.width = ((index + 1) / questions.length * 100) + '%';
+                prevBtn.disabled = (index === 0);
+                nextBtn.style.display = (index < questions.length - 1) ? 'inline-block' : 'none';
+                submitBtn.style.display = (index >= questions.length - 1) ? 'inline-block' : 'none';
+
+                const typeNames = {
+                    'summarize_spoken_text': 'Summarize Spoken Text',
+                    'multiple_choice_multiple': 'Multiple Choice (Multiple)',
+                    'multiple_choice_single': 'Multiple Choice (Single)',
+                    'fill_blanks': 'Fill in the Blanks',
+                    'highlight_correct_summary': 'Highlight Correct Summary',
+                    'write_from_dictation': 'Write from Dictation',
+                    'highlight_incorrect_words': 'Highlight Incorrect Words',
+                    'select_missing_word': 'Select Missing Word'
+                };
+                const typeDisplay = typeNames[qtype] || q.type_name || qtype;
+                const timeLimit = getTimeLimit(q);
+                if (questionTimeRemaining[qid] === undefined) {
+                    questionTimeRemaining[qid] = timeLimit;
+                }
+                const displayTime = questionTimeRemaining[qid];
+
+                const maxPlays = getMaxPlaysForIndex(index);
+                const playsUsed = getPlayCount(qid);
+                const playsLeft = Math.max(0, maxPlays - playsUsed);
+                const playBtnDisabled = playsLeft === 0 ? 'disabled' : '';
+                const isSinglePlay = (maxPlays === 1);
+
+                let html = `<div class="question-card"><div class="q-header"><div class="q-left"><span class="q-number">Q${index+1}</span><span class="q-badge listening">${typeDisplay}</span></div><div class="q-timer" id="question-timer">${formatTime(displayTime)}</div></div>`;
+
+                const hasAudio = q.audio_url && q.audio_url !== '';
+                html += `<div class="audio-player">
+                            <button class="play-btn" id="audio-btn" onclick="window.playQuestionAudio()" ${playBtnDisabled}>▶</button>
+                            <div class="progress-wrap"><div class="bar"><div class="fill" id="audio-progress-bar"></div></div></div>
+                            <span class="time-display"><span id="audio-current-time">0:00</span> / <span id="audio-duration">0:00</span></span>
+                            <span class="status-badge ${hasAudio?'ready':'pending'}">${hasAudio?'🔊 Ready':'⏳ No Audio'}</span>
+                            <span class="audio-play-count ${isSinglePlay ? 'single' : ''} ${playsLeft === 0 ? 'exhausted' : ''}" id="audio-play-count">🔊 Plays: ${playsUsed}/${maxPlays}</span>
+                            <div class="extra-btns">
+                                <button onclick="window.stopAudio()">⏹</button>
+                                <button id="audio-replay-btn" onclick="window.replayAudio()" ${playBtnDisabled}>🔄</button>
+                            </div>
+                        </div>
+                        <div class="audio-status-text" id="audio-status">${hasAudio?'Audio ready':'No audio'}</div>`;
+
+                html += `<div class="q-content">`;
+                const instruction = q.instruction || q.prompt?.instruction || '';
+                if (instruction) html += `<div class="instruction-text">${escapeHtml(instruction)}</div>`;
+                let promptText = '';
+                if (q.prompt) promptText = q.prompt.passage || q.prompt.sentence || q.prompt.text || q.prompt.script || q.prompt.question || '';
+                if (!promptText && q.text) promptText = q.text;
+
+                if (qtype === 'summarize_spoken_text') {
+                    html += `<p style="margin-bottom:8px;color:#475569;font-size:14px;">Write a 50-70 word summary.</p><textarea class="answer-textarea" id="a_${qid}" oninput="window.saveAnswer(${jsonAttr(qid)},this.value)">${escapeHtml(userAnswers[qid]||'')}</textarea>`;
+                    const wc = (userAnswers[qid]||'').trim().split(/\s+/).filter(w=>w.length>0).length;
+                    html += `<div class="word-count">📝 Words: <span class="count" id="wc_${qid}">${wc}</span> <span class="${wc>=50?'ok':'min'}">(min 50)</span></div>`;
+                } else if (qtype === 'write_from_dictation') {
+                    html += `<p style="margin-bottom:8px;color:#475569;font-size:14px;">Type exactly what you hear.</p><input class="answer-input" id="a_${qid}" oninput="window.saveAnswer(${jsonAttr(qid)},this.value)" value="${escapeHtml(userAnswers[qid]||'')}" placeholder="Type the sentence...">`;
+                } else if (qtype === 'fill_blanks') {
+                    const blanks = q.blanks || [];
+                    const options = q.options || [];
+                    const corrects = q.correct || q.correct_answer || [];
+                    let blankCount = blanks.length;
+                    let markerRegex = null;
+                    if (blankCount === 0 && promptText) {
+                        const squareMatches = (promptText.match(/\[BLANK\]/g) || []).length;
+                        const underMatches = (promptText.match(/_{3,}/g) || []).length;
+                        if (squareMatches > 0) { blankCount = squareMatches; markerRegex = /\[BLANK\]/g; }
+                        else if (underMatches > 0) { blankCount = underMatches; markerRegex = /_{3,}/g; }
+                    } else if (promptText && promptText.includes('[BLANK]')) { markerRegex = /\[BLANK\]/g; }
+                    else if (promptText && /_{3,}/.test(promptText)) { markerRegex = /_{3,}/g; }
+
+                    const optsPerBlank = [];
+                    for (let i = 0; i < blankCount; i++) {
+                        if (options && options[i] && Array.isArray(options[i]) && options[i].length > 0) {
+                            optsPerBlank.push(options[i]);
+                        } else {
+                            const correct = (corrects && corrects[i]) || '';
+                            const dists = generateDistractors(correct, 3);
+                            optsPerBlank.push([correct, ...dists].sort(() => 0.5 - Math.random()));
+                        }
+                    }
+                    if (promptText) {
+                        const parts = markerRegex
+                            ? promptText.split(markerRegex)
+                            : promptText.split(/\[BLANK\]|(_{3,})/).filter((s, i) => i % 2 === 0 || s === undefined || /_{3,}/.test(s));
+                        html += `<div class="prompt-text">`;
+                        for (let i = 0; i < parts.length; i++) {
+                            html += escapeHtml(parts[i]);
+                            if (i < parts.length - 1) {
+                                const blankIndex = i;
+                                const selectId = qid + '_' + blankIndex;
+                                const saved = userAnswers[selectId] || '';
+                                const opts = optsPerBlank[blankIndex] || [];
+                                html += `<select class="inline-select ${saved?'has-value':''}" id="a_${selectId}" data-blank-index="${blankIndex}" data-qid="${qid}" onchange="window.saveBlankAnswer(${jsonAttr(selectId)},this.value)">`;
+                                html += `<option value="">-- Select --</option>`;
+                                opts.forEach(opt => {
+                                    html += `<option value="${escapeHtml(opt)}" ${opt===saved?'selected':''}>${escapeHtml(opt)}</option>`;
+                                });
+                                html += `</select>`;
+                            }
+                        }
+                        html += `</div>`;
+                    } else {
+                        html += `<p style="color:#666;">Missing text for fill-in-the-blanks.</p>`;
+                    }
+                } else if (qtype === 'multiple_choice_single' || qtype === 'multiple_choice_multiple') {
+                    let opts = q.options || ['Option A', 'Option B', 'Option C', 'Option D'];
+                    const isMultiple = qtype === 'multiple_choice_multiple';
+                    const questionText = p.question || 'Select the correct answer(s):';
+                    const letters = ['A', 'B', 'C', 'D', 'E', 'F'];
+                    html += `<p style="margin-bottom:8px;">${escapeHtml(questionText)}</p>`;
+                    for (let i = 0; i < opts.length; i++) {
+                        const selected = isMultiple ? (userAnswers[qid]||[]).includes(String(i)) : (userAnswers[qid]||'') === String(i);
+                        html += `<div class="option-item ${selected?'selected':''}" data-qid="${qid}" data-opt="${i}" data-multiple="${isMultiple}" onclick="window.selectOption(this)"><span class="opt-letter">${letters[i]||i}</span>${escapeHtml(opts[i])}</div>`;
+                    }
+                } else if (qtype === 'highlight_correct_summary') {
+                    let summaries = q.summaries || ['Summary A', 'Summary B', 'Summary C', 'Summary D'];
+                    const letters = ['A', 'B', 'C', 'D'];
+                    for (let i = 0; i < summaries.length; i++) {
+                        const selected = (userAnswers[qid]||'') === String(i);
+                        html += `<div class="option-item ${selected?'selected':''}" data-qid="${qid}" data-opt="${i}" data-multiple="false" onclick="window.selectOption(this)"><span class="opt-letter">${letters[i]||i}</span>${escapeHtml(summaries[i])}</div>`;
+                    }
+                } else if (qtype === 'highlight_incorrect_words') {
+                    let text = q.text || p.text || '';
+                    if (!text) text = q.passage || '';
+                    const words = text.split(/\b/).filter(w => w.trim().length > 0);
+                    const selectedWords = userAnswers[qid] || [];
+                    html += `<div style="margin:10px 0;line-height:2.2;font-size:16px;padding:10px;background:#f8fafc;border-radius:10px;"><p style="font-size:13px;color:#475569;margin-bottom:10px;">Click words that are incorrect.</p><div style="display:flex;flex-wrap:wrap;gap:4px;">`;
+                    for (let i = 0; i < words.length; i++) {
+                        const word = words[i];
+                        const isSelected = selectedWords.includes(word);
+                        html += `<span class="word-highlight ${isSelected?'selected':''}" data-word="${escapeHtml(word)}" data-qid="${qid}" onclick="window.toggleIncorrectWord(${jsonAttr(qid)},${jsonAttr(word)},this)" style="cursor:pointer;padding:2px 4px;border-radius:4px;${isSelected?'background:#dc2626;color:white;':''}">${escapeHtml(word)}</span>`;
+                    }
+                    html += `</div><div style="margin-top:10px;font-size:13px;color:#64748b;">Selected: <span id="selected-count-${qid}">${selectedWords.length}</span></div></div>`;
+                } else if (qtype === 'select_missing_word') {
+                    let passage = q.passage || p.passage || '';
+                    const options = q.options || [];
+                    html += `<div style="margin:10px 0;line-height:2;font-size:16px;">${escapeHtml(passage)}</div>`;
+                    if (options.length > 0) {
+                        const letters = ['A', 'B', 'C', 'D'];
+                        for (let i = 0; i < options.length; i++) {
+                            const selected = (userAnswers[qid]||'') === options[i];
+                            html += `<div class="option-item ${selected?'selected':''}" data-qid="${qid}" data-opt="${options[i]}" data-multiple="false" onclick="window.selectOption(this)"><span class="opt-letter">${letters[i]||i}</span>${escapeHtml(options[i])}</div>`;
+                        }
+                    } else {
+                        html += `<input class="answer-input" id="a_${qid}" oninput="window.saveAnswer(${jsonAttr(qid)},this.value)" value="${escapeHtml(userAnswers[qid]||'')}" placeholder="Type the missing word...">`;
+                    }
+                } else {
+                    html += `<p>${escapeHtml(q.text||'')}</p><input class="answer-input" id="a_${qid}" oninput="window.saveAnswer(${jsonAttr(qid)},this.value)" value="${escapeHtml(userAnswers[qid]||'')}" placeholder="Type your answer...">`;
+                }
+                html += `</div></div>`;
+                qc.innerHTML = html;
+                if (q.audio_url) updateAudioStatus('Audio ready','success');
+                else updateAudioStatus('No audio available','warning');
+                const bar = document.getElementById('audio-progress-bar');
+                const cur = document.getElementById('audio-current-time');
+                const dur = document.getElementById('audio-duration');
+                if (bar) bar.style.width = '0%';
+                if (cur) cur.textContent = '0:00';
+                if (dur) dur.textContent = '0:00';
+                if (testStarted) startQuestionTimer();
+                updateProgress();
+
+                if (testStarted && !autoSubmitting && q.audio_url && playsLeft > 0) {
+                    const loadedIndex = index;
+                    autoPlayTimeoutId = setTimeout(() => {
+                        autoPlayTimeoutId = null;
+                        if (autoSubmitting) return;
+                        if (currentIndex !== loadedIndex) return;
+                        if (getPlayCount(qid) >= getMaxPlaysForIndex(loadedIndex)) return;
+                        playQuestionAudio(true);
+                    }, AUTO_PLAY_DELAY_MS);
+                }
+            }
+
+            const distractorPool = [
+                'it', 'the', 'and', 'of', 'to', 'for', 'with', 'on', 'at', 'from', 'by',
+                'in', 'that', 'this', 'these', 'those', 'early', 'late', 'big', 'small',
+                'first', 'last', 'new', 'old', 'good', 'bad', 'high', 'low', 'long', 'short',
+                'right', 'wrong', 'true', 'false', 'real', 'fake', 'main', 'major', 'minor',
+                'large', 'full', 'empty', 'open', 'closed', 'hot', 'cold', 'warm',
+                'cool', 'fast', 'slow', 'easy', 'hard', 'simple', 'complex', 'clear', 'vague',
+                'strong', 'weak', 'heavy', 'light', 'dark', 'bright', 'quiet', 'loud',
+                'rich', 'poor', 'safe', 'dangerous', 'happy', 'sad', 'angry', 'calm'
+            ];
+
+            function generateDistractors(correct, count) {
+                if (!correct) correct = '';
+                const candidates = distractorPool.filter(w => w !== correct);
+                const shuffled = candidates.sort(() => 0.5 - Math.random());
+                return shuffled.slice(0, count);
+            }
+
+            function selectOption(el) {
+                if (autoSubmitting) return;
+                const qid = el.getAttribute('data-qid');
+                const opt = el.getAttribute('data-opt');
+                const multiple = el.getAttribute('data-multiple') === 'true';
+                if (multiple) {
+                    if (!userAnswers[qid]) userAnswers[qid] = [];
+                    const idx = userAnswers[qid].indexOf(opt);
+                    if (idx >= 0) { userAnswers[qid].splice(idx, 1); el.classList.remove('selected'); }
+                    else { userAnswers[qid].push(opt); el.classList.add('selected'); }
+                } else {
+                    const parent = el.parentElement;
+                    parent.querySelectorAll('.option-item').forEach(i => i.classList.remove('selected'));
+                    el.classList.add('selected');
+                    userAnswers[qid] = opt;
+                }
+                updateProgress();
+                autoSaveDraft();
+            }
+
+            function saveAnswer(id, value) {
+                userAnswers[id] = value;
+                const wc = document.getElementById('wc_' + id);
+                if (wc) {
+                    const words = value.trim().split(/\s+/).filter(w => w.length > 0);
+                    wc.textContent = words.length;
+                    wc.style.color = words.length >= 50 ? '#16a34a' : (words.length > 0 ? '#dc2626' : '#64748b');
+                }
+                updateProgress();
+                autoSaveDraft();
+            }
+
+            function saveBlankAnswer(id, value) {
+                userAnswers[id] = value;
+                const el = document.getElementById('a_' + id);
+                if (el) {
+                    if (value && value !== '') el.classList.add('has-value');
+                    else el.classList.remove('has-value');
+                }
+                updateProgress();
+                autoSaveDraft();
+            }
+
+            function toggleIncorrectWord(qid, word, element) {
+                if (autoSubmitting) return;
+                if (!userAnswers[qid]) userAnswers[qid] = [];
+                const idx = userAnswers[qid].indexOf(word);
+                if (idx >= 0) {
+                    userAnswers[qid].splice(idx, 1);
+                    element.style.background = 'transparent';
+                    element.style.color = '#1e293b';
+                    element.classList.remove('selected');
+                } else {
+                    userAnswers[qid].push(word);
+                    element.style.background = '#dc2626';
+                    element.style.color = 'white';
+                    element.classList.add('selected');
+                }
+                const countEl = document.getElementById(`selected-count-${qid}`);
+                if (countEl) countEl.textContent = userAnswers[qid].length;
+                updateProgress();
+                autoSaveDraft();
+            }
+
+            function updateProgress() {
+                let answered = 0;
+                for (let q of questions) {
+                    const qid = q.id;
+                    if (q.type === 'fill_blanks') {
+                        const blanks = (q.prompt || {}).blanks || [];
+                        let count = blanks.length;
+                        if (count === 0 && q.text) {
+                            count = (q.text.match(/\[BLANK\]/g) || []).length || (q.text.match(/_{3,}/g) || []).length;
+                        }
+                        let all = count > 0;
+                        for (let i = 0; i < count; i++) {
+                            const key = qid + '_' + i;
+                            if (!userAnswers[key] || userAnswers[key] === '') { all = false; break; }
+                        }
+                        if (all) answered++;
+                    } else if (q.type === 'multiple_choice_multiple') {
+                        const ans = userAnswers[qid];
+                        if (ans && ans.length > 0) answered++;
+                    } else if (q.type === 'summarize_spoken_text') {
+                        const ans = userAnswers[qid];
+                        if (ans && ans.trim().split(/\s+/).filter(w => w.length > 0).length >= 10) answered++;
+                    } else if (q.type === 'highlight_incorrect_words') {
+                        const ans = userAnswers[qid];
+                        if (ans && ans.length > 0) answered++;
+                    } else {
+                        const ans = userAnswers[qid];
+                        if (ans && ans !== '') answered++;
+                    }
+                }
+                const pct = questions.length > 0 ? Math.round((answered / questions.length) * 100) : 0;
+                pb.style.width = pct + '%';
+            }
+
+            function cancelPendingAutoAdvance() {
+                if (autoAdvanceTimeoutId) {
+                    clearTimeout(autoAdvanceTimeoutId);
+                    autoAdvanceTimeoutId = null;
+                }
+            }
+
+            function nextQ() {
+                if (autoSubmitting) return;
+                cancelPendingAutoAdvance();
+                cancelPendingAutoPlay();
+                stopQuestionTimer();
+                if (currentIndex < questions.length - 1) {
+                    stopAudio();
+                    renderQuestion(currentIndex + 1);
+                }
+            }
+
+            function prevQ() {
+                if (autoSubmitting) return;
+                cancelPendingAutoAdvance();
+                cancelPendingAutoPlay();
+                if (currentIndex > 0) {
+                    stopQuestionTimer();
+                    stopAudio();
+                    renderQuestion(currentIndex - 1);
+                }
+            }
+
+            function jumpToQuestion(idx) {
+                if (autoSubmitting) return;
+                cancelPendingAutoAdvance();
+                cancelPendingAutoPlay();
+                hideReview();
+                if (idx >= 0 && idx < questions.length) {
+                    stopAudio();
+                    renderQuestion(idx);
+                }
+            }
+
+            function startQuestionTimer() {
+                if (questionTimerInterval) { clearInterval(questionTimerInterval); questionTimerInterval = null; }
+                if (graceInterval) { clearInterval(graceInterval); graceInterval = null; }
+                const q = questions[currentIndex];
+                if (!q) return;
+                const qid = q.id;
+                if (questionTimeRemaining[qid] === undefined) questionTimeRemaining[qid] = getTimeLimit(q);
+                let remaining = questionTimeRemaining[qid];
+                updateQuestionTimerDisplay(remaining);
+                let warned10s = false;
+
+                questionTimerInterval = setInterval(() => {
+                    remaining--;
+                    questionTimeRemaining[qid] = remaining;
+                    updateQuestionTimerDisplay(remaining);
+
+                    if (remaining === 10 && !warned10s && !autoSubmitting) {
+                        warned10s = true;
+                        const isLast = (currentIndex >= questions.length - 1);
+                        if (isLast) showToast('⚠️ 10 seconds left on the final question!');
+                        else showToast('⚠️ 10 seconds — advancing to next question');
+                    }
+
+                    if (remaining <= 0) {
+                        clearInterval(questionTimerInterval);
+                        questionTimerInterval = null;
+                        if (AUTO_ADVANCE_ON_TIMEOUT && testStarted && !autoSubmitting) {
+                            handleQuestionTimeout();
+                        }
+                    }
+                }, 1000);
+            }
+
+            function handleQuestionTimeout() {
+                const isLastQuestion = (currentIndex >= questions.length - 1);
+                const expectedIndex = currentIndex;
+
+                if (isLastQuestion) {
+                    showToast(`⏰ Time's up — submitting in ${LAST_QUESTION_GRACE_SECONDS} seconds.`, 3000);
+                    let graceLeft = LAST_QUESTION_GRACE_SECONDS;
+                    graceInterval = setInterval(() => {
+                        graceLeft--;
+                        const timerEl = document.getElementById('question-timer');
+                        if (timerEl) {
+                            timerEl.textContent = `Grace: ${graceLeft}s`;
+                            timerEl.classList.add('warning');
+                        }
+                        if (graceLeft <= 0) {
+                            clearInterval(graceInterval);
+                            graceInterval = null;
+                            autoSubmitTest('Last question grace expired', 'Time\'s Up!', 'Submitting your test automatically...');
+                        }
+                    }, 1000);
+                } else {
+                    showAutoAdvanceNotice();
+                    autoAdvanceTimeoutId = setTimeout(() => {
+                        autoAdvanceTimeoutId = null;
+                        if (autoSubmitting) return;
+                        if (currentIndex !== expectedIndex) return;
+                        nextQ();
+                    }, 600);
+                }
+            }
+
+            function showAutoAdvanceNotice() {
+                const existing = document.getElementById('auto-advance-toast');
+                if (existing) existing.remove();
+                const toast = document.createElement('div');
+                toast.id = 'auto-advance-toast';
+                toast.style.cssText = `
+                    position: fixed; top: 90px; left: 50%;
+                    transform: translateX(-50%); background: #003057;
+                    color: white; padding: 12px 28px; border-radius: 30px;
+                    font-weight: 600; font-size: 14px;
+                    box-shadow: 0 8px 24px rgba(0,48,87,0.4);
+                    z-index: 2500; animation: fadeIn 0.3s ease;
+                `;
+                toast.textContent = `⏰ Time's up — moving to Q${currentIndex + 2}...`;
+                document.body.appendChild(toast);
+                setTimeout(() => {
+                    if (toast.parentNode) toast.parentNode.removeChild(toast);
+                }, 1500);
+            }
+
+            function updateQuestionTimerDisplay(seconds) {
+                const el = document.getElementById('question-timer');
+                if (!el) return;
+                el.textContent = formatTime(seconds);
+                if (seconds <= 10) el.classList.add('warning');
+                else el.classList.remove('warning');
+            }
+
+            function stopQuestionTimer() {
+                if (questionTimerInterval) { clearInterval(questionTimerInterval); questionTimerInterval = null; }
+                if (graceInterval) { clearInterval(graceInterval); graceInterval = null; }
+            }
+
+            function showReview() {
+                if (autoSubmitting) return;
+                if (questions.length === 0) return;
+                cancelPendingAutoAdvance();
+                cancelPendingAutoPlay();
+                stopQuestionTimer();
+                stopAudio();
+                reviewScreen.classList.add('show');
+                testScreen.style.display = 'none';
+                let html = '';
+                questions.forEach((q, idx) => {
+                    const qid = q.id;
+                    let answered = false;
+                    if (q.type === 'fill_blanks') {
+                        const blanks = (q.prompt || {}).blanks || [];
+                        let count = blanks.length;
+                        if (count === 0 && q.text) count = (q.text.match(/\[BLANK\]/g) || []).length || (q.text.match(/_{3,}/g) || []).length;
+                        let all = count > 0;
+                        for (let i = 0; i < count; i++) {
+                            const key = qid + '_' + i;
+                            if (!userAnswers[key] || userAnswers[key] === '') { all = false; break; }
+                        }
+                        answered = all;
+                    } else if (q.type === 'multiple_choice_multiple') {
+                        const ans = userAnswers[qid];
+                        answered = ans && ans.length > 0;
+                    } else if (q.type === 'highlight_incorrect_words') {
+                        const ans = userAnswers[qid];
+                        answered = ans && ans.length > 0;
+                    } else {
+                        const ans = userAnswers[qid];
+                        answered = ans && ans !== '';
+                    }
+                    const status = answered ? 'answered' : 'unanswered';
+                    html += `<div class="review-item ${status}" onclick="window.jumpToQuestion(${idx})"><span><strong>Q${idx+1}</strong> ${escapeHtml(q.type_name||q.type)}</span><span class="status ${status}">${answered?'✅':'⏳'}</span></div>`;
+                });
+                reviewGrid.innerHTML = html;
+            }
+
+            function hideReview() {
+                reviewScreen.classList.remove('show');
+                testScreen.style.display = 'block';
+                if (testStarted && questions.length > 0 && currentIndex < questions.length && !autoSubmitting) {
+                    startQuestionTimer();
+                }
+            }
+
+            function startOverallTimer(initialSeconds) {
+                if (overallTimerInterval) clearInterval(overallTimerInterval);
+                if (typeof initialSeconds === 'number' && initialSeconds > 0) {
+                    timeLeft = initialSeconds;
+                }
+                timerEl.textContent = formatTime(timeLeft);
+                overallTimerInterval = setInterval(() => {
+                    timeLeft--;
+                    timerEl.textContent = formatTime(timeLeft);
+                    if (timeLeft <= 300) timerBox.classList.add('warning');
+                    if (timeLeft <= 0) {
+                        clearInterval(overallTimerInterval);
+                        if (AUTO_SUBMIT_ON_END && !autoSubmitting) {
+                            autoSubmitTest('Overall time expired', 'Time\'s Up!', 'Submitting your test automatically...');
+                        }
+                    }
+                }, 1000);
+            }
+
+            function autoSubmitTest(reason, title, message) {
+                if (autoSubmitting || isSubmitting) return;
+                autoSubmitting = true;
+                cancelPendingAutoAdvance();
+                cancelPendingAutoPlay();
+                stopQuestionTimer();
+                stopAudio();
+                if (overallTimerInterval) clearInterval(overallTimerInterval);
+                if (autoSubmitTitle) autoSubmitTitle.textContent = title || 'Time\'s Up!';
+                if (autoSubmitMessage) autoSubmitMessage.textContent = message || 'Submitting your test automatically. Please wait...';
+                if (autoSubmitOverlay) autoSubmitOverlay.classList.add('active');
+                setTimeout(() => { doAutoSubmit(); }, AUTO_SUBMIT_DELAY_MS);
+            }
+
+            function filterEmptyAnswers(formatted) {
+                const cleaned = {};
+                for (const qid in formatted) {
+                    const v = formatted[qid];
+                    if (typeof v === 'string') {
+                        if (v.trim() !== '') cleaned[qid] = v;
+                    } else if (Array.isArray(v)) {
+                        const filtered = v.filter(x => x && String(x).trim() !== '');
+                        if (filtered.length > 0) cleaned[qid] = v;
+                    } else if (v !== null && v !== undefined) {
+                        cleaned[qid] = v;
+                    }
+                }
+                return cleaned;
+            }
+
+            function buildSubmitPayload(isAuto) {
+                const formatted = {};
+                for (let q of questions) {
+                    const qid = q.id;
+                    if (q.type === 'fill_blanks') {
+                        const blanks = (q.prompt || {}).blanks || [];
+                        let count = blanks.length;
+                        if (count === 0 && q.text) count = (q.text.match(/\[BLANK\]/g) || []).length || (q.text.match(/_{3,}/g) || []).length;
+                        const ans = [];
+                        for (let i = 0; i < count; i++) ans.push(userAnswers[qid + '_' + i] || '');
+                        formatted[qid] = ans;
+                    } else if (q.type === 'multiple_choice_multiple') {
+                        formatted[qid] = userAnswers[qid] || [];
+                    } else if (q.type === 'highlight_incorrect_words') {
+                        formatted[qid] = userAnswers[qid] || [];
+                    } else {
+                        formatted[qid] = userAnswers[qid] || '';
+                    }
+                }
+                const cleanedAnswers = filterEmptyAnswers(formatted);
+
+                const payload = {
+                    test_id: testId,
+                    answers: cleanedAnswers,
+                    user_id: USER_ID,
+                    time_taken: totalExamTime - timeLeft,
+                    session_id: sessionId
+                };
+                if (isAuto) payload.auto_submitted = true;
+
+                console.group('📤 SUBMIT Payload');
+                console.log('test_id:', payload.test_id, '(type:', typeof payload.test_id + ')');
+                console.log('session_id:', payload.session_id);
+                console.log('user_id:', payload.user_id);
+                console.log('answers_count:', Object.keys(payload.answers).length);
+                console.log('time_taken:', payload.time_taken);
+                console.log('auto_submitted:', !!isAuto);
+                console.log('Full payload:', payload);
+                console.groupEnd();
+
+                if (payload.test_id === null || payload.test_id === undefined) {
+                    throw new Error('❌ test_id is missing — cannot submit. Please reload the page.');
+                }
+                if (typeof payload.test_id !== 'number' || !Number.isFinite(payload.test_id)) {
+                    throw new Error('❌ test_id is not a valid number: ' + payload.test_id + ' (' + typeof payload.test_id + ')');
+                }
+
+                return payload;
+            }
+
+            function doAutoSubmit() {
+                let payload;
+                try {
+                    payload = buildSubmitPayload(true);
+                } catch (buildErr) {
+                    if (autoSubmitOverlay) autoSubmitOverlay.classList.remove('active');
+                    autoSubmitting = false;
+                    isSubmitting = false;
+                    alert(buildErr.message);
+                    return;
+                }
+
+                isSubmitting = true;
+
+                fetch('/api/pte/submit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
+                    body: JSON.stringify(payload)
+                })
+                .then(async response => {
+                    const text = await response.text();
+                    let data;
+                    try { data = JSON.parse(text); } catch(e) { throw new Error('Server returned invalid response (HTTP ' + response.status + ')'); }
+                    if (!response.ok) {
+                        const serverErr = data.error || data.message || 'Server error ' + response.status;
+                        const debugInfo = data.debug ? '\n\nDebug info:\n' + JSON.stringify(data.debug, null, 2) : '';
+                        throw new Error(serverErr + debugInfo);
+                    }
+                    if (data.success === false) throw new Error(data.error || 'Submission failed');
+                    return data;
+                })
+                .then(data => {
+                    localStorage.removeItem(DRAFT_KEY);
+                    if (autoSubmitOverlay) autoSubmitOverlay.classList.remove('active');
+                    testScreen.style.display = 'none';
+                    reviewScreen.classList.remove('show');
+                    resultsScreen.style.display = 'block';
+                    renderResults(data, true);
+                })
+                .catch(error => {
+                    console.error('❌ Auto-submit failed:', error);
+                    if (autoSubmitOverlay) autoSubmitOverlay.classList.remove('active');
+                    alert('❌ Error submitting test automatically:\n\n' + error.message);
+                    isSubmitting = false;
+                    autoSubmitting = false;
+                });
+            }
+
+            function renderResults(data, wasAuto) {
+                document.getElementById('overall-score').textContent = data.pte_score || data.score || 0;
+                document.getElementById('pte-score').textContent = data.pte_score || data.score || 0;
+                document.getElementById('ielts-score').textContent = data.ielts_equivalent || 'N/A';
+
+                let detailsHtml = '';
+                if (data.section_scores) {
+                    const sectionMap = {
+                        'summarize_spoken_text': 'Summarize Spoken Text',
+                        'multiple_choice_single': 'Multiple Choice (Single)',
+                        'multiple_choice_multiple': 'Multiple Choice (Multiple)',
+                        'fill_blanks': 'Fill in the Blanks',
+                        'highlight_correct_summary': 'Highlight Correct Summary',
+                        'select_missing_word': 'Select Missing Word',
+                        'highlight_incorrect_words': 'Highlight Incorrect Words',
+                        'write_from_dictation': 'Write from Dictation'
+                    };
+                    for (let key in data.section_scores) {
+                        const value = data.section_scores[key];
+                        let score = 0;
+                        if (typeof value === 'object') score = value.percentage || value.score || value.correct || 0;
+                        else score = value;
+                        score = Number(score);
+                        if (isNaN(score)) score = 0;
+                        if (score <= 1 && score >= 0) score = Math.round(score * 100);
+                        let displayValue = (score >= 0 && score <= 100) ? score + '%' : score;
+                        const displayLabel = sectionMap[key] || key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                        detailsHtml += `<div class="item"><h4>${displayLabel}</h4><div class="val">${displayValue}</div></div>`;
+                    }
+                }
+                if (!detailsHtml) {
+                    const total = data.total || questions.length;
+                    const correct = data.correct || 0;
+                    detailsHtml = `<div class="item"><h4>Correct</h4><div class="val">${correct}/${total}</div></div>`;
+                }
+                document.getElementById('score-details').innerHTML = detailsHtml;
+
+                if (wasAuto) {
+                    const existing = document.getElementById('auto-submit-badge');
+                    if (existing) existing.remove();
+                    const autoNote = document.createElement('div');
+                    autoNote.id = 'auto-submit-badge';
+                    autoNote.style.cssText = 'background:#fef9c3;border:1px solid #facc15;border-radius:10px;padding:10px 16px;font-size:13px;color:#854d0e;margin:16px 0;text-align:left;';
+                    autoNote.innerHTML = '⏰ <strong>Auto-submitted:</strong> Your test was submitted automatically when the timer expired.';
+                    const resultsCard = resultsScreen.querySelector('.results-card');
+                    if (resultsCard) resultsCard.insertBefore(autoNote, resultsCard.children[2]);
+                }
+
+                if (data.feedback) { feedbackBox.textContent = data.feedback; feedbackBox.style.display = 'block'; }
+                else { feedbackBox.style.display = 'none'; }
+                window.detailedResults = data.detailed_results || [];
+                const div = document.getElementById('detailed-answers');
+                if (div) {
+                    div.innerHTML = renderDetailedAnswers();
+                    div.style.display = 'none';
+                }
+            }
+
+            function confirmSubmit() {
+                if (isSubmitting || autoSubmitting) return;
+                cancelPendingAutoAdvance();
+                cancelPendingAutoPlay();
+                stopQuestionTimer();
+                const answered = questions.filter((q) => {
+                    const qid = q.id;
+                    if (q.type === 'fill_blanks') {
+                        const blanks = (q.prompt || {}).blanks || [];
+                        let count = blanks.length;
+                        if (count === 0 && q.text) count = (q.text.match(/\[BLANK\]/g) || []).length || (q.text.match(/_{3,}/g) || []).length;
+                        for (let i = 0; i < count; i++) {
+                            const key = qid + '_' + i;
+                            if (!userAnswers[key] || userAnswers[key] === '') return false;
+                        }
+                        return count > 0;
+                    } else if (q.type === 'multiple_choice_multiple') {
+                        return userAnswers[qid] && userAnswers[qid].length > 0;
+                    } else if (q.type === 'highlight_incorrect_words') {
+                        return userAnswers[qid] && userAnswers[qid].length > 0;
+                    } else {
+                        return userAnswers[qid] && userAnswers[qid] !== '';
+                    }
+                }).length;
+                const total = questions.length;
+                if (answered < total) {
+                    if (!confirm(`⚠️ You have answered ${answered} out of ${total} questions.\n\nAre you sure you want to submit?`)) {
+                        if (testStarted && currentIndex < questions.length && !autoSubmitting) startQuestionTimer();
+                        return;
+                    }
+                } else {
+                    if (!confirm('✅ You have answered all questions. Submit now?')) {
+                        if (testStarted && currentIndex < questions.length && !autoSubmitting) startQuestionTimer();
+                        return;
+                    }
+                }
+                submitTest();
+            }
+
+            function renderDetailedAnswers() {
+                const results = window.detailedResults || [];
+                if (!results || results.length === 0) return '<p style="color:#666;">No detailed results available.</p>';
+                let html = `<h4>📝 Detailed Answers</h4>`;
+                let correctCount = results.filter(r => r.is_correct === true).length;
+                let total = results.length;
+                html += `<p style="margin-bottom:15px;font-size:14px;color:#475569;"><strong>${correctCount}</strong> correct out of <strong>${total}</strong> questions <span style="margin-left:15px;color:${(correctCount/total)>=0.6?'#28a745':'#dc2626'};">(${Math.round((correctCount/total)*100)}%)</span></p>`;
+
+                const typeLabels = {
+                    'summarize_spoken_text': 'Summarize Spoken Text',
+                    'multiple_choice_single': 'Multiple Choice (Single)',
+                    'multiple_choice_multiple': 'Multiple Choice (Multiple)',
+                    'fill_blanks': 'Fill in the Blanks',
+                    'highlight_correct_summary': 'Highlight Correct Summary',
+                    'select_missing_word': 'Select Missing Word',
+                    'highlight_incorrect_words': 'Highlight Incorrect Words',
+                    'write_from_dictation': 'Write from Dictation'
+                };
+
+                questions.forEach((q, idx) => {
+                    const qId = q.id || idx;
+                    const result = results.find(r => String(r.question_id) === String(qId)) || {};
+                    const isCorrect = result.is_correct === true;
+                    let userAns = result.user_answer;
+                    let correctAns = result.correct_answer;
+                    const qText = q.text || q.question || q.passage || 'Question ' + (idx + 1);
+                    const qType = typeLabels[q.type] || q.type_name || q.type || 'Question';
+
+                    function getOptionText(question, value) {
+                        if (!question.options || !Array.isArray(question.options)) return value;
+                        if (typeof value === 'string' && /^\d+$/.test(value)) {
+                            const idx2 = parseInt(value, 10);
+                            if (idx2 >= 0 && idx2 < question.options.length) return question.options[idx2];
+                        }
+                        if (typeof value === 'string' && question.options.includes(value)) return value;
+                        if (Array.isArray(value)) {
+                            return value.map(v => {
+                                const idx2 = parseInt(v, 10);
+                                return (idx2 >= 0 && idx2 < question.options.length) ? question.options[idx2] : v;
+                            }).join(', ');
+                        }
+                        return value;
+                    }
+
+                    let userDisplay, correctDisplay;
+                    if (q.type === 'multiple_choice_single' || q.type === 'multiple_choice_multiple' ||
+                        q.type === 'highlight_correct_summary' || q.type === 'select_missing_word') {
+                        userDisplay = getOptionText(q, userAns);
+                        correctDisplay = getOptionText(q, correctAns);
+                    } else if (q.type === 'fill_blanks' || q.type === 'highlight_incorrect_words') {
+                        userDisplay = Array.isArray(userAns) ? userAns.map(w => `<span class="user-ans">${escapeHtml(w)}</span>`).join(', ') : escapeHtml(String(userAns || 'Not provided'));
+                        correctDisplay = Array.isArray(correctAns) ? correctAns.map(w => `<span class="correct-ans">${escapeHtml(w)}</span>`).join(', ') : escapeHtml(String(correctAns || 'Not provided'));
+                    } else {
+                        userDisplay = escapeHtml(String(userAns || 'Not provided'));
+                        correctDisplay = escapeHtml(String(correctAns || 'Not provided'));
+                    }
+
+                    const isCorrectDisplay = isCorrect === true;
+                    const statusClass = isCorrectDisplay ? 'correct' : 'incorrect';
+                    const statusText = isCorrectDisplay ? '✅ Correct' : '❌ Incorrect';
+                    const statusColor = isCorrectDisplay ? '#28a745' : '#dc2626';
+
+                    html += `<div class="answer-comparison ${statusClass}">
+                        <p><strong>Q${idx+1} (${qType}):</strong> ${escapeHtml(qText)}</p>
+                        <p><span class="user-ans">Your answer:</span> ${userDisplay}</p>
+                        <p><span class="correct-ans">Correct answer:</span> ${correctDisplay}</p>
+                        <p><strong style="color:${statusColor};">${statusText}</strong></p>
+                    </div>`;
+                });
+                return html;
+            }
+
+            function toggleAnswers() {
+                const div = document.getElementById('detailed-answers');
+                if (!div) return;
+                if (div.style.display === 'none') {
+                    div.style.display = 'block';
+                    div.innerHTML = renderDetailedAnswers();
+                    const btn = document.querySelector('.detail-toggle-btn');
+                    if (btn) btn.textContent = '🙈 Hide Detailed Answers';
+                } else {
+                    div.style.display = 'none';
+                    const btn = document.querySelector('.detail-toggle-btn');
+                    if (btn) btn.textContent = '📝 Show Detailed Answers';
+                }
+            }
+
+            function submitTest() {
+                if (isSubmitting) return;
+                isSubmitting = true;
+                clearInterval(overallTimerInterval);
+                cancelPendingAutoPlay();
+                stopQuestionTimer();
+                stopAudio();
+
+                let payload;
+                try {
+                    payload = buildSubmitPayload(false);
+                } catch (buildErr) {
+                    isSubmitting = false;
+                    alert(buildErr.message);
+                    return;
+                }
+
+                fetch('/api/pte/submit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
+                    body: JSON.stringify(payload)
+                })
+                .then(async response => {
+                    const text = await response.text();
+                    let data;
+                    try { data = JSON.parse(text); } catch(e) { throw new Error('Server returned invalid response (HTTP ' + response.status + ')'); }
+                    if (!response.ok) {
+                        const serverErr = data.error || data.message || 'Server error ' + response.status;
+                        const debugInfo = data.debug ? '\n\nDebug info:\n' + JSON.stringify(data.debug, null, 2) : '';
+                        throw new Error(serverErr + debugInfo);
+                    }
+                    if (data.success === false) throw new Error(data.error || 'Submission failed');
+                    return data;
+                })
+                .then(data => {
+                    localStorage.removeItem(DRAFT_KEY);
+                    testScreen.style.display = 'none';
+                    reviewScreen.classList.remove('show');
+                    resultsScreen.style.display = 'block';
+                    renderResults(data, false);
+                })
+                .catch(error => {
+                    console.error('❌ Submit failed:', error);
+                    alert('❌ Error submitting test:\n\n' + error.message);
+                    isSubmitting = false;
+                });
+            }
+
+            // ═══════════════════════════════════════════════════════════════
+            // ✅ FIX #1: autoSaveDraft() — includes user_id + timestamp
+            // ═══════════════════════════════════════════════════════════════
+            function autoSaveDraft() {
+                try {
+                    localStorage.setItem(DRAFT_KEY, JSON.stringify({
+                        user_id: USER_ID,
+                        answers: userAnswers,
+                        testId: testId,
+                        sessionId: sessionId,
+                        audioPlayCounts,
+                        timestamp: Date.now()
+                    }));
+                } catch(e) {}
+            }
+
+            // ═══════════════════════════════════════════════════════════════
+            // ✅ FIX #2: restoreDraft() — strict user check, NEVER restore
+            //    testId/sessionId
+            // ═══════════════════════════════════════════════════════════════
+            function restoreDraft() {
+                try {
+                    const raw = localStorage.getItem(DRAFT_KEY);
+                    if (!raw) return;
+                    const data = JSON.parse(raw);
+
+                    if (data.timestamp && Date.now() - data.timestamp > DRAFT_EXPIRY_MS) {
+                        console.warn('🗑️ Discarding expired draft');
+                        localStorage.removeItem(DRAFT_KEY);
+                        return;
+                    }
+
+                    // ✅ STRICT: reject if no user_id (legacy) OR different user
+                    if (data.user_id === undefined) {
+                        console.warn('🗑️ Discarding legacy draft (no owner)');
+                        localStorage.removeItem(DRAFT_KEY);
+                        return;
+                    }
+                    if (data.user_id !== USER_ID) {
+                        console.warn('🗑️ Discarding draft from different user:', data.user_id, '→', USER_ID);
+                        localStorage.removeItem(DRAFT_KEY);
+                        return;
+                    }
+
+                    // ✅ Only restore safe fields — NEVER testId/sessionId
+                    if (data.answers) Object.assign(userAnswers, data.answers);
+                    if (data.audioPlayCounts) Object.assign(audioPlayCounts, data.audioPlayCounts);
+
+                    console.log('📥 Draft restored (owner=' + data.user_id + ')');
+                } catch(e) {
+                    console.warn('Draft restore error:', e);
+                }
+            }
+
+            // ═══════════════════════════════════════════════════════════════
+            // ✅ FIX #3: cleanupStaleDraft() — called on page load.
+            //    Removes any draft that belongs to a different user BEFORE
+            //    the test even starts. Prevents cross-user contamination.
+            // ═══════════════════════════════════════════════════════════════
+            function cleanupStaleDraft() {
+                try {
+                    const raw = localStorage.getItem(DRAFT_KEY);
+                    if (!raw) return;
+                    const data = JSON.parse(raw);
+                    const isLegacy = data.user_id === undefined;
+                    const isOtherUser = data.user_id !== undefined && data.user_id !== USER_ID;
+                    if (isLegacy || isOtherUser) {
+                        console.warn('🗑️ Startup: Removing stale draft (owner=' + data.user_id + ', current=' + USER_ID + ')');
+                        localStorage.removeItem(DRAFT_KEY);
+                    }
+                } catch (e) {
+                    // Corrupted JSON — remove
+                    try { localStorage.removeItem(DRAFT_KEY); } catch(_) {}
+                }
+            }
+
+            function clearDraft() {
+                try { localStorage.removeItem(DRAFT_KEY); } catch(e) {}
+            }
+
+            function startNewTest() {
+                try { localStorage.removeItem(DRAFT_KEY); } catch(e) {}
+                window.location.href = '/pte/listening?new=true';
+            }
+
+            function renderResumeData(data) {
+                const testData = data.test_data || {};
+                if (testData.questions) questions = testData.questions.map(q => transformQuestion(q));
+                else { return startNewTest(); }
+
+                const resumedTestId = testData.test_id ?? data.test_id ?? null;
+                if (typeof resumedTestId !== 'number' || !Number.isFinite(resumedTestId)) {
+                    console.error('❌ Resume: invalid test_id', {
+                        test_data_test_id: testData.test_id,
+                        data_test_id: data.test_id,
+                        session_id: data.session_id
+                    });
+                    if (typeof data.session_id === 'number') {
+                        testId = data.session_id;
+                    } else {
+                        return startNewTest();
+                    }
+                } else {
+                    testId = resumedTestId;
+                }
+                sessionId = data.session_id ?? null;
+
+                if (data.answers_so_far) Object.assign(userAnswers, data.answers_so_far);
+                restoreDraft();
+
+                if (typeof data.time_remaining_seconds === 'number' && data.time_remaining_seconds > 0) {
+                    timeLeft = data.time_remaining_seconds;
+                    totalExamTime = calculateTotalExamTime();
+                } else if (typeof data.time_left === 'number' && data.time_left > 0) {
+                    timeLeft = data.time_left;
+                    totalExamTime = calculateTotalExamTime();
+                } else {
+                    totalExamTime = calculateTotalExamTime();
+                    timeLeft = totalExamTime;
+                }
+
+                tq.textContent = questions.length;
+                for (let q of questions) {
+                    const qid = q.id;
+                    if (!userAnswers[qid]) {
+                        if (q.type === 'multiple_choice_multiple') userAnswers[qid] = [];
+                        else if (q.type === 'highlight_incorrect_words') userAnswers[qid] = [];
+                        else userAnswers[qid] = '';
+                    }
+                    questionTimeRemaining[qid] = getTimeLimit(q);
+                }
+                currentIndex = data.current_question_index || 0;
+                if (currentIndex >= questions.length) currentIndex = questions.length - 1;
+
+                startTotal.textContent = questions.length;
+                startDuration.textContent = formatDuration(totalExamTime);
+                timerEl.textContent = formatTime(timeLeft);
+                startOverlay.classList.add('show');
+                testLoaded = true;
+                renderQuestion(currentIndex);
+                stopQuestionTimer();
+                cancelPendingAutoPlay();
+                if (overallTimerInterval) { clearInterval(overallTimerInterval); overallTimerInterval = null; }
+
+                console.log('✅ Resume complete — test_id:', testId, '(type:', typeof testId + ')');
+            }
+
+            function loadResumeTest(resumeId) {
+                qc.innerHTML = '<div class="loading-container"><div class="spinner"></div><p>🔄 Restoring test...</p></div>';
+                fetch('/api/pte/status/' + resumeId, { headers: { 'X-CSRF-Token': getCsrfToken() } })
+                .then(r => {
+                    if (r.status === 402) {
+                        return r.json().then(data => {
+                            alert('⚠️ ' + (data.error || 'Subscription required.'));
+                            window.location.href = data.redirect_to || '/subscription?module=pte';
+                            throw new Error('Subscription required');
+                        });
+                    }
+                    if (!r.ok) throw new Error('Server error ' + r.status);
+                    return r.json();
+                })
+                .then(data => {
+                    if (data.success && data.test_data && data.test_data.questions) {
+                        renderResumeData(data);
+                    } else if (data.success && data.status === 'completed') {
+                        generateFreshTest(0);
+                    } else {
+                        generateFreshTest(0);
+                    }
+                })
+                .catch(err => {
+                    if (err.message === 'Subscription required') return;
+                    generateFreshTest(0);
+                });
+            }
+
+            function startTest() {
+                if (testStarted) return;
+                if (!testLoaded || questions.length === 0) return;
+                testStarted = true;
+
+                if (!totalExamTime || totalExamTime <= 0) {
+                    totalExamTime = calculateTotalExamTime();
+                    timeLeft = totalExamTime;
+                }
+
+                startOverlay.classList.remove('show');
+                testScreen.style.display = 'block';
+                navButtons.style.display = 'flex';
+
+                renderQuestion(currentIndex);
+                startOverallTimer(timeLeft);
+                startQuestionTimer();
+                updateProgress();
+            }
+
+            async function loadSubscriptionStatus() {
+                const container = document.getElementById('pte-subscription-status');
+                if (!container) return;
+                try {
+                    const res = await fetch('/api/pte/subscription/status', {
+                        headers: { 'X-CSRF-Token': getCsrfToken() }
+                    });
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                    const data = await res.json();
+
+                    if (data.has_subscription) {
+                        container.innerHTML = `
+                            <span class="status-text">
+                                ✅ Active PTE Plan: <strong>${escapeHtml(data.plan || 'Premium')}</strong>
+                                <span class="badge-active">Active</span><br>
+                                <span style="font-size:13px;color:#155724;">${data.tests_remaining || 'Unlimited'} tests remaining · expires in ${data.days_remaining || '∞'} days</span>
+                            </span>
+                        `;
+                        return;
+                    }
+
+                    const modules = [
+                        { key: 'pte_listening', label: 'Listening' },
+                        { key: 'pte_reading', label: 'Reading' },
+                        { key: 'pte_speaking_writing', label: 'Speaking & Writing' }
+                    ];
+
+                    let breakdownHtml = `<span class="badge-free">⚡ Free</span>`;
+                    breakdownHtml += `<div class="module-breakdown">`;
+                    modules.forEach(mod => {
+                        const m = data[mod.key] || { free_used: 0, free_limit: 2 };
+                        const used = m.free_used || 0;
+                        const limit = m.free_limit || 2;
+                        const remaining = Math.max(0, limit - used);
+                        breakdownHtml += `
+                            <span class="mod-item">
+                                <span class="mod-label">${mod.label}:</span>
+                                <span class="mod-count">${remaining}</span>
+                                <span class="mod-limit">of ${limit}</span>
+                            </span>
+                        `;
+                    });
+                    breakdownHtml += `</div>`;
+
+                    container.innerHTML = `
+                        <span class="status-text">${breakdownHtml}</span>
+                        <button class="btn-subscribe" onclick="initiatePTEPayment()">🚀 Subscribe Now</button>
+                    `;
+                } catch(e) {
+                    container.innerHTML = `<span class="status-text" style="color:#dc2626;">❌ Failed to load subscription status. Please refresh.</span>`;
+                }
+            }
+
+            async function initiatePTEPayment() {
+                window.location.href = '/subscription?module=pte';
+            }
+
+            async function initTest() {
+                qc.style.display = '';
+                errorBox.style.display = 'none';
+                qc.innerHTML = '<div class="loading-container"><div class="spinner"></div><p>Checking for saved test...</p></div>';
+                testScreen.style.display = 'block';
+                startOverlay.classList.remove('show');
+                navButtons.style.display = 'none';
+
+                if (RESUME_ID && !retake && !forceNew) {
+                    loadResumeTest(RESUME_ID);
+                    return;
+                }
+
+                if (forceNew || retake) {
+                    generateFreshTest(0);
+                    return;
+                }
+
+                let checkSucceeded = false;
+                let activeSessionId = null;
+
+                try {
+                    const res = await fetch('/api/pte/listening/active-session', {
+                        headers: { 'X-CSRF-Token': getCsrfToken() }
+                    });
+                    checkSucceeded = res.ok;
+
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data.success && data.active && data.session_id) {
+                            activeSessionId = data.session_id;
+                        }
+                    }
+                } catch (e) {
+                    checkSucceeded = false;
+                }
+
+                if (activeSessionId) {
+                    loadResumeTest(activeSessionId);
+                    return;
+                }
+
+                if (!checkSucceeded) {
+                    qc.innerHTML = `
+                        <div class="loading-container">
+                            <p style="font-size:16px;color:#b91c1c;margin-bottom:14px;">⚠️ Could not verify saved test.</p>
+                            <p style="font-size:14px;color:#475569;margin-bottom:20px;">Please check your connection and try again.</p>
+                            <button class="btn btn-primary" onclick="window.initTest()">🔄 Retry</button>
+                        </div>`;
+                    return;
+                }
+
+                generateFreshTest(0);
+            }
+
+            function generateFreshTest(attempt) {
+                attempt = attempt || 0;
+
+                if (attempt === 0) {
+                    genStartTime = Date.now();
+                }
+
+                if (attempt > 0) {
+                    showGeneratingMessage(attempt);
+                } else {
+                    qc.style.display = '';
+                    errorBox.style.display = 'none';
+                    qc.innerHTML = '<div class="loading-container"><div class="spinner"></div><p>⏳ Generating your PTE Listening test...</p></div>';
+                    testScreen.style.display = 'block';
+                    startOverlay.classList.remove('show');
+                    navButtons.style.display = 'none';
+                }
+
+                audioPlayCounts = {};
+
+                const body = {
+                    difficulty: 'medium',
+                    user_id: USER_ID,
+                    generate_audio: true,
+                    retake: retake,
+                    force_new: true
+                };
+
+                fetch('/api/pte/listening/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
+                    body: JSON.stringify(body)
+                })
+                .then(async r => {
+                    if (r.status === 202) {
+                        const d = await r.json().catch(() => ({}));
+                        throw Object.assign(new Error(d.message || 'Another user is generating'), {
+                            isWaiting: true,
+                            retryAfter: d.retry_after || 3
+                        });
+                    }
+                    if (r.status === 402) {
+                        const d = await r.json().catch(() => ({}));
+                        throw Object.assign(new Error(d.error || 'Subscription required'), {
+                            isSub: true,
+                            data: d
+                        });
+                    }
+                    if (r.status === 503) {
+                        const d = await r.json().catch(() => ({}));
+                        throw Object.assign(new Error(d.error || 'Test pool is full'), {
+                            isExhausted: true
+                        });
+                    }
+                    const raw = await r.text();
+                    if (!r.ok) {
+                        let errorMsg = 'Server error ' + r.status;
+                        try { const data = JSON.parse(raw); errorMsg = data.error || errorMsg; } catch(e) {}
+                        throw new Error(errorMsg);
+                    }
+                    try { return JSON.parse(raw); } catch(e) { throw new Error('Invalid JSON response'); }
+                })
+                .then(data => {
+                    console.log('✅ Listening loaded — source=' + (data.source || 'unknown') +
+                                ', test_id=' + data.test_id +
+                                ', pool_id=' + (data.pool_id || 'n/a') +
+                                ', attempts=' + attempt);
+
+                    let extracted = [];
+                    if (data.questions && Array.isArray(data.questions)) {
+                        extracted = data.questions;
+                    } else if (data.sections && Array.isArray(data.sections)) {
+                        data.sections.forEach(s => {
+                            if (s.questions && Array.isArray(s.questions)) extracted.push(...s.questions);
+                        });
+                    } else if (data.test_data) {
+                        const td = data.test_data;
+                        if (td.questions && Array.isArray(td.questions)) extracted = td.questions;
+                        else if (td.sections) { td.sections.forEach(s => { if (s.questions) extracted.push(...s.questions); }); }
+                    }
+
+                    if (extracted.length === 0 && Array.isArray(data)) extracted = data;
+                    if (extracted.length === 0) throw new Error('No questions could be extracted from the response.');
+
+                    questions = extracted.map(q => transformQuestion(q));
+
+                    testId = data.test_id ?? null;
+                    sessionId = data.session_id ?? null;
+
+                    if (testId === null || testId === undefined) {
+                        console.error('❌ MISSING test_id in /generate response:', {
+                            received_test_id: data.test_id,
+                            received_session_id: data.session_id,
+                            full_response_keys: Object.keys(data)
+                        });
+                        throw new Error('Server did not return test_id. Please retry.');
+                    }
+                    if (typeof testId !== 'number' || !Number.isFinite(testId)) {
+                        console.error('❌ INVALID test_id type:', {
+                            test_id: data.test_id,
+                            type: typeof data.test_id,
+                            session_id: data.session_id
+                        });
+                        throw new Error('Server returned invalid test_id (expected number, got ' + typeof testId + '). Please retry.');
+                    }
+
+                    testLoaded = true;
+
+                    if (data.audio_urls) {
+                        const audioUrls = typeof data.audio_urls === 'string' ? JSON.parse(data.audio_urls) : data.audio_urls;
+                        questions.forEach((q, idx) => {
+                            const key = String(idx + 1);
+                            if (audioUrls[key]) q.audio_url = audioUrls[key];
+                        });
+                    }
+
+                    tq.textContent = questions.length;
+                    for (let q of questions) {
+                        const qid = q.id;
+                        if (!userAnswers[qid]) {
+                            if (q.type === 'multiple_choice_multiple') userAnswers[qid] = [];
+                            else if (q.type === 'highlight_incorrect_words') userAnswers[qid] = [];
+                            else userAnswers[qid] = '';
+                        }
+                        questionTimeRemaining[qid] = getTimeLimit(q);
+                    }
+                    currentIndex = 0;
+                    renderQuestion(0);
+                    stopQuestionTimer();
+                    cancelPendingAutoPlay();
+                    if (overallTimerInterval) { clearInterval(overallTimerInterval); overallTimerInterval = null; }
+
+                    totalExamTime = calculateTotalExamTime();
+                    timeLeft = totalExamTime;
+
+                    startTotal.textContent = questions.length;
+                    startDuration.textContent = formatDuration(totalExamTime);
+                    timerEl.textContent = formatTime(totalExamTime);
+                    startOverlay.classList.add('show');
+                    testScreen.style.display = 'block';
+                    navButtons.style.display = 'none';
+
+                    genStartTime = null;
+
+                    console.log('✅ Test ready — testId:', testId, '(type:', typeof testId + ')');
+                })
+                .catch(err => {
+                    if (err.isWaiting && attempt < MAX_GEN_ATTEMPTS) {
+                        const delay = computeRetryDelay(attempt, err.retryAfter);
+                        console.log('⏳ Attempt ' + (attempt + 1) + '/' + MAX_GEN_ATTEMPTS +
+                                    ' — retry in ' + Math.round(delay / 1000) + 's');
+                        setTimeout(() => generateFreshTest(attempt + 1), delay);
+                        return;
+                    }
+                    if (err.isSub) {
+                        const d = err.data || {};
+                        alert('⚠️ ' + (d.error || 'Subscription required.'));
+                        window.location.href = d.redirect_to || '/subscription?module=pte';
+                        return;
+                    }
+                    if (err.isExhausted) {
+                        qc.style.display = 'none';
+                        errorBox.style.display = 'block';
+                        errorMsg.textContent = 'Test pool is currently full. Please try again in a few minutes.';
+                        errorDetail.textContent = '';
+                        return;
+                    }
+                    if (err.isWaiting) {
+                        qc.style.display = 'none';
+                        errorBox.style.display = 'block';
+                        errorMsg.textContent = 'Still waiting for generation. Please refresh the page in a moment.';
+                        errorDetail.textContent = '';
+                        return;
+                    }
+                    qc.style.display = 'none';
+                    errorBox.style.display = 'block';
+                    errorMsg.textContent = 'Failed to load test: ' + err.message;
+                    errorDetail.textContent = 'Check the Debug Info below for more details.';
+                });
+            }
+
+            document.addEventListener('keydown', function(e) {
+                if (autoSubmitting) return;
+                if (e.target.matches('input, textarea, select')) return;
+                if (!testStarted && e.key !== 'Enter') return;
+                if (e.key === 'Enter' && !testStarted && startOverlay.classList.contains('show')) { startTest(); return; }
+                if (e.key === ' ') { e.preventDefault(); playQuestionAudio(false); }
+                else if (e.key === 'ArrowRight') { e.preventDefault(); nextQ(); }
+                else if (e.key === 'ArrowLeft') { e.preventDefault(); prevQ(); }
+                else if (e.key === 'Escape') stopAudio();
+                else if (e.key === 'r' || e.key === 'R') showReview();
+            });
+
+            window.addEventListener('beforeunload', function() {
+                if (overallTimerInterval) clearInterval(overallTimerInterval);
+                cancelPendingAutoAdvance();
+                cancelPendingAutoPlay();
+                stopQuestionTimer();
+                stopAudio();
+                autoSaveDraft();
+            });
+
+            window.playQuestionAudio = playQuestionAudio;
+            window.stopAudio = stopAudio;
+            window.replayAudio = replayAudio;
+            window.selectOption = selectOption;
+            window.saveAnswer = saveAnswer;
+            window.saveBlankAnswer = saveBlankAnswer;
+            window.showReview = showReview;
+            window.hideReview = hideReview;
+            window.jumpToQuestion = jumpToQuestion;
+            window.confirmSubmit = confirmSubmit;
+            window.submitTest = submitTest;
+            window.startNewTest = startNewTest;
+            window.toggleDebug = toggleDebug;
+            window.startTest = startTest;
+            window.nextQ = nextQ;
+            window.prevQ = prevQ;
+            window.initiatePTEPayment = initiatePTEPayment;
+            window.toggleIncorrectWord = toggleIncorrectWord;
+            window.toggleAnswers = toggleAnswers;
+            window.initTest = initTest;
+            window.showToast = showToast;
+            window.calculateTotalExamTime = calculateTotalExamTime;
+            window.getMaxPlaysForIndex = getMaxPlaysForIndex;
+            window.getMaxPlaysForQid = getMaxPlaysForQid;
+
+            if (window.speechSynthesis) window.speechSynthesis.getVoices();
+            if (startBtn) startBtn.addEventListener('click', startTest);
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && startOverlay.classList.contains('show') && !testStarted) startTest();
+            });
+
+            // ═══════════════════════════════════════════════════════════
+            // ✅ FIX #3: Run cleanup on load — BEFORE anything else
+            // ═══════════════════════════════════════════════════════════
+            cleanupStaleDraft();
+
+            loadSubscriptionStatus();
+            initTest();
+        });
+    </script>
+</body>
+</html>

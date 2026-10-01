@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <title>PTE Admin</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #f0f2f5;
+            margin: 0;
+            padding: 20px;
+        }
+        .admin-header {
+            background: #1a2b4a;
+            color: white;
+            padding: 14px 24px;
+            border-radius: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .admin-header a { color: #ddd; text-decoration: none; }
+        .admin-header a:hover { color: white; }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+            text-align: center;
+            border-left: 4px solid #f5576c;
+        }
+        .stat-card.green { border-left-color: #10b981; }
+        .stat-card.blue { border-left-color: #007bff; }
+        .stat-card.purple { border-left-color: #6c63ff; }
+        .stat-card.orange { border-left-color: #f59e0b; }
+        .stat-card .number {
+            font-size: 32px;
+            font-weight: 700;
+            color: #1a2b4a;
+        }
+        .stat-card .label {
+            color: #6c757d;
+            font-size: 14px;
+        }
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px 24px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+            margin-bottom: 20px;
+        }
+        .card h3 {
+            margin-top: 0;
+            color: #1a2b4a;
+            border-bottom: 2px solid #eef2f7;
+            padding-bottom: 10px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th {
+            background: #f8f9fc;
+            color: #1a2b4a;
+            font-weight: 600;
+            padding: 10px 12px;
+            text-align: left;
+            border-bottom: 2px solid #eef2f7;
+        }
+        td {
+            padding: 8px 12px;
+            border-bottom: 1px solid #eef2f7;
+        }
+        .btn-gen {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        .btn-gen:hover:not(:disabled) { background: #0056b3; }
+        .btn-gen:disabled { opacity: 0.6; cursor: not-allowed; }
+        .btn-danger {
+            background: #dc2626;
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        .btn-danger:hover { background: #b91c1c; }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 15px;
+            color: #667eea;
+            text-decoration: none;
+        }
+        .back-link:hover { text-decoration: underline; }
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #6c757d;
+        }
+        .form-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .form-row select,
+        .form-row input[type="number"] {
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 1px solid #d0d7e2;
+            font-size: 14px;
+        }
+        .form-row input[type="number"] { width: 80px; }
+        .form-row label {
+            font-size: 13px;
+            color: #475569;
+            font-weight: 600;
+            margin-right: 4px;
+        }
+        .badge {
+            display: inline-block;
+            padding: 3px 12px;
+            border-radius: 30px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        .badge-running { background: #dbeafe; color: #1e40af; }
+        .badge-done { background: #dcfce7; color: #166534; }
+        .badge-failed { background: #fee2e2; color: #991b1b; }
+        .badge-atcap { background: #fef3c7; color: #92400e; }
+        .badge-atmax { background: #fee2e2; color: #991b1b; }
+        .badge-ok { background: #d1fae5; color: #065f46; }
+
+        #active-job-panel {
+            display: none;
+            background: #f8fafc;
+            border-left: 4px solid #007bff;
+            border-radius: 10px;
+            padding: 16px 20px;
+            margin-top: 16px;
+        }
+        #active-job-panel.visible { display: block; }
+        #active-job-panel .job-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        #active-job-panel .job-id {
+            font-family: monospace;
+            font-size: 13px;
+            color: #64748b;
+        }
+        .progress-track {
+            background: #e2e8f0;
+            height: 8px;
+            border-radius: 6px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+        .progress-track .fill {
+            height: 100%;
+            background: linear-gradient(90deg, #007bff, #10b981);
+            width: 0%;
+            transition: width 0.4s ease;
+        }
+        .progress-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            color: #475569;
+            margin-bottom: 8px;
+        }
+        .progress-meta strong { color: #1a2b4a; }
+        .job-errors {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-size: 13px;
+            color: #991b1b;
+            margin-top: 8px;
+            max-height: 150px;
+            overflow-y: auto;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .jobs-table td {
+            font-size: 13px;
+        }
+        .jobs-table .mono {
+            font-family: monospace;
+            font-size: 12px;
+            color: #64748b;
+        }
+        .jobs-table .empty {
+            text-align: center;
+            color: #94a3b8;
+            padding: 24px;
+        }
+        .cap-input {
+            width: 90px;
+            padding: 6px 10px;
+            border: 1px solid #d0d7e2;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+        .info-note {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-size: 13px;
+            color: #1e40af;
+            margin-bottom: 12px;
+        }
+
+        @media (max-width: 768px) {
+            .form-row { flex-direction: column; align-items: stretch; }
+            .form-row select, .form-row input, .form-row button { width: 100%; }
+            .stat-card .number { font-size: 26px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-header">
+        <span>📘 PTE Admin Dashboard</span>
+        <a href="{{ url_for('admin_dashboard') }}">← Back to Dashboard</a>
+    </div>
+
+    <a href="{{ url_for('admin_dashboard') }}" class="back-link">← Back to Dashboard</a>
+
+    <!-- ═══ STATS ═══ -->
+    <div class="stats-grid">
+        <div class="stat-card green">
+            <div class="number" id="stat-active-subs">{{ active_subscribers }}</div>
+            <div class="label">Active PTE Subscribers</div>
+        </div>
+        <div class="stat-card blue">
+            <div class="number" id="stat-pool-total">{{ bank_stats.total if bank_stats and bank_stats.total else 0 }}</div>
+            <div class="label">Tests in Pool</div>
+        </div>
+        <div class="stat-card purple">
+            <div class="number">रु {{ total_revenue|int }}</div>
+            <div class="label">Total Revenue</div>
+        </div>
+        <div class="stat-card orange">
+            <div class="number" id="stat-jobs-today">0</div>
+            <div class="label">Jobs Today</div>
+        </div>
+    </div>
+
+    <!-- ═══ POOL STATUS ═══ -->
+    <div class="card">
+        <h3>📊 PTE Pool Status (Dynamic Growth)</h3>
+        <div class="info-note">
+            💡 Pool starts at <strong>initial</strong> cap. When a user exhausts all pool tests,
+            cap grows by <strong>step</strong> (up to <strong>max</strong>).
+        </div>
+        <table id="pool-status-table">
+            <thead>
+                <tr>
+                    <th>Module</th>
+                    <th>Current Size</th>
+                    <th>Current Cap</th>
+                    <th>Step</th>
+                    <th>Hard Max</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="pool-status-body">
+                <tr><td colspan="6" class="empty-state">Loading pool stats…</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- ═══ GENERATE ═══ -->
+    <div class="card">
+        <h3>⚙️ Generate PTE Tests → Pool</h3>
+        <div class="form-row">
+            <div>
+                <label for="gen-test-type">Type</label>
+                <select id="gen-test-type">
+                    <option value="pte_listening">Listening</option>
+                    <option value="pte_reading" selected>Reading</option>
+                    <option value="pte_speaking_writing">Speaking &amp; Writing</option>
+                </select>
+            </div>
+            <div>
+                <label for="gen-difficulty">Difficulty</label>
+                <select id="gen-difficulty">
+                    <option value="easy">Easy</option>
+                    <option value="medium" selected>Medium</option>
+                    <option value="hard">Hard</option>
+                </select>
+            </div>
+            <div>
+                <label for="gen-count">Count</label>
+                <input type="number" id="gen-count" value="5" min="1" max="20">
+            </div>
+            <button type="button" id="btn-generate" class="btn-gen">▶ Generate Tests</button>
+        </div>
+
+        <div id="active-job-panel">
+            <div class="job-header">
+                <div>
+                    <strong id="job-title">Generating tests…</strong>
+                    <div class="job-id">Job ID: <span id="job-id">—</span></div>
+                </div>
+                <span id="job-status-badge" class="badge badge-running">Running</span>
+            </div>
+            <div class="progress-track"><div class="fill" id="job-progress-fill"></div></div>
+            <div class="progress-meta">
+                <span>Generated: <strong id="job-generated">0</strong> / <span id="job-total">0</span></span>
+                <span>Failed: <strong id="job-failed" style="color:#dc2626;">0</strong></span>
+            </div>
+            <div id="job-errors" class="job-errors" style="display:none;"></div>
+        </div>
+    </div>
+
+    <!-- ═══ POOL CAPS MANAGEMENT ═══ -->
+    <div class="card">
+        <h3>⚙️ Pool Caps Management</h3>
+        <div class="info-note">
+            ⚙️ Manually set caps to control pool growth. Lower cap = fewer tests generated. 
+            Higher cap = more variety for users. Bounded by module's <strong>initial</strong> and <strong>max</strong>.
+        </div>
+        <table id="pool-caps-table">
+            <thead>
+                <tr>
+                    <th>Module</th>
+                    <th>Current Cap</th>
+                    <th>Initial</th>
+                    <th>Step</th>
+                    <th>Hard Max</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="pool-caps-body">
+                <tr><td colspan="6" class="empty-state">Loading caps…</td></tr>
+            </tbody>
+        </table>
+        <div style="margin-top:14px;">
+            <button class="btn-danger" onclick="resetCaps()">
+                🔄 Reset All Caps to Initial
+            </button>
+        </div>
+    </div>
+
+    <!-- ═══ RECENT JOBS ═══ -->
+    <div class="card">
+        <h3>🕘 Recent Generation Jobs</h3>
+        <table class="jobs-table">
+            <thead>
+                <tr>
+                    <th>Job ID</th>
+                    <th>Type</th>
+                    <th>Difficulty</th>
+                    <th>Progress</th>
+                    <th>Status</th>
+                    <th>Started</th>
+                </tr>
+            </thead>
+            <tbody id="jobs-history-body">
+                <tr><td colspan="6" class="empty">Loading recent jobs…</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        (function() {
+            'use strict';
+
+            const CSRF = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+            let pollTimer = null;
+            let currentJobId = null;
+
+            // ─── Helpers ─────────────────────────────────
+            function escapeHtml(t) {
+                if (t === null || t === undefined) return '';
+                const d = document.createElement('div');
+                d.textContent = String(t);
+                return d.innerHTML;
+            }
+            function formatTime(iso) {
+                if (!iso) return '—';
+                try {
+                    const d = new Date(iso);
+                    return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                } catch { return iso; }
+            }
+            function badgeClass(status) {
+                if (status === 'done') return 'badge badge-done';
+                if (status === 'failed') return 'badge badge-failed';
+                return 'badge badge-running';
+            }
+            function moduleLabel(mod) {
+                return mod.replace('pte_', '').replace(/_/g, ' ')
+                    .replace(/\b\w/g, l => l.toUpperCase());
+            }
+
+            // ═══════════════════════════════════════════════
+            // ✅ Pool Status (was Bank Status) — FIXED
+            // ═══════════════════════════════════════════════
+            async function loadPoolStatus() {
+                const tbody = document.getElementById('pool-status-body');
+                try {
+                    const res = await fetch('/pte/test-bank/status', {
+                        headers: { 'X-CSRF-Token': CSRF }
+                    });
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                    const data = await res.json();
+
+                    // ✅ v5.1: Backend returns { stats: { module: {...} } }
+                    const stats = data.stats || {};
+                    const order = ['pte_reading', 'pte_listening', 'pte_speaking_writing', 'pte_full'];
+
+                    let total = 0;
+                    let html = '';
+
+                    order.forEach(mod => {
+                        const s = stats[mod];
+                        if (!s) return;
+
+                        const size = s.size || 0;
+                        const cap = s.cap || s.initial || 100;
+                        const step = s.step || 100;
+                        const max = s.max || 1000;
+                        const atCap = s.at_cap;
+                        const atMax = s.at_max;
+
+                        let badgeHtml = '<span class="badge badge-ok">✅ Healthy</span>';
+                        if (atMax) {
+                            badgeHtml = '<span class="badge badge-atmax">🔴 At Hard Max</span>';
+                        } else if (atCap) {
+                            badgeHtml = '<span class="badge badge-atcap">⚠️ At Cap</span>';
+                        }
+
+                        total += size;
+
+                        html += `<tr>
+                            <td><strong>${escapeHtml(moduleLabel(mod))}</strong></td>
+                            <td>${size}</td>
+                            <td>${cap}</td>
+                            <td>+${step}</td>
+                            <td>${max}</td>
+                            <td>${badgeHtml}</td>
+                        </tr>`;
+                    });
+
+                    html += `<tr style="background:#f8f9fc;">
+                        <td colspan="5" style="text-align:right;"><strong>Total Tests in Pool</strong></td>
+                        <td><strong>${total}</strong></td>
+                    </tr>`;
+
+                    tbody.innerHTML = html;
+                    document.getElementById('stat-pool-total').textContent = total;
+
+                } catch (e) {
+                    console.error('Pool status load error:', e);
+                    tbody.innerHTML = '<tr><td colspan="6" class="empty-state" style="color:#dc2626;">❌ Failed to load pool stats</td></tr>';
+                }
+            }
+
+            // ═══════════════════════════════════════════════
+            // ✅ Pool Caps Management
+            // ═══════════════════════════════════════════════
+            async function loadPoolCaps() {
+                const tbody = document.getElementById('pool-caps-body');
+                try {
+                    const res = await fetch('/admin/pte/pool/caps', {
+                        headers: { 'X-CSRF-Token': CSRF }
+                    });
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                    const data = await res.json();
+                    const caps = data.caps || {};
+                    const order = ['pte_reading', 'pte_listening', 'pte_speaking_writing', 'pte_full'];
+
+                    let html = '';
+                    order.forEach(mod => {
+                        const c = caps[mod];
+                        if (!c) return;
+
+                        html += `<tr>
+                            <td><strong>${escapeHtml(moduleLabel(mod))}</strong></td>
+                            <td>
+                                <input type="number"
+                                       id="cap-${mod}"
+                                       class="cap-input"
+                                       value="${c.current_cap}"
+                                       min="${c.initial}"
+                                       max="${c.max}">
+                            </td>
+                            <td>${c.initial}</td>
+                            <td>+${c.step}</td>
+                            <td>${c.max}</td>
+                            <td>
+                                <button class="btn-gen"
+                                        style="padding:4px 12px;font-size:12px;"
+                                        onclick="saveCap('${mod}')">💾 Set</button>
+                            </td>
+                        </tr>`;
+                    });
+                    tbody.innerHTML = html || '<tr><td colspan="6" class="empty-state">No modules configured</td></tr>';
+                } catch (e) {
+                    console.error('Pool caps load error:', e);
+                    tbody.innerHTML = '<tr><td colspan="6" class="empty-state" style="color:#dc2626;">❌ Failed to load caps</td></tr>';
+                }
+            }
+
+            async function saveCap(module) {
+                const input = document.getElementById('cap-' + module);
+                if (!input) return;
+                const cap = parseInt(input.value, 10);
+                if (!cap || cap < 1) {
+                    alert('Enter a valid cap (≥ 1)');
+                    return;
+                }
+                try {
+                    const res = await fetch('/admin/pte/pool/caps/set', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-Token': CSRF
+                        },
+                        body: JSON.stringify({ module: module, cap: cap })
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        alert('✅ ' + moduleLabel(module) + ' cap set to ' + data.new_cap);
+                        loadPoolCaps();
+                        loadPoolStatus();
+                    } else {
+                        alert('❌ ' + (data.error || 'Failed to set cap'));
+                    }
+                } catch (e) {
+                    alert('❌ ' + e.message);
+                }
+            }
+
+            async function resetCaps() {
+                if (!confirm('Reset ALL module caps to their initial values?')) return;
+                try {
+                    const res = await fetch('/admin/pte/pool/caps/reset', {
+                        method: 'POST',
+                        headers: { 'X-CSRF-Token': CSRF }
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        alert('✅ All caps reset');
+                        loadPoolCaps();
+                        loadPoolStatus();
+                    } else {
+                        alert('❌ ' + (data.error || 'Failed'));
+                    }
+                } catch (e) {
+                    alert('❌ ' + e.message);
+                }
+            }
+
+            // ─── Jobs History ─────────────────────────────
+            async function loadJobsHistory() {
+                const tbody = document.getElementById('jobs-history-body');
+                try {
+                    const res = await fetch('/admin/pte/generate/jobs', {
+                        headers: { 'X-CSRF-Token': CSRF }
+                    });
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                    const data = await res.json();
+                    const jobs = data.jobs || [];
+
+                    const today = new Date().toDateString();
+                    const todayCount = jobs.filter(j => {
+                        try { return new Date(j.started_at).toDateString() === today; }
+                        catch { return false; }
+                    }).length;
+                    document.getElementById('stat-jobs-today').textContent = todayCount;
+
+                    if (jobs.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="6" class="empty">No jobs yet</td></tr>';
+                        return;
+                    }
+
+                    tbody.innerHTML = jobs.map(j => {
+                        const typeLabel = (j.test_type || '').replace('pte_', '').replace(/_/g, ' ');
+                        const progress = `${j.generated || 0}/${j.total || 0}`;
+                        return `<tr>
+                            <td class="mono">${escapeHtml((j.job_id || '').substring(0, 10))}…</td>
+                            <td>${escapeHtml(typeLabel)}</td>
+                            <td>${escapeHtml(j.difficulty || '—')}</td>
+                            <td>${progress}${j.failed ? ` <span style="color:#dc2626;">(${j.failed} failed)</span>` : ''}</td>
+                            <td><span class="${badgeClass(j.status)}">${escapeHtml(j.status || '')}</span></td>
+                            <td class="mono">${escapeHtml(formatTime(j.started_at))}</td>
+                        </tr>`;
+                    }).join('');
+                } catch (e) {
+                    console.error('Jobs history load error:', e);
+                    tbody.innerHTML = '<tr><td colspan="6" class="empty" style="color:#dc2626;">❌ Failed to load jobs</td></tr>';
+                }
+            }
+
+            // ─── Job Progress Polling ─────────────────────
+            function showJobPanel(jobId, testType, difficulty, total) {
+                currentJobId = jobId;
+                const panel = document.getElementById('active-job-panel');
+                panel.classList.add('visible');
+                document.getElementById('job-id').textContent = jobId;
+                document.getElementById('job-title').textContent =
+                    `Generating ${total} × ${testType.replace('pte_', '').replace(/_/g, ' ')} (${difficulty})`;
+                document.getElementById('job-total').textContent = total;
+                document.getElementById('job-generated').textContent = '0';
+                document.getElementById('job-failed').textContent = '0';
+                document.getElementById('job-progress-fill').style.width = '0%';
+                document.getElementById('job-status-badge').className = 'badge badge-running';
+                document.getElementById('job-status-badge').textContent = 'Running';
+                document.getElementById('job-errors').style.display = 'none';
+            }
+
+            async function pollJob(jobId) {
+                try {
+                    const res = await fetch(`/admin/pte/generate/status/${jobId}`, {
+                        headers: { 'X-CSRF-Token': CSRF }
+                    });
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                    const data = await res.json();
+                    if (!data.success || !data.job) throw new Error('Invalid response');
+
+                    const j = data.job;
+                    const total = j.total || 1;
+                    const done = (j.generated || 0) + (j.failed || 0);
+                    const pct = Math.min(100, Math.round((done / total) * 100));
+
+                    document.getElementById('job-generated').textContent = j.generated || 0;
+                    document.getElementById('job-failed').textContent = j.failed || 0;
+                    document.getElementById('job-progress-fill').style.width = pct + '%';
+
+                    const badge = document.getElementById('job-status-badge');
+                    badge.className = badgeClass(j.status);
+                    badge.textContent = j.status;
+
+                    if (j.errors && j.errors.length > 0) {
+                        const errEl = document.getElementById('job-errors');
+                        errEl.style.display = 'block';
+                        errEl.textContent = j.errors.map(e => '• ' + e).join('\n');
+                    }
+
+                    if (j.status === 'done' || j.status === 'failed') {
+                        clearInterval(pollTimer);
+                        pollTimer = null;
+                        currentJobId = null;
+
+                        loadPoolStatus();
+                        loadPoolCaps();
+                        loadJobsHistory();
+
+                        setTimeout(() => {
+                            if (!currentJobId) {
+                                document.getElementById('active-job-panel').classList.remove('visible');
+                            }
+                        }, 6000);
+                    }
+                } catch (e) {
+                    console.error('Poll error:', e);
+                }
+            }
+
+            // ─── Generate Button ──────────────────────────
+            async function handleGenerate() {
+                const btn = document.getElementById('btn-generate');
+                const testType = document.getElementById('gen-test-type').value;
+                const difficulty = document.getElementById('gen-difficulty').value;
+                const count = parseInt(document.getElementById('gen-count').value, 10);
+
+                if (!count || count < 1 || count > 20) {
+                    alert('Count must be between 1 and 20');
+                    return;
+                }
+
+                btn.disabled = true;
+                btn.textContent = '⏳ Starting…';
+
+                try {
+                    const res = await fetch('/admin/pte/generate', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-Token': CSRF
+                        },
+                        body: JSON.stringify({
+                            test_type: testType,
+                            difficulty: difficulty,
+                            count: count
+                        })
+                    });
+
+                    const data = await res.json();
+                    if (!res.ok || !data.success) {
+                        throw new Error(data.error || `HTTP ${res.status}`);
+                    }
+
+                    console.log('✅ Job started:', data);
+
+                    showJobPanel(data.job_id, testType, difficulty, count);
+                    loadJobsHistory();
+
+                    if (pollTimer) clearInterval(pollTimer);
+                    pollTimer = setInterval(() => pollJob(data.job_id), 2000);
+
+                } catch (e) {
+                    console.error('Generate error:', e);
+                    alert('❌ Failed to start job: ' + e.message);
+                } finally {
+                    btn.disabled = false;
+                    btn.textContent = '▶ Generate Tests';
+                }
+            }
+
+            // ─── Init ─────────────────────────────────────
+            document.getElementById('btn-generate').addEventListener('click', handleGenerate);
+            document.getElementById('gen-count').addEventListener('keydown', e => {
+                if (e.key === 'Enter') handleGenerate();
+            });
+
+            // Expose to global scope for onclick handlers
+            window.saveCap = saveCap;
+            window.resetCaps = resetCaps;
+
+            // Initial load
+            loadPoolStatus();
+            loadPoolCaps();
+            loadJobsHistory();
+
+            // Auto-refresh every 30s
+            setInterval(() => {
+                if (!currentJobId) {
+                    loadJobsHistory();
+                    loadPoolStatus();
+                }
+            }, 30000);
+
+            console.log('✅ PTE Admin Dashboard ready (v5.1 — pool caps)');
+        })();
+    </script>
+</body>
+</html>

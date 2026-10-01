@@ -1,0 +1,871 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SELTAI PREP – IELTS, PTE & UKVI Preparation</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        /* ─── RESET & BASE ─── */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+            line-height: 1.6;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* ─── HEADER ─── */
+        .header {
+            text-align: center;
+            padding: 30px 20px 20px;
+            color: white;
+        }
+        .header h1 {
+            font-size: 3.2em;
+            margin-bottom: 6px;
+            letter-spacing: -0.5px;
+        }
+        .header h1 span {
+            color: #ffd700;
+            text-shadow: 0 2px 10px rgba(255, 215, 0, 0.3);
+        }
+        .header .subtitle {
+            font-size: 1.2em;
+            opacity: 0.9;
+            font-weight: 300;
+        }
+
+        /* ─── MODULE SELECTION ─── */
+        #module-selection {
+            margin: 30px 0 35px;
+            text-align: center;
+            transition: opacity 0.3s;
+        }
+        #module-selection .section-title {
+            color: white;
+            font-size: 1.8em;
+            font-weight: 700;
+            margin-bottom: 20px;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+        #module-selection .section-title i {
+            margin-right: 10px;
+        }
+        .module-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 24px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        .module-card {
+            background: rgba(255,255,255,0.12);
+            backdrop-filter: blur(12px);
+            border-radius: 20px;
+            padding: 30px 25px 25px;
+            color: white;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s, background 0.3s;
+            border: 2px solid rgba(255,255,255,0.15);
+            text-decoration: none;
+            display: block;
+            text-align: center;
+        }
+        .module-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.25);
+            background: rgba(255,255,255,0.20);
+            border-color: rgba(255,255,255,0.35);
+        }
+        .module-card .icon {
+            font-size: 3.5em;
+            display: block;
+            margin-bottom: 12px;
+        }
+        .module-card h3 {
+            font-size: 1.8em;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+        .module-card p {
+            font-size: 0.95em;
+            opacity: 0.9;
+            margin-bottom: 10px;
+            line-height: 1.4;
+        }
+        .module-card .module-tag {
+            display: inline-block;
+            background: rgba(255,255,255,0.2);
+            padding: 4px 16px;
+            border-radius: 30px;
+            font-size: 0.75em;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            text-transform: uppercase;
+        }
+        .module-card .arrow {
+            display: inline-block;
+            margin-top: 8px;
+            font-size: 1.1em;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+        }
+        .module-card:hover .arrow {
+            opacity: 1;
+        }
+
+        /* ─── AUTH CONTAINER ─── */
+        #auth-container {
+            background: white;
+            border-radius: 24px;
+            padding: 35px 40px;
+            max-width: 500px;
+            margin: 0 auto 30px;
+            box-shadow: 0 25px 70px rgba(0,0,0,0.35);
+            transition: transform 0.2s, opacity 0.3s;
+            display: none; /* hidden initially */
+        }
+        #auth-container.visible {
+            display: block;
+        }
+        #auth-container:hover {
+            transform: translateY(-4px);
+        }
+        .auth-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        .auth-header h2 {
+            font-size: 1.4em;
+            color: #333;
+        }
+        .auth-header .selected-module {
+            background: #667eea;
+            color: white;
+            padding: 4px 16px;
+            border-radius: 30px;
+            font-size: 0.8em;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .back-to-modules {
+            display: inline-block;
+            margin-bottom: 10px;
+            color: #667eea;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.95em;
+            text-decoration: none;
+        }
+        .back-to-modules:hover {
+            text-decoration: underline;
+        }
+
+        .auth-tabs {
+            display: flex;
+            margin-bottom: 25px;
+            border-bottom: 2px solid #eee;
+        }
+        .auth-tab {
+            flex: 1;
+            text-align: center;
+            padding: 10px 0;
+            cursor: pointer;
+            font-weight: 600;
+            color: #888;
+            transition: all 0.2s;
+            border-bottom: 3px solid transparent;
+            user-select: none;
+        }
+        .auth-tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+        .auth-tab:hover {
+            color: #667eea;
+        }
+
+        .auth-form {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+        .auth-form.active {
+            display: block;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 600;
+            color: #444;
+            font-size: 0.95em;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            background: #fafbfc;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        .form-group input.error {
+            border-color: #dc3545;
+            box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1);
+        }
+        .form-group .error-text {
+            color: #dc3545;
+            font-size: 0.85em;
+            margin-top: 4px;
+            display: none;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 8px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            position: relative;
+        }
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 14px rgba(102, 126, 234, 0.35);
+        }
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+        .btn-google {
+            background: #4285f4;
+            color: white;
+            text-decoration: none;
+            font-size: 1.05em;
+            padding: 16px;
+            box-shadow: 0 4px 14px rgba(66, 133, 244, 0.3);
+        }
+        .btn-google:hover {
+            background: #357ae8;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(66, 133, 244, 0.35);
+        }
+        .btn-email {
+            background: #ea4335;
+            color: white;
+        }
+        .btn-email:hover:not(:disabled) {
+            background: #d33426;
+            transform: translateY(-2px);
+        }
+        .btn-otp {
+            background: #34a853;
+            color: white;
+        }
+        .btn-otp:hover:not(:disabled) {
+            background: #2d9248;
+            transform: translateY(-2px);
+        }
+
+        .divider {
+            text-align: center;
+            margin: 18px 0;
+            color: #999;
+            font-size: 0.9em;
+            position: relative;
+        }
+        .divider::before,
+        .divider::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            width: 30%;
+            height: 1px;
+            background: #ddd;
+        }
+        .divider::before { left: 0; }
+        .divider::after { right: 0; }
+
+        .message-box {
+            padding: 10px 16px;
+            border-radius: 10px;
+            margin-bottom: 16px;
+            text-align: center;
+            display: none;
+            font-weight: 500;
+        }
+        .message-box.error {
+            background: #fee;
+            color: #c33;
+            border-left: 4px solid #c33;
+            display: block;
+        }
+        .message-box.success {
+            background: #efe;
+            color: #2a7a2a;
+            border-left: 4px solid #3c3;
+            display: block;
+        }
+
+        .otp-section {
+            display: none;
+            margin-top: 15px;
+        }
+        .otp-timer {
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 8px;
+            text-align: center;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* ─── FOOTER ─── */
+        .footer {
+            text-align: center;
+            color: rgba(255,255,255,0.6);
+            font-size: 0.85em;
+            padding: 20px 0 10px;
+        }
+
+        /* ─── RESPONSIVE ─── */
+        @media (max-width: 768px) {
+            .header h1 { font-size: 2.2em; }
+            .module-grid { grid-template-columns: 1fr 1fr; }
+            #auth-container { margin: 0 15px 20px; padding: 25px 20px; }
+        }
+        @media (max-width: 480px) {
+            .header h1 { font-size: 1.8em; }
+            .header .subtitle { font-size: 1em; }
+            .module-grid { grid-template-columns: 1fr; }
+            #auth-container { padding: 20px 15px; }
+            .auth-header { flex-direction: column; gap: 6px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+
+        <!-- ─── HEADER ─── -->
+        <div class="header">
+            <h1>🎓 <span>SELTAI</span> PREP</h1>
+            <p class="subtitle">Master IELTS · PTE · UKVI with AI‑powered practice</p>
+        </div>
+
+        <!-- ─── MODULE SELECTION ─── -->
+        <div id="module-selection">
+            <div class="section-title"><i class="fas fa-rocket"></i> Choose Your Module</div>
+            <div class="module-grid">
+                <div class="module-card" data-module="ielts">
+                    <span class="icon">🎧</span>
+                    <h3>IELTS</h3>
+                    <p>Academic &amp; General Training. Full test simulation with band scoring.</p>
+                    <span class="module-tag">Academic / General</span>
+                    <span class="arrow">→ Start Practice</span>
+                </div>
+                <div class="module-card" data-module="pte">
+                    <span class="icon">🎤</span>
+                    <h3>PTE</h3>
+                    <p>Computer‑based practice with AI‑scoring aligned to PTE Academic.</p>
+                    <span class="module-tag">Computer‑based</span>
+                    <span class="arrow">→ Start Practice</span>
+                </div>
+                <div class="module-card" data-module="ukvi">
+                    <span class="icon">🛂</span>
+                    <h3>UKVI</h3>
+                    <p>Visa‑ready practice for Life Skills &amp; interview simulation.</p>
+                    <span class="module-tag">Visa Ready</span>
+                    <span class="arrow">→ Start Practice</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ─── AUTH CONTAINER (hidden initially) ─── -->
+        <div id="auth-container">
+            <a class="back-to-modules" id="back-to-modules">← Back to modules</a>
+            <div class="auth-header">
+                <h2><i class="fas fa-user-circle" style="color:#667eea;"></i> Sign In or Register</h2>
+                <span class="selected-module" id="active-module-badge">
+                    <i class="fas fa-check-circle"></i> IELTS
+                </span>
+            </div>
+
+            <div class="auth-tabs">
+                <div class="auth-tab active" data-tab="login">Sign In</div>
+                <div class="auth-tab" data-tab="register">Register</div>
+                <div class="auth-tab" data-tab="email">Email OTP</div>
+            </div>
+
+            <!-- Message Boxes -->
+            <div id="error-msg" class="message-box error"></div>
+            <div id="success-msg" class="message-box success"></div>
+            {% if error %}<div class="message-box error" style="display:block;">{{ error }}</div>{% endif %}
+
+            <!-- ─── Login Form ─── -->
+            <form class="auth-form active" id="login-form" method="POST" action="{{ url_for('login') }}">
+                <input type="hidden" name="module" id="login-module-input" value="ielts">
+                <a href="/login/google" class="btn btn-google">
+                    <i class="fab fa-google"></i> Sign in with Google
+                </a>
+                <div class="divider">or sign in with email</div>
+
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" name="username" id="login-username" required autocomplete="username">
+                    <div class="error-text" id="login-username-error">Please enter your username</div>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" name="password" id="login-password" required autocomplete="current-password">
+                    <div class="error-text" id="login-password-error">Please enter your password</div>
+                </div>
+                <button type="submit" class="btn btn-primary" id="login-btn">
+                    <span class="btn-text">Sign In</span>
+                    <span class="spinner" style="display:none;"></span>
+                </button>
+            </form>
+
+            <!-- ─── Register Form ─── -->
+            <form class="auth-form" id="register-form" method="POST" action="{{ url_for('register') }}">
+                <input type="hidden" name="module" id="register-module-input" value="ielts">
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" name="username" id="reg-username" required autocomplete="username">
+                    <div class="error-text" id="reg-username-error">Username is required</div>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" name="email" id="reg-email" required autocomplete="email">
+                    <div class="error-text" id="reg-email-error">Valid email is required</div>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" name="password" id="reg-password" required autocomplete="new-password">
+                    <div class="error-text" id="reg-password-error">Password must be at least 6 characters</div>
+                </div>
+                <button type="submit" class="btn btn-primary" id="register-btn">
+                    <span class="btn-text">Register</span>
+                    <span class="spinner" style="display:none;"></span>
+                </button>
+            </form>
+
+            <!-- ─── OTP Form ─── -->
+            <div class="auth-form" id="email-form">
+                <input type="hidden" name="module" id="otp-module-input" value="ielts">
+                <div class="form-group">
+                    <label>Email Address</label>
+                    <input type="email" id="otp-email" placeholder="your@email.com" required autocomplete="email">
+                    <div class="error-text" id="otp-email-error">Please enter a valid email</div>
+                </div>
+                <button class="btn btn-email" id="send-otp-btn">
+                    <span class="btn-text">Send OTP Code</span>
+                    <span class="spinner" style="display:none;"></span>
+                </button>
+                <div class="otp-section" id="otp-section">
+                    <div class="form-group">
+                        <label>Enter OTP Code</label>
+                        <input type="text" id="otp-code" placeholder="6-digit code" maxlength="6" inputmode="numeric" pattern="\d*">
+                        <div class="error-text" id="otp-code-error">Please enter the 6-digit code</div>
+                    </div>
+                    <button class="btn btn-otp" id="verify-otp-btn">
+                        <span class="btn-text">Verify and Login</span>
+                        <span class="spinner" style="display:none;"></span>
+                    </button>
+                    <div class="otp-timer" id="otp-timer"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ─── FOOTER ─── -->
+        <div class="footer">
+            &copy; 2026 SELTAI PREP. All rights reserved.
+        </div>
+
+    </div>
+
+    <!-- ─── SCRIPTS ─── -->
+    <script>
+        (function() {
+            "use strict";
+
+            // ----- DOM refs -----
+            const moduleSelection = document.getElementById('module-selection');
+            const authContainer = document.getElementById('auth-container');
+            const activeBadge = document.getElementById('active-module-badge');
+            const backBtn = document.getElementById('back-to-modules');
+            const moduleInputs = {
+                login: document.getElementById('login-module-input'),
+                register: document.getElementById('register-module-input'),
+                otp: document.getElementById('otp-module-input')
+            };
+
+            // ----- Module cards -----
+            const cards = document.querySelectorAll('.module-card');
+
+            // ----- Show auth container for a module -----
+            function showAuth(module) {
+                // Update badge
+                const badgeText = module.toUpperCase();
+                activeBadge.innerHTML = '<i class="fas fa-check-circle"></i> ' + badgeText;
+
+                // Update all hidden module inputs
+                Object.values(moduleInputs).forEach(function(el) {
+                    if (el) el.value = module;
+                });
+
+                // Show auth container, hide module selection
+                moduleSelection.style.display = 'none';
+                authContainer.classList.add('visible');
+                authContainer.style.display = 'block';
+                window.scrollTo({ top: authContainer.offsetTop - 20, behavior: 'smooth' });
+            }
+
+            // ----- Back to modules -----
+            function showModules() {
+                authContainer.classList.remove('visible');
+                authContainer.style.display = 'none';
+                moduleSelection.style.display = 'block';
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+
+            // ----- Attach click events to cards -----
+            cards.forEach(function(card) {
+                card.addEventListener('click', function(e) {
+                    const module = this.dataset.module;
+                    if (module) showAuth(module);
+                });
+            });
+
+            // ----- Back button -----
+            backBtn.addEventListener('click', showModules);
+
+            // ----- Tab switching (unchanged) -----
+            const tabs = document.querySelectorAll('.auth-tab');
+            const forms = {
+                login: document.getElementById('login-form'),
+                register: document.getElementById('register-form'),
+                email: document.getElementById('email-form')
+            };
+
+            function switchTab(tabId) {
+                tabs.forEach(function(tab) {
+                    tab.classList.toggle('active', tab.dataset.tab === tabId);
+                });
+                Object.keys(forms).forEach(function(key) {
+                    forms[key].classList.toggle('active', key === tabId);
+                });
+                hideMessages();
+            }
+
+            tabs.forEach(function(tab) {
+                tab.addEventListener('click', function(e) {
+                    switchTab(this.dataset.tab);
+                });
+            });
+
+            // ----- Message helpers (unchanged) -----
+            function showError(msg) {
+                var el = document.getElementById('error-msg');
+                el.textContent = msg || 'An error occurred.';
+                el.style.display = 'block';
+                document.getElementById('success-msg').style.display = 'none';
+            }
+
+            function showSuccess(msg) {
+                var el = document.getElementById('success-msg');
+                el.textContent = msg || 'Success!';
+                el.style.display = 'block';
+                document.getElementById('error-msg').style.display = 'none';
+            }
+
+            function hideMessages() {
+                document.getElementById('error-msg').style.display = 'none';
+                document.getElementById('success-msg').style.display = 'none';
+            }
+
+            // ----- Form validation (unchanged) -----
+            function setFieldError(input, errorId, show) {
+                var errEl = document.getElementById(errorId);
+                if (!errEl) return;
+                if (show) {
+                    input.classList.add('error');
+                    errEl.style.display = 'block';
+                } else {
+                    input.classList.remove('error');
+                    errEl.style.display = 'none';
+                }
+            }
+
+            function validateLogin() {
+                var valid = true;
+                var username = document.getElementById('login-username');
+                var password = document.getElementById('login-password');
+                if (!username.value.trim()) {
+                    setFieldError(username, 'login-username-error', true);
+                    valid = false;
+                } else {
+                    setFieldError(username, 'login-username-error', false);
+                }
+                if (!password.value.trim()) {
+                    setFieldError(password, 'login-password-error', true);
+                    valid = false;
+                } else {
+                    setFieldError(password, 'login-password-error', false);
+                }
+                return valid;
+            }
+
+            function validateRegister() {
+                var valid = true;
+                var username = document.getElementById('reg-username');
+                var email = document.getElementById('reg-email');
+                var password = document.getElementById('reg-password');
+
+                if (!username.value.trim()) {
+                    setFieldError(username, 'reg-username-error', true);
+                    valid = false;
+                } else {
+                    setFieldError(username, 'reg-username-error', false);
+                }
+                if (!email.value.trim() || !email.validity.valid) {
+                    setFieldError(email, 'reg-email-error', true);
+                    valid = false;
+                } else {
+                    setFieldError(email, 'reg-email-error', false);
+                }
+                if (password.value.length < 6) {
+                    setFieldError(password, 'reg-password-error', true);
+                    valid = false;
+                } else {
+                    setFieldError(password, 'reg-password-error', false);
+                }
+                return valid;
+            }
+
+            // ----- Login form submission -----
+            var loginForm = document.getElementById('login-form');
+            var loginBtn = document.getElementById('login-btn');
+            loginForm.addEventListener('submit', function(e) {
+                if (!validateLogin()) {
+                    e.preventDefault();
+                    showError('Please fill in all fields correctly.');
+                    return;
+                }
+                loginBtn.disabled = true;
+                loginBtn.querySelector('.btn-text').textContent = 'Signing in...';
+                loginBtn.querySelector('.spinner').style.display = 'inline-block';
+            });
+
+            // ----- Register form submission -----
+            var registerForm = document.getElementById('register-form');
+            var registerBtn = document.getElementById('register-btn');
+            registerForm.addEventListener('submit', function(e) {
+                if (!validateRegister()) {
+                    e.preventDefault();
+                    showError('Please fill in all fields correctly.');
+                    return;
+                }
+                registerBtn.disabled = true;
+                registerBtn.querySelector('.btn-text').textContent = 'Registering...';
+                registerBtn.querySelector('.spinner').style.display = 'inline-block';
+            });
+
+            // ----- OTP functions (unchanged) -----
+            var sendOtpBtn = document.getElementById('send-otp-btn');
+            var otpEmail = document.getElementById('otp-email');
+            var otpSection = document.getElementById('otp-section');
+            var otpCode = document.getElementById('otp-code');
+            var verifyOtpBtn = document.getElementById('verify-otp-btn');
+            var otpTimer = document.getElementById('otp-timer');
+
+            var otpTimerInterval = null;
+
+            function clearOtpTimer() {
+                if (otpTimerInterval) {
+                    clearInterval(otpTimerInterval);
+                    otpTimerInterval = null;
+                }
+                otpTimer.textContent = '';
+            }
+
+            function startOtpTimer(seconds) {
+                clearOtpTimer();
+                var remaining = seconds;
+                otpTimer.textContent = 'OTP expires in ' + remaining + 's';
+                otpTimerInterval = setInterval(function() {
+                    remaining--;
+                    if (remaining <= 0) {
+                        clearOtpTimer();
+                        otpTimer.textContent = 'OTP expired. Please request a new one.';
+                        otpCode.disabled = true;
+                        verifyOtpBtn.disabled = true;
+                    } else {
+                        otpTimer.textContent = 'OTP expires in ' + remaining + 's';
+                    }
+                }, 1000);
+            }
+
+            sendOtpBtn.addEventListener('click', function() {
+                var email = otpEmail.value.trim();
+                if (!email || !email.includes('@')) {
+                    setFieldError(otpEmail, 'otp-email-error', true);
+                    showError('Please enter a valid email address.');
+                    return;
+                }
+                setFieldError(otpEmail, 'otp-email-error', false);
+                hideMessages();
+
+                sendOtpBtn.disabled = true;
+                sendOtpBtn.querySelector('.btn-text').textContent = 'Sending...';
+                sendOtpBtn.querySelector('.spinner').style.display = 'inline-block';
+
+                fetch('/login/email-otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: 'email=' + encodeURIComponent(email)
+                })
+                .then(function(response) {
+                    return response.json().catch(function() {
+                        throw new Error('Invalid JSON response from server');
+                    });
+                })
+                .then(function(data) {
+                    sendOtpBtn.disabled = false;
+                    sendOtpBtn.querySelector('.btn-text').textContent = 'Send OTP Code';
+                    sendOtpBtn.querySelector('.spinner').style.display = 'none';
+
+                    if (data.success) {
+                        showSuccess(data.message || 'OTP sent to your email.');
+                        otpSection.style.display = 'block';
+                        otpCode.disabled = false;
+                        verifyOtpBtn.disabled = false;
+                        otpCode.value = '';
+                        startOtpTimer(300);
+                    } else {
+                        showError(data.error || 'Failed to send OTP.');
+                    }
+                })
+                .catch(function(error) {
+                    sendOtpBtn.disabled = false;
+                    sendOtpBtn.querySelector('.btn-text').textContent = 'Send OTP Code';
+                    sendOtpBtn.querySelector('.spinner').style.display = 'none';
+                    showError('Network error: ' + error.message);
+                });
+            });
+
+            verifyOtpBtn.addEventListener('click', function() {
+                var code = otpCode.value.trim();
+                if (!code || code.length < 6) {
+                    setFieldError(otpCode, 'otp-code-error', true);
+                    showError('Please enter the 6-digit OTP code.');
+                    return;
+                }
+                setFieldError(otpCode, 'otp-code-error', false);
+                hideMessages();
+
+                verifyOtpBtn.disabled = true;
+                verifyOtpBtn.querySelector('.btn-text').textContent = 'Verifying...';
+                verifyOtpBtn.querySelector('.spinner').style.display = 'inline-block';
+
+                fetch('/login/email-otp/verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: 'otp=' + encodeURIComponent(code)
+                })
+                .then(function(response) {
+                    return response.json().catch(function() {
+                        throw new Error('Invalid JSON response');
+                    });
+                })
+                .then(function(data) {
+                    verifyOtpBtn.disabled = false;
+                    verifyOtpBtn.querySelector('.btn-text').textContent = 'Verify and Login';
+                    verifyOtpBtn.querySelector('.spinner').style.display = 'none';
+
+                    if (data.success) {
+                        showSuccess('Verification successful! Redirecting...');
+                        clearOtpTimer();
+                        window.location.href = data.redirect || '/dashboard';
+                    } else {
+                        showError(data.error || 'Invalid OTP. Please try again.');
+                    }
+                })
+                .catch(function(error) {
+                    verifyOtpBtn.disabled = false;
+                    verifyOtpBtn.querySelector('.btn-text').textContent = 'Verify and Login';
+                    verifyOtpBtn.querySelector('.spinner').style.display = 'none';
+                    showError('Network error: ' + error.message);
+                });
+            });
+
+            // ----- Real-time validation clearing -----
+            document.querySelectorAll('input').forEach(function(input) {
+                input.addEventListener('input', function() {
+                    var errorId = this.id + '-error';
+                    var errEl = document.getElementById(errorId);
+                    if (errEl) {
+                        this.classList.remove('error');
+                        errEl.style.display = 'none';
+                    }
+                });
+            });
+
+            // ----- Pre-select module from URL (if any) -----
+            const urlParams = new URLSearchParams(window.location.search);
+            const moduleParam = urlParams.get('module');
+            if (moduleParam && ['ielts', 'pte', 'ukvi'].includes(moduleParam)) {
+                // Show auth container directly with this module
+                showAuth(moduleParam);
+            }
+
+        })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Choose Your Test Module</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 20px; }
+        .container { max-width: 800px; width: 100%; background: white; border-radius: 20px; padding: 40px; box-shadow: 0 10px 40px rgba(0,0,0,0.1); text-align: center; }
+        h1 { font-size: 2rem; margin-bottom: 10px; color: #003d6b; }
+        p { color: #666; margin-bottom: 30px; }
+        .module-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; }
+        .module-card { background: #f8f9fc; border-radius: 16px; padding: 30px 20px; border: 2px solid #e0e0e0; transition: all 0.3s; cursor: pointer; }
+        .module-card:hover { transform: translateY(-5px); border-color: #003d6b; box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
+        .module-card h3 { font-size: 1.5rem; margin: 10px 0; }
+        .module-card p { font-size: 14px; color: #888; margin-bottom: 0; }
+        .icon { font-size: 48px; display: block; margin-bottom: 10px; }
+        .btn-select { background: #003d6b; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; width: 100%; margin-top: 15px; transition: opacity 0.2s; }
+        .btn-select:hover { opacity: 0.85; }
+        .btn-select.pte { background: #6f42c1; }
+        .btn-select.ukvi { background: #dc3545; }
+        .flash { padding: 10px; border-radius: 8px; margin-bottom: 20px; }
+        .flash.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .flash.danger { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        @media (max-width: 600px) { .module-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 Choose Your Module</h1>
+        <p>Select the exam you want to practice. You can change this later.</p>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash {{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        <form method="POST">
+            <div class="module-grid">
+                <div class="module-card">
+                    <span class="icon">📘</span>
+                    <h3>IELTS</h3>
+                    <p>Academic & General Training</p>
+                    <button type="submit" name="module" value="ielts" class="btn-select">Select IELTS</button>
+                </div>
+                <div class="module-card">
+                    <span class="icon">📘</span>
+                    <h3>PTE</h3>
+                    <p>Pearson Test of English</p>
+                    <button type="submit" name="module" value="pte" class="btn-select pte">Select PTE</button>
+                </div>
+                <div class="module-card">
+                    <span class="icon">📘</span>
+                    <h3>UKVI</h3>
+                    <p>UK Visa & Immigration</p>
+                    <button type="submit" name="module" value="ukvi" class="btn-select ukvi">Select UKVI</button>
+                </div>
+            </div>
+        </form>
+        <div style="margin-top: 30px;">
+            <small>Current module: <strong>{{ session.get('selected_module', 'not set') }}</strong></small>
+        </div>
+    </div>
+</body>
+</html>

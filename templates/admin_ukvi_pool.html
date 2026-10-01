@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UKVI Pool Dashboard — Admin</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #0d1117;
+            color: #e6edf3;
+            min-height: 100vh;
+            padding: 24px;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        h1 { font-size: 24px; margin-bottom: 6px; }
+        h1 span { color: #6c63ff; }
+        .subtitle { opacity: 0.6; font-size: 13px; margin-bottom: 20px; }
+        .nav { margin-bottom: 24px; }
+        .nav a {
+            color: #6c63ff;
+            text-decoration: none;
+            margin-right: 16px;
+            font-size: 13px;
+        }
+        .nav a:hover { text-decoration: underline; }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .stat-card {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 12px;
+            padding: 18px;
+        }
+        .stat-card .label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            opacity: 0.6;
+            margin-bottom: 6px;
+        }
+        .stat-card .value {
+            font-size: 28px;
+            font-weight: 700;
+        }
+        .stat-card.blue .value { color: #6c63ff; }
+        .stat-card.green .value { color: #81c784; }
+        .stat-card.orange .value { color: #ffb74d; }
+        .stat-card.red .value { color: #ff6b6b; }
+
+        .actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 24px;
+        }
+        .btn {
+            padding: 8px 18px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: 0.2s;
+        }
+        .btn:hover { transform: translateY(-1px); }
+        .btn-outline {
+            background: transparent;
+            border: 1px solid rgba(255,255,255,0.2);
+            color: #e6edf3;
+        }
+        .btn-danger { background: #c62828; color: #fff; }
+
+        .panel {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .panel h2 {
+            font-size: 16px;
+            margin-bottom: 12px;
+            opacity: 0.9;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        th, td {
+            text-align: left;
+            padding: 8px 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        th {
+            font-weight: 600;
+            opacity: 0.6;
+            text-transform: uppercase;
+            font-size: 11px;
+            letter-spacing: 0.5px;
+        }
+        tr:hover td { background: rgba(255,255,255,0.02); }
+
+        .badge {
+            padding: 2px 10px;
+            border-radius: 30px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .badge-queued { background: #fff3e0; color: #e65100; }
+        .badge-generating { background: #e3f2fd; color: #1565c0; }
+        .badge-complete { background: #e8f5e9; color: #2e7d32; }
+        .badge-failed { background: #ffebee; color: #c62828; }
+
+        .flash {
+            padding: 10px 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-size: 13px;
+        }
+        .flash.success { background: rgba(46,125,50,0.2); color: #81c784; }
+        .flash.error { background: rgba(198,40,40,0.2); color: #ff6b6b; }
+        .flash.info { background: rgba(108,99,255,0.2); color: #a29cff; }
+
+        .empty {
+            opacity: 0.5;
+            font-size: 13px;
+            padding: 12px 0;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🛂 UKVI <span>Pool Dashboard</span></h1>
+        <p class="subtitle">v8.6 — async queue + worker pool</p>
+
+        <div class="nav">
+            <a href="/admin/dashboard">← Dashboard</a>
+            <a href="/admin/ukvi/jobs" target="_blank">Jobs JSON</a>
+            <a href="/admin/ukvi/pool/stats" target="_blank">Stats JSON</a>
+            <a href="/admin/ukvi/pool/list" target="_blank">Pool List JSON</a>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+                <div class="flash {{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endwith %}
+
+        <div class="stats-grid">
+            <div class="stat-card blue">
+                <div class="label">Pool Size</div>
+                <div class="value">{{ stats.pool_size|default(0) }}</div>
+            </div>
+            <div class="stat-card orange">
+                <div class="label">Queued</div>
+                <div class="value">{{ stats.queued|default(0) }}</div>
+            </div>
+            <div class="stat-card blue">
+                <div class="label">Generating</div>
+                <div class="value">{{ stats.generating|default(0) }}</div>
+            </div>
+            <div class="stat-card green">
+                <div class="label">Completed</div>
+                <div class="value">{{ stats.completed|default(0) }}</div>
+            </div>
+            <div class="stat-card red">
+                <div class="label">Failed</div>
+                <div class="value">{{ stats.failed|default(0) }}</div>
+            </div>
+        </div>
+
+        <div class="actions">
+            <a href="/admin/ukvi/pool" class="btn btn-outline">🔄 Refresh</a>
+            <form method="POST" action="/admin/ukvi/pool/reset"
+                  onsubmit="return confirm('Delete ALL UKVI pool entries and jobs? This cannot be undone.');"
+                  style="display:inline;">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                <button type="submit" class="btn btn-danger">🗑️ Reset Pool + Jobs</button>
+            </form>
+        </div>
+
+        <div class="panel">
+            <h2>📦 Recent Pool Entries</h2>
+            <div id="pool-list">
+                <div class="empty">Loading…</div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2>⚙️ Recent Jobs</h2>
+            <div id="jobs-list">
+                <div class="empty">Loading…</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        fetch('/admin/ukvi/pool/list')
+            .then(r => r.json())
+            .then(data => {
+                const el = document.getElementById('pool-list');
+                if (!data.success || !data.items || !data.items.length) {
+                    el.innerHTML = '<div class="empty">No pool entries yet.</div>';
+                    return;
+                }
+                let html = '<table><thead><tr>'
+                    + '<th>ID</th><th>Topic</th><th>Difficulty</th>'
+                    + '<th>Used</th><th>Created</th>'
+                    + '</tr></thead><tbody>';
+                data.items.forEach(it => {
+                    html += `<tr>
+                        <td>${it.id}</td>
+                        <td>${(it.topic || '—').substring(0, 60)}</td>
+                        <td>${it.difficulty || '—'}</td>
+                        <td>${it.usage_count || 0}</td>
+                        <td>${it.created_at ? it.created_at.substring(0, 19) : '—'}</td>
+                    </tr>`;
+                });
+                html += '</tbody></table>';
+                el.innerHTML = html;
+            })
+            .catch(err => {
+                document.getElementById('pool-list').innerHTML =
+                    '<div class="empty">Failed to load: ' + err + '</div>';
+            });
+
+        fetch('/admin/ukvi/jobs')
+            .then(r => r.json())
+            .then(data => {
+                const el = document.getElementById('jobs-list');
+                if (!data.success || !data.jobs || !data.jobs.length) {
+                    el.innerHTML = '<div class="empty">No jobs yet.</div>';
+                    return;
+                }
+                let html = '<table><thead><tr>'
+                    + '<th>Job ID</th><th>User</th><th>University</th>'
+                    + '<th>Status</th><th>Created</th><th>Error</th>'
+                    + '</tr></thead><tbody>';
+                data.jobs.forEach(j => {
+                    html += `<tr>
+                        <td><code>${j.id}</code></td>
+                        <td>${j.user_id || '—'}</td>
+                        <td>${(j.university || '—').substring(0, 30)}</td>
+                        <td><span class="badge badge-${j.status}">${j.status}</span></td>
+                        <td>${j.created_at ? j.created_at.substring(0, 19) : '—'}</td>
+                        <td>${j.error ? j.error.substring(0, 40) : '—'}</td>
+                    </tr>`;
+                });
+                html += '</tbody></table>';
+                el.innerHTML = html;
+            })
+            .catch(err => {
+                document.getElementById('jobs-list').innerHTML =
+                    '<div class="empty">Failed to load: ' + err + '</div>';
+            });
+    </script>
+</body>
+</html>

@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PTE Settings – Admin</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #f0f2f5;
+            margin: 0;
+            padding: 20px;
+        }
+        .admin-header {
+            background: #1a2b4a;
+            color: white;
+            padding: 14px 24px;
+            border-radius: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .admin-header a {
+            color: #ddd;
+            text-decoration: none;
+        }
+        .admin-header a:hover {
+            color: white;
+        }
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+            margin-bottom: 20px;
+        }
+        .card h3 {
+            margin-top: 0;
+            color: #1a2b4a;
+            border-bottom: 2px solid #eef2f7;
+            padding-bottom: 10px;
+        }
+        .alert {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            max-width: 300px;
+            padding: 10px 14px;
+            border: 1px solid #d0d7e2;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: 0.2s;
+        }
+        .form-group input:focus,
+        .form-group select:focus {
+            border-color: #667eea;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+        }
+        .btn {
+            padding: 8px 20px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+        .btn-success:hover {
+            background: #218838;
+        }
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+        .status-message {
+            margin-left: 12px;
+            font-weight: 500;
+        }
+        .text-success { color: #28a745; }
+        .text-danger { color: #dc3545; }
+        .text-warning { color: #ffc107; }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 15px;
+            color: #667eea;
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-header">
+        <span>⚙️ PTE Settings</span>
+        <a href="{{ url_for('admin_dashboard') }}">← Back to Dashboard</a>
+    </div>
+
+    <a href="{{ url_for('admin_dashboard') }}" class="back-link">← Back to Dashboard</a>
+
+    <div class="card">
+        <h3>⚙️ PTE Free Test Limit</h3>
+        <div class="alert alert-info">
+            <strong>Current Limit:</strong> <span id="current-limit">Loading...</span> free tests per user.
+        </div>
+        <form id="limit-form">
+            <div class="form-group">
+                <label for="test-type">Test Type</label>
+                <select id="test-type">
+                    <option value="">Global (all modules)</option>
+                    <option value="pte_reading">Reading</option>
+                    <option value="pte_listening">Listening</option>
+                    <option value="pte_speaking_writing">Speaking &amp; Writing</option>
+                </select>
+                <small style="display:block; color:#6c757d; margin-top:4px;">
+                    Select a specific module, or leave as Global.
+                </small>
+            </div>
+            <div class="form-group">
+                <label for="new-limit">New Free Test Limit</label>
+                <input type="number" id="new-limit" placeholder="e.g. 5" min="0" required>
+                <small style="display:block; color:#6c757d; margin-top:4px;">
+                    Set to a high number (e.g. 999) to effectively disable the limit.
+                </small>
+            </div>
+            <button type="submit" class="btn btn-success">Update Limit</button>
+            <span id="status-message" class="status-message"></span>
+        </form>
+    </div>
+
+    <div class="card">
+        <h3>📊 Pool Info</h3>
+        <p style="color:#64748b;font-size:14px;">
+            Pool caps and test generation are managed on the
+            <a href="{{ url_for('admin_pte_dashboard') }}">PTE Dashboard</a>.
+        </p>
+    </div>
+
+    <div class="card">
+        <h3>🔗 Quick Links</h3>
+        <p>
+            <a href="{{ url_for('admin_pte_dashboard') }}" class="btn btn-secondary" style="text-decoration:none;display:inline-block;">
+                📘 PTE Dashboard
+            </a>
+            <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary" style="text-decoration:none;display:inline-block;margin-left:8px;">
+                ← Main Admin
+            </a>
+        </p>
+    </div>
+
+    <script>
+        const CSRF = '{{ csrf_token }}';
+
+        function fetchCurrentLimit() {
+            const testType = document.getElementById('test-type').value;
+            const url = testType
+                ? `/api/pte/admin/get-limit?test_type=${encodeURIComponent(testType)}`
+                : '/api/pte/admin/get-limit';
+
+            fetch(url, {
+                headers: { 'X-CSRF-Token': CSRF }
+            })
+            .then(res => res.json())
+            .then(data => {
+                const scope = data.test_type === 'global' ? 'Global' : data.test_type;
+                document.getElementById('current-limit').textContent =
+                    data.free_tests_limit + ' (' + scope + ')';
+            })
+            .catch(err => {
+                document.getElementById('current-limit').textContent = 'Error loading';
+                console.error('Fetch limit error:', err);
+            });
+        }
+
+        document.getElementById('test-type').addEventListener('change', fetchCurrentLimit);
+
+        document.getElementById('limit-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const newLimit = document.getElementById('new-limit').value;
+            const testType = document.getElementById('test-type').value;
+            const statusEl = document.getElementById('status-message');
+
+            statusEl.textContent = 'Updating...';
+            statusEl.className = 'status-message text-warning';
+
+            const body = { limit: parseInt(newLimit, 10) };
+            if (testType) body.test_type = testType;
+
+            fetch('/api/pte/admin/set-limit', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': CSRF
+                },
+                body: JSON.stringify(body)
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    statusEl.textContent = '✅ ' + data.message;
+                    statusEl.className = 'status-message text-success';
+                    document.getElementById('new-limit').value = '';
+                    fetchCurrentLimit();
+                } else {
+                    statusEl.textContent = '❌ Error: ' + (data.error || 'Unknown');
+                    statusEl.className = 'status-message text-danger';
+                }
+            })
+            .catch(err => {
+                statusEl.textContent = '❌ Request failed: ' + err.message;
+                statusEl.className = 'status-message text-danger';
+            });
+        });
+
+        fetchCurrentLimit();
+    </script>
+</body>
+</html>

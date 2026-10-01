@@ -1,0 +1,1637 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>IELTS Reading Test</title>
+    <meta name="csrf-token" content="{{ csrf_token }}" />
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Roboto, system-ui, -apple-system, sans-serif;
+            background: #f0f4f9; color: #1e2b3c; line-height: 1.6;
+            font-size: 15px;
+        }
+
+        /* ─── Header ─── */
+        .header {
+            background: #0a2b4a; color: #fff; padding: 10px 24px;
+            display: flex; justify-content: space-between; align-items: center;
+            flex-wrap: wrap; gap: 12px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            position: sticky; top: 0; z-index: 100;
+        }
+        .header-left { display: flex; align-items: center; gap: 16px; }
+        .header h1 { font-size: 18px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+        .header a { color: #b8d4f0; text-decoration: none; font-weight: 500; transition: color 0.2s; font-size: 14px; }
+        .header a:hover { color: #fff; }
+        .header-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+        .tool-btn {
+            background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2);
+            padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 13px;
+            font-weight: 600; transition: all 0.2s; display: inline-flex; align-items: center; gap: 5px;
+        }
+        .tool-btn:hover { background: rgba(255,255,255,0.2); }
+        .tool-btn.active { background: #ffc107; color: #0a2b4a; border-color: #ffc107; }
+
+        /* ─── Banners ─── */
+        .full-test-banner, .retake-banner {
+            display: none; padding: 12px 20px; border-radius: 10px;
+            margin: 12px 24px 0; font-weight: 600; font-size: 14px;
+            align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+        }
+        .full-test-banner { background: linear-gradient(135deg, #0d2137 0%, #0a2b4a 100%); color: white; }
+        .retake-banner { background: linear-gradient(135deg, #1e7e34 0%, #2e7d32 100%); color: white; }
+        .full-test-banner.show, .retake-banner.show { display: flex; }
+        .phase-pill, .retake-pill {
+            background: #ffc107; color: #333; padding: 4px 12px; border-radius: 16px;
+            font-size: 11px; font-weight: 700; text-transform: uppercase;
+        }
+        .full-test-banner a { color: #ffc107; text-decoration: none; font-weight: 700; font-size: 12px;
+            padding: 5px 12px; border: 2px solid #ffc107; border-radius: 16px; }
+
+        /* ─── Source Pills ─── */
+        .source-pill {
+            display: inline-block; padding: 3px 10px; border-radius: 12px;
+            font-size: 10px; font-weight: 700; text-transform: uppercase; margin-left: 6px;
+        }
+        .source-pill.pool { background: #cfe2ff; color: #084298; }
+        .source-pill.generated { background: #fff3cd; color: #856404; }
+        .source-pill.bank { background: #d4edda; color: #155724; }
+        .source-pill.repeat { background: #f8d7da; color: #721c24; }
+        .source-pill.retake { background: #d1ecf1; color: #0c5460; }
+
+        /* ─── Main Layout ─── */
+        .main-wrapper {
+            display: grid;
+            grid-template-columns: 1fr 280px;
+            gap: 16px;
+            padding: 16px 24px;
+            max-width: 1600px;
+            margin: 0 auto;
+            transition: grid-template-columns 0.3s;
+        }
+        .main-wrapper.focus-mode { grid-template-columns: 1fr; }
+        .main-wrapper.focus-mode .status-panel { display: none; }
+
+        /* ─── Test Card ─── */
+        .test-card {
+            background: #fff; border-radius: 16px; padding: 20px 24px;
+            box-shadow: 0 4px 20px rgba(10, 43, 74, 0.06); border: 1px solid #e9edf2;
+        }
+
+        /* ─── Status Panel (Sidebar) ─── */
+        .status-panel {
+            background: #fff; border-radius: 16px; padding: 18px;
+            box-shadow: 0 4px 20px rgba(10, 43, 74, 0.06); border: 1px solid #e9edf2;
+            height: fit-content; position: sticky; top: 80px;
+            max-height: calc(100vh - 100px); overflow-y: auto;
+        }
+        .status-panel h3 {
+            font-size: 14px; color: #0a2b4a; margin-bottom: 12px;
+            text-transform: uppercase; letter-spacing: 0.5px;
+            display: flex; align-items: center; gap: 6px;
+        }
+
+        .legend {
+            display: flex; flex-wrap: wrap; gap: 8px;
+            margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px solid #eef2f7;
+            font-size: 11px;
+        }
+        .legend-item { display: flex; align-items: center; gap: 4px; color: #555; }
+        .legend-dot {
+            width: 12px; height: 12px; border-radius: 3px; border: 1px solid #d0d9e5;
+        }
+        .legend-dot.answered { background: #28a745; border-color: #28a745; }
+        .legend-dot.flagged { background: #ffc107; border-color: #ffc107; }
+        .legend-dot.unanswered { background: #fff; border-color: #d0d9e5; }
+
+        .question-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 6px;
+            margin-bottom: 14px;
+        }
+        .q-grid-btn {
+            aspect-ratio: 1; border-radius: 6px; border: 1.5px solid #d0d9e5;
+            background: #fff; cursor: pointer; font-weight: 700; font-size: 12px;
+            color: #1e2b3c; transition: all 0.15s; position: relative;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .q-grid-btn:hover { transform: scale(1.08); border-color: #0a2b4a; }
+        .q-grid-btn.answered { background: #28a745; color: #fff; border-color: #28a745; }
+        .q-grid-btn.flagged {
+            background: #ffc107; color: #333; border-color: #ffc107;
+        }
+        .q-grid-btn.flagged::after {
+            content: '🚩'; position: absolute; top: -6px; right: -6px;
+            font-size: 10px;
+        }
+        .q-grid-btn.current {
+            box-shadow: 0 0 0 3px rgba(10, 43, 74, 0.35);
+            transform: scale(1.08);
+        }
+
+        .status-summary {
+            display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;
+            padding-top: 14px; border-top: 1px solid #eef2f7; font-size: 12px;
+            text-align: center;
+        }
+        .status-summary > div { padding: 8px 4px; border-radius: 8px; }
+        .status-summary .ss-num { font-size: 18px; font-weight: 800; }
+        .status-summary .ss-lbl { font-size: 10px; text-transform: uppercase; color: #666; }
+        .ss-answered { background: #e8f5e9; color: #1e5a2e; }
+        .ss-flagged { background: #fff8e1; color: #7a5d00; }
+        .ss-unanswered { background: #ffebee; color: #b71c1c; }
+
+        /* ─── Progress Bar ─── */
+        .progress-bar-wrap {
+            height: 4px; background: #e8edf3; border-radius: 4px;
+            overflow: hidden; margin-bottom: 16px;
+        }
+        .progress-bar {
+            height: 100%; width: 0%; background: linear-gradient(90deg, #0a2b4a, #28a745);
+            transition: width 0.4s;
+        }
+
+        /* ─── Passage Nav ─── */
+        .passage-nav { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+        .passage-tab {
+            padding: 6px 16px; border-radius: 24px; background: #f1f5f9;
+            font-weight: 600; font-size: 13px; cursor: pointer; transition: all 0.2s;
+            border: 2px solid transparent; display: flex; align-items: center; gap: 6px;
+        }
+        .passage-tab .badge {
+            background: #d0d9e5; color: #1e2b3c; border-radius: 16px;
+            padding: 0 6px; font-size: 10px; font-weight: 700;
+        }
+        .passage-tab.active { background: #0a2b4a; color: #fff; border-color: #0a2b4a; }
+        .passage-tab.active .badge { background: #2a4b6a; color: #fff; }
+
+        /* ─── Split Panels ─── */
+        .split-view { display: flex; gap: 20px; flex-wrap: wrap; }
+        .left-panel {
+            flex: 1.4; min-width: 320px; max-height: 72vh; overflow-y: auto;
+            padding-right: 8px;
+        }
+        .right-panel {
+            flex: 1; min-width: 320px; max-height: 72vh; overflow-y: auto;
+            padding-left: 8px;
+        }
+        .left-panel::-webkit-scrollbar, .right-panel::-webkit-scrollbar,
+        .status-panel::-webkit-scrollbar { width: 6px; }
+        .left-panel::-webkit-scrollbar-thumb, .right-panel::-webkit-scrollbar-thumb,
+        .status-panel::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+
+        /* ─── Passage ─── */
+        #passage-title { font-weight: 700; font-size: 18px; color: #0a2b4a; margin-bottom: 10px; }
+        .passage-text {
+            background: #f8fafc; padding: 20px; border-radius: 12px;
+            line-height: 1.9; font-size: 15px; max-height: 420px;
+            overflow-y: auto; border: 1px solid #e2e8f0; color: #1e2b3c;
+            user-select: text; -webkit-user-select: text;
+        }
+        .passage-text ::selection { background: #ffe08a; }
+        .passage-text mark.user-highlight {
+            background: #ffe08a; padding: 1px 2px; border-radius: 2px;
+        }
+
+        /* ─── Questions ─── */
+        .question-item {
+            background: #fbfdff; padding: 16px 18px; border-radius: 12px;
+            margin-bottom: 12px; border: 1px solid #e9edf2;
+            transition: all 0.2s; position: relative;
+        }
+        .question-item.current-question {
+            border-color: #0a2b4a; box-shadow: 0 0 0 2px rgba(10, 43, 74, 0.1);
+        }
+        .question-item.flagged-item {
+            background: #fffdf5; border-color: #ffc107;
+        }
+        .question-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 8px;
+        }
+        .question-number {
+            font-weight: 700; color: #0a2b4a; font-size: 15px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .flag-btn {
+            background: transparent; border: 1.5px solid #d0d9e5; cursor: pointer;
+            width: 30px; height: 30px; border-radius: 6px; display: flex;
+            align-items: center; justify-content: center; transition: all 0.15s;
+            font-size: 14px;
+        }
+        .flag-btn:hover { border-color: #ffc107; background: #fff8e1; }
+        .flag-btn.flagged { background: #ffc107; border-color: #ffc107; }
+        .question-text { font-size: 14.5px; line-height: 1.6; margin-bottom: 10px; }
+        .option-label {
+            display: block; padding: 8px 14px; border: 1.5px solid #dde1e6;
+            border-radius: 8px; cursor: pointer; margin: 5px 0;
+            transition: all 0.15s; font-size: 14px; background: #fff;
+        }
+        .option-label:hover { background: #f1f7fd; border-color: #90b0d0; }
+        .option-label input[type="radio"] { margin-right: 10px; accent-color: #0a2b4a; }
+        .option-label:has(input:checked) { background: #e3f0fd; border-color: #0a2b4a; font-weight: 500; }
+        .answer-input {
+            width: 100%; padding: 10px 14px; border: 1.5px solid #dde1e6;
+            border-radius: 8px; font-size: 14px; background: #fff;
+        }
+        .answer-input:focus { border-color: #0a2b4a; outline: none; box-shadow: 0 0 0 3px rgba(10, 43, 74, 0.15); }
+
+        /* ─── Buttons ─── */
+        .btn {
+            padding: 10px 24px; border: none; border-radius: 32px; font-size: 14px;
+            font-weight: 600; cursor: pointer; transition: all 0.2s;
+            display: inline-flex; align-items: center; gap: 6px; text-decoration: none;
+        }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-primary { background: #0a2b4a; color: #fff; }
+        .btn-primary:hover:not(:disabled) { background: #061f33; transform: translateY(-1px); }
+        .btn-success { background: #28a745; color: #fff; }
+        .btn-success:hover:not(:disabled) { background: #1e7e34; }
+        .btn-outline { background: transparent; border: 2px solid #0a2b4a; color: #0a2b4a; }
+        .btn-outline:hover:not(:disabled) { background: #0a2b4a; color: #fff; }
+        .btn-retake { background: #1e7e34; color: #fff; }
+        .btn-new-test { background: #0a2b4a; color: #fff; }
+
+        /* ─── Timer ─── */
+        .timer-bar {
+            display: flex; justify-content: space-between; align-items: center;
+            gap: 12px; margin-bottom: 12px; flex-wrap: wrap;
+        }
+        .timer {
+            background: #e8edf3; padding: 6px 16px; border-radius: 32px;
+            font-weight: 700; font-size: 16px; color: #0a2b4a;
+            border: 1px solid #d0d9e5; display: inline-flex;
+            align-items: center; gap: 6px;
+        }
+        .timer.warning { background: #ff9800; color: #fff; border-color: #ff9800; }
+        .timer.expired { background: #dc3545; color: #fff; border-color: #dc3545; animation: pulse 1s infinite; }
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.7; } }
+
+        .autosave-indicator {
+            font-size: 12px; color: #28a745; opacity: 0; transition: opacity 0.3s;
+            display: flex; align-items: center; gap: 4px;
+        }
+        .autosave-indicator.show { opacity: 1; }
+
+        /* ─── Nav Buttons ─── */
+        .nav-buttons {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-top: 20px; gap: 12px; flex-wrap: wrap;
+        }
+        .nav-buttons .btn { min-width: 140px; justify-content: center; }
+
+        /* ─── Loading ─── */
+        .loading { text-align: center; padding: 60px 20px; }
+        .spinner {
+            border: 4px solid #e9ecef; border-top: 4px solid #0a2b4a;
+            border-radius: 50%; width: 44px; height: 44px;
+            animation: spin 0.9s linear infinite; margin: 0 auto 16px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ─── Modal ─── */
+        .modal-overlay {
+            position: fixed; inset: 0; background: rgba(10, 43, 74, 0.55);
+            backdrop-filter: blur(4px); z-index: 1000; display: none;
+            align-items: center; justify-content: center; padding: 20px;
+        }
+        .modal-overlay.show { display: flex; }
+        .modal {
+            background: #fff; border-radius: 20px; max-width: 560px; width: 100%;
+            padding: 32px; box-shadow: 0 24px 64px rgba(0,0,0,0.3);
+            animation: slideUp 0.3s ease;
+            max-height: 90vh; overflow-y: auto;
+        }
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } }
+        .modal h2 { font-size: 22px; color: #0a2b4a; margin-bottom: 8px; }
+        .modal p.sub { color: #666; font-size: 14px; margin-bottom: 20px; }
+        .modal-stats {
+            display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;
+            margin: 20px 0; padding: 20px; background: #f8fafc;
+            border-radius: 12px;
+        }
+        .modal-stat { text-align: center; }
+        .modal-stat .num { font-size: 30px; font-weight: 800; }
+        .modal-stat .lbl { font-size: 12px; color: #666; text-transform: uppercase; }
+        .modal-stat.answered .num { color: #28a745; }
+        .modal-stat.flagged .num { color: #ffc107; }
+        .modal-stat.unanswered .num { color: #dc3545; }
+        .modal-actions {
+            display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        .flagged-list {
+            max-height: 180px; overflow-y: auto; margin-top: 12px;
+            padding: 12px; background: #fff8e1; border-radius: 10px;
+            border: 1px solid #ffe08a;
+        }
+        .flagged-list h4 { font-size: 13px; color: #7a5d00; margin-bottom: 8px; }
+        .flagged-list button {
+            display: inline-block; margin: 3px; padding: 4px 10px;
+            background: #fff; border: 1px solid #ffc107; border-radius: 6px;
+            font-weight: 600; cursor: pointer; font-size: 12px;
+        }
+        .flagged-list button:hover { background: #ffc107; color: #fff; }
+
+        /* ─── Toast ─── */
+        .toast-container {
+            position: fixed; top: 80px; right: 20px; z-index: 1100;
+            display: flex; flex-direction: column; gap: 8px;
+        }
+        .toast {
+            background: #fff; border-radius: 12px; padding: 14px 18px;
+            box-shadow: 0 8px 24px rgba(10, 43, 74, 0.15);
+            border-left: 4px solid #0a2b4a; max-width: 380px;
+            animation: slideIn 0.3s ease;
+            font-size: 13px;
+        }
+        .toast.warning { border-left-color: #ffc107; background: #fff8e1; color: #7a5d00; }
+        .toast.error { border-left-color: #dc3545; background: #ffebee; color: #b71c1c; }
+        .toast.success { border-left-color: #28a745; background: #e8f5e9; color: #1e5a2e; }
+        @keyframes slideIn { from { transform: translateX(400px); } }
+
+        /* ─── Results ─── */
+        .results-card {
+            background: #fff; border-radius: 20px; padding: 40px;
+            text-align: center; max-width: 900px; margin: 30px auto;
+            box-shadow: 0 12px 48px rgba(10, 43, 74, 0.10); border: 1px solid #e9edf2;
+        }
+        .band-circle {
+            width: 140px; height: 140px; border-radius: 50%;
+            background: linear-gradient(135deg, #0a2b4a, #28a745);
+            display: flex; align-items: center; justify-content: center;
+            margin: 16px auto; box-shadow: 0 8px 25px rgba(10, 43, 74, 0.3);
+        }
+        .band-score { font-size: 46px; font-weight: 800; color: #fff; }
+        .feedback-stats {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+            margin: 22px 0; background: #f8fafc; padding: 18px; border-radius: 12px;
+        }
+        .feedback-stat .number { font-size: 30px; font-weight: 700; }
+        .feedback-stat .label { font-size: 13px; color: #555; }
+        .feedback-stat.correct .number { color: #28a745; }
+        .feedback-stat.incorrect .number { color: #dc3545; }
+        .feedback-stat.unanswered .number { color: #ffc107; }
+
+        .detailed-answers {
+            margin-top: 24px; text-align: left;
+            border-top: 2px solid #e9edf2; padding-top: 18px;
+        }
+        .passage-section-header {
+            background: #eef4fa; padding: 8px 14px; margin: 16px 0 8px;
+            border-radius: 6px; font-weight: 700; color: #0a2b4a;
+            border-left: 4px solid #0a2b4a;
+        }
+        .answer-row {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 8px 12px; border-bottom: 1px solid #edf2f7;
+            flex-wrap: wrap; gap: 6px; font-size: 13px;
+        }
+        .answer-row.correct { background: #e8f5e9; }
+        .answer-row.incorrect { background: #ffebee; }
+        .answer-row.unanswered { background: #fff8e1; }
+        .answer-row .qnum { font-weight: 700; color: #0a2b4a; min-width: 44px; }
+        .answer-row .qtext { flex: 2; min-width: 100px; }
+        .answer-row .user-ans { color: #b71c1c; font-weight: 500; }
+        .answer-row .correct-ans { color: #1e5a2e; font-weight: 500; }
+        .answer-row .status-badge {
+            padding: 2px 10px; border-radius: 16px; font-size: 11px;
+            font-weight: 700; text-transform: uppercase;
+        }
+        .answer-row .status-badge.correct { background: #28a745; color: #fff; }
+        .answer-row .status-badge.incorrect { background: #dc3545; color: #fff; }
+        .answer-row .status-badge.unanswered { background: #ffc107; color: #333; }
+
+        /* ─── Error ─── */
+        .error-box {
+            background: #fff0f0; border: 1px solid #ffc9c9; border-radius: 16px;
+            padding: 36px; text-align: center; max-width: 640px; margin: 60px auto;
+        }
+        .error-box pre {
+            background: #f8f8f8; padding: 12px; border-radius: 8px;
+            text-align: left; overflow: auto; max-height: 260px;
+            font-size: 11px; white-space: pre-wrap; word-break: break-all;
+        }
+
+        /* ─── Font size variants ─── */
+        body.font-sm .passage-text { font-size: 13px; }
+        body.font-sm .question-text { font-size: 13px; }
+        body.font-lg .passage-text { font-size: 17px; }
+        body.font-lg .question-text { font-size: 16px; }
+
+        /* ─── Responsive ─── */
+        @media (max-width: 1024px) {
+            .main-wrapper { grid-template-columns: 1fr; }
+            .status-panel { position: static; max-height: none; }
+        }
+        @media (max-width: 768px) {
+            .header { padding: 10px 14px; }
+            .header h1 { font-size: 15px; }
+            .main-wrapper { padding: 10px; }
+            .test-card { padding: 14px; }
+            .split-view { flex-direction: column; }
+            .left-panel, .right-panel { max-height: none; }
+            .feedback-stats { grid-template-columns: 1fr; }
+            .modal-stats { grid-template-columns: 1fr; }
+            .nav-buttons .btn { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ─── HEADER ─── -->
+    <header class="header">
+        <div class="header-left">
+            <h1>📘 IELTS Reading Test</h1>
+        </div>
+        <div class="header-right">
+            <button class="tool-btn" id="font-dec-btn" title="Smaller text">A-</button>
+            <button class="tool-btn" id="font-reset-btn" title="Reset text">A</button>
+            <button class="tool-btn" id="font-inc-btn" title="Larger text">A+</button>
+            <button class="tool-btn" id="focus-btn" title="Toggle focus mode">🎯 Focus</button>
+            <a href="{{ url_for('dashboard') }}">📊 Dashboard</a>
+            <a href="{{ url_for('logout') }}">🚪 Logout</a>
+        </div>
+    </header>
+
+    <!-- ─── FULL TEST BANNER ─── -->
+    <div class="full-test-banner" id="full-test-banner">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+            <span class="phase-pill">Full Test · Reading</span>
+            <span>📖 Reading Phase — 60 minutes · 3 Passages · 40 Questions</span>
+        </div>
+        <a href="/ielts-full-test" onclick="return confirm('Return to the full test dashboard?');">
+            ← Full Test Dashboard
+        </a>
+    </div>
+
+    <!-- ─── RETAKE BANNER ─── -->
+    <div class="retake-banner" id="retake-banner">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+            <span class="retake-pill">Retake</span>
+            <span>🔄 Retaking your previous reading test — same passages, fresh 60-minute timer.</span>
+        </div>
+    </div>
+
+    <!-- ─── TEST SCREEN ─── -->
+    <div id="test-screen" style="display:none;">
+        <div class="main-wrapper" id="main-wrapper">
+            <div class="test-card">
+                <div id="status-banner" style="display:none;padding:12px 18px;border-radius:10px;margin-bottom:14px;font-size:14px;"></div>
+
+                <div class="timer-bar">
+                    <div class="timer" id="timer">⏱️ <span id="timer-text">60:00</span></div>
+                    <div style="display:flex;gap:12px;align-items:center;">
+                        <span class="autosave-indicator" id="autosave-indicator">💾 Saving...</span>
+                        <button class="tool-btn" id="flag-current-btn" style="background:#fff8e1;color:#7a5d00;border-color:#ffc107;">
+                            🚩 Flag Current
+                        </button>
+                    </div>
+                </div>
+
+                <div class="progress-bar-wrap">
+                    <div class="progress-bar" id="progress-bar"></div>
+                </div>
+
+                <div class="passage-nav" id="passage-nav"></div>
+
+                <div class="split-view">
+                    <div class="left-panel">
+                        <div id="passage-title"></div>
+                        <div class="passage-text" id="passage-text">Loading passage...</div>
+                    </div>
+                    <div class="right-panel">
+                        <div id="questions-container">
+                            <div class="loading"><div class="spinner"></div><p>🤖 Loading your test...</p></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="nav-buttons">
+                    <button class="btn btn-outline" id="prev-btn" onclick="reader.prevPassage()">← Previous</button>
+                    <button class="btn btn-primary" id="next-btn" onclick="reader.nextPassage()">Next →</button>
+                    <button class="btn btn-success" id="submit-btn" style="display:none;" onclick="reader.openSubmitModal()">✅ Submit Test</button>
+                </div>
+            </div>
+
+            <aside class="status-panel">
+                <h3>📋 Answer Status</h3>
+                <div class="legend">
+                    <div class="legend-item"><span class="legend-dot answered"></span> Answered</div>
+                    <div class="legend-item"><span class="legend-dot flagged"></span> Flagged</div>
+                    <div class="legend-item"><span class="legend-dot unanswered"></span> Unanswered</div>
+                </div>
+                <div class="question-grid" id="question-grid"></div>
+                <div class="status-summary">
+                    <div class="ss-answered">
+                        <div class="ss-num" id="ss-answered">0</div>
+                        <div class="ss-lbl">Answered</div>
+                    </div>
+                    <div class="ss-flagged">
+                        <div class="ss-num" id="ss-flagged">0</div>
+                        <div class="ss-lbl">Flagged</div>
+                    </div>
+                    <div class="ss-unanswered">
+                        <div class="ss-num" id="ss-unanswered">0</div>
+                        <div class="ss-lbl">Left</div>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <!-- ─── RESULTS SCREEN ─── -->
+    <div id="results-screen" style="display:none;">
+        <div class="container" style="max-width:1000px;margin:20px auto;padding:0 20px;">
+            <div class="results-card">
+                <h2>📊 Your Reading Test Results</h2>
+                <div class="band-circle"><div class="band-score" id="result-band">0.0</div></div>
+                <p id="result-feedback" style="font-size:17px;margin:12px 0;color:#555;"></p>
+                <div id="result-stats" class="feedback-stats"></div>
+                <div class="detailed-answers">
+                    <h3 style="text-align:center;color:#0a2b4a;margin-bottom:14px;">📝 Detailed Answer Review</h3>
+                    <div id="detailed-answers-list"></div>
+                </div>
+                <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:22px;">
+                    <button class="btn btn-retake" onclick="window.location.href='/reading?retake=true'">🔄 Retake</button>
+                    <button class="btn btn-new-test" onclick="window.location.href='/reading?new=true'">🆕 New Test</button>
+                    <button class="btn btn-outline" onclick="location.href='{{ url_for('dashboard') }}'">📊 Dashboard</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ─── ERROR SCREEN ─── -->
+    <div id="error-screen" style="display:none;">
+        <div class="error-box">
+            <h3>❌ Failed to Load Test</h3>
+            <p id="error-message" style="margin:12px 0;color:#666;"></p>
+            <pre id="error-raw"></pre>
+            <div style="margin-top:20px;">
+                <button class="btn btn-primary" onclick="location.reload()">🔄 Try Again</button>
+                <button class="btn btn-outline" onclick="location.href='{{ url_for('dashboard') }}'">📊 Dashboard</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ─── SUBMIT MODAL ─── -->
+    <div class="modal-overlay" id="submit-modal">
+        <div class="modal">
+            <h2>📤 Submit Reading Test?</h2>
+            <p class="sub">You will not be able to change your answers after this.</p>
+            <div class="modal-stats">
+                <div class="modal-stat answered">
+                    <div class="num" id="modal-answered">0</div>
+                    <div class="lbl">Answered</div>
+                </div>
+                <div class="modal-stat flagged">
+                    <div class="num" id="modal-flagged">0</div>
+                    <div class="lbl">Flagged</div>
+                </div>
+                <div class="modal-stat unanswered">
+                    <div class="num" id="modal-unanswered">0</div>
+                    <div class="lbl">Unanswered</div>
+                </div>
+            </div>
+            <div id="flagged-list-container"></div>
+            <div class="modal-actions">
+                <button class="btn btn-outline" onclick="reader.closeSubmitModal()">Cancel</button>
+                <button class="btn btn-success" onclick="reader.confirmSubmit()">✅ Confirm Submit</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ─── TOASTS ─── -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- ─── JAVASCRIPT ─── -->
+    <script>
+        function getCsrfToken() {
+            const meta = document.querySelector('meta[name="csrf-token"]');
+            return meta ? meta.getAttribute('content') : '';
+        }
+
+        const SERVER_FULL_TEST_MODE = {{ 'true' if full_test_mode else 'false' }};
+        const SERVER_HAS_RESUME = {{ 'true' if has_resume else 'false' }};
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const FULL_TEST_MODE = SERVER_FULL_TEST_MODE
+            || urlParams.get('full_test') === 'true'
+            || urlParams.get('from_full_test') === 'true';
+        const RETAKE = urlParams.get('retake') === 'true';
+        const FORCE_NEW_URL = urlParams.get('new') === 'true';
+
+        const TIME_LIMIT_SECONDS = parseInt(urlParams.get('time_limit') || '3600', 10);
+        const GRACE_SECONDS = parseInt(urlParams.get('grace') || '0', 10);
+
+        // ═══════════════════════════════════════════════════════════
+        // ✅ TIME-BASED WAIT (waits until test is fully ready)
+        // ═══════════════════════════════════════════════════════════
+        const POOL_MAX_WAIT_MS = 10 * 60 * 1000;
+        const POOL_RETRY_WAIT = 3;
+        const POOL_500_WAIT = 2;
+
+        // ═══════════════════════════════════════════════════════════
+        // ✅ TOAST SYSTEM
+        // ═══════════════════════════════════════════════════════════
+        const Toast = {
+            container: null,
+            init() { this.container = document.getElementById('toast-container'); },
+            show(msg, type = 'info', duration = 4000) {
+                if (!this.container) this.init();
+                const el = document.createElement('div');
+                el.className = 'toast ' + type;
+                el.innerHTML = msg;
+                this.container.appendChild(el);
+                setTimeout(() => {
+                    el.style.opacity = '0';
+                    el.style.transition = 'opacity 0.3s';
+                    setTimeout(() => el.remove(), 300);
+                }, duration);
+            }
+        };
+
+        function normalizeOption(opt) {
+            if (opt === null || opt === undefined) return '';
+            if (typeof opt === 'string') return opt;
+            if (typeof opt === 'object') {
+                const letter = opt.letter || opt.key || opt.id || opt.option || '';
+                const text = opt.text || opt.label || opt.value || opt.name || opt.description || '';
+                if (letter && text) return `${letter}: ${text}`;
+                if (letter) return `${letter}`;
+                if (text) return `${text}`;
+                try { return JSON.stringify(opt); } catch (e) { return ''; }
+            }
+            return String(opt);
+        }
+
+        function extractLetter(opt) {
+            const str = normalizeOption(opt);
+            let m = str.match(/^([A-Z])[\s]*[:–\-.)]/);
+            if (m) return m[1];
+            m = str.match(/^\(?([A-Z])\)?/);
+            if (m) return m[1];
+            const first = str.trim().charAt(0).toUpperCase();
+            return /[A-Z]/.test(first) ? first : '';
+        }
+
+        function stripOptionPrefix(opt) {
+            const str = normalizeOption(opt);
+            const stripped = str
+                .replace(/^[A-Z]\s*[:–\-.)]\s*/, '')
+                .replace(/^\([A-Z]\)\s*/, '')
+                .trim();
+            return stripped || str;
+        }
+
+        function sourceLabel(source) {
+            const map = {
+                'pool': { text: 'POOL', cls: 'pool' },
+                'bank': { text: 'BANK', cls: 'bank' },
+                'bank_repeat': { text: 'REPEAT', cls: 'repeat' },
+                'generated_single': { text: 'NEW', cls: 'generated' },
+                'generated': { text: 'NEW', cls: 'generated' },
+                'on_demand': { text: 'NEW', cls: 'generated' },
+                'retake': { text: 'RETAKE', cls: 'retake' },
+            };
+            return map[source] || null;
+        }
+
+        function applyFullTestMode() {
+            if (!FULL_TEST_MODE) return;
+            const banner = document.getElementById('full-test-banner');
+            if (banner) banner.classList.add('show');
+            const submitBtn = document.getElementById('submit-btn');
+            if (submitBtn) submitBtn.textContent = '✅ Submit Reading → Writing';
+        }
+
+        function applyRetakeMode() {
+            if (!RETAKE) return;
+            const banner = document.getElementById('retake-banner');
+            if (banner) banner.classList.add('show');
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // ✅ MAIN CONTROLLER
+        // ═══════════════════════════════════════════════════════════
+        class ReadingTestController {
+            constructor() {
+                this.passages = [];
+                this.currentPassageIndex = 0;
+                this.userAnswers = {};
+                this.flagged = new Set();
+                this.highlights = {};   // passageIndex -> [text strings]
+                this.timerInterval = null;
+                this.timeLeft = TIME_LIMIT_SECONDS;
+                this.isSubmitting = false;
+                this.isAutoSubmitting = false;
+                this._graceUsed = false;
+                this.sessionId = null;
+                this.allQuestions = [];
+                this.testData = null;
+                this.questionIndexById = {};
+                this.source = null;
+                this.currentPoolId = null;
+                this.timerWarningsShown = new Set();
+                this.tabSwitchCount = 0;
+                this.autoSaveTimer = null;
+                this._lastSavedAnswersJson = '';
+
+                this.elements = {
+                    testScreen: document.getElementById('test-screen'),
+                    resultsScreen: document.getElementById('results-screen'),
+                    errorScreen: document.getElementById('error-screen'),
+                    statusBanner: document.getElementById('status-banner'),
+                    passageNav: document.getElementById('passage-nav'),
+                    passageTitle: document.getElementById('passage-title'),
+                    passageText: document.getElementById('passage-text'),
+                    questionsContainer: document.getElementById('questions-container'),
+                    timer: document.getElementById('timer'),
+                    timerText: document.getElementById('timer-text'),
+                    prevBtn: document.getElementById('prev-btn'),
+                    nextBtn: document.getElementById('next-btn'),
+                    submitBtn: document.getElementById('submit-btn'),
+                    errorMsg: document.getElementById('error-message'),
+                    errorRaw: document.getElementById('error-raw'),
+                    resultBand: document.getElementById('result-band'),
+                    resultFeedback: document.getElementById('result-feedback'),
+                    resultStats: document.getElementById('result-stats'),
+                    detailedList: document.getElementById('detailed-answers-list'),
+                    questionGrid: document.getElementById('question-grid'),
+                    ssAnswered: document.getElementById('ss-answered'),
+                    ssFlagged: document.getElementById('ss-flagged'),
+                    ssUnanswered: document.getElementById('ss-unanswered'),
+                    progressBar: document.getElementById('progress-bar'),
+                    autosaveIndicator: document.getElementById('autosave-indicator'),
+                    submitModal: document.getElementById('submit-modal'),
+                    modalAnswered: document.getElementById('modal-answered'),
+                    modalFlagged: document.getElementById('modal-flagged'),
+                    modalUnanswered: document.getElementById('modal-unanswered'),
+                    flaggedListContainer: document.getElementById('flagged-list-container'),
+                };
+
+                Toast.init();
+                this._bindGlobalListeners();
+            }
+
+            _bindGlobalListeners() {
+                // Font size controls
+                document.getElementById('font-dec-btn').addEventListener('click', () => this._setFontSize('sm'));
+                document.getElementById('font-reset-btn').addEventListener('click', () => this._setFontSize('normal'));
+                document.getElementById('font-inc-btn').addEventListener('click', () => this._setFontSize('lg'));
+
+                // Focus mode toggle
+                document.getElementById('focus-btn').addEventListener('click', () => {
+                    const wrapper = document.getElementById('main-wrapper');
+                    wrapper.classList.toggle('focus-mode');
+                    document.getElementById('focus-btn').classList.toggle('active');
+                });
+
+                // Flag current question
+                document.getElementById('flag-current-btn').addEventListener('click', () => {
+                    const currentQ = this._getCurrentQuestion();
+                    if (currentQ) this.toggleFlag(currentQ.id);
+                });
+
+                // Keyboard shortcuts
+                document.addEventListener('keydown', (e) => {
+                    if (e.target.matches('input, textarea, [contenteditable]')) return;
+                    if (document.getElementById('submit-modal').classList.contains('show')) return;
+
+                    // 1-4 for options
+                    if (['1','2','3','4'].includes(e.key)) {
+                        const currentQ = this._getCurrentQuestion();
+                        if (currentQ && currentQ.options && currentQ.options.length >= parseInt(e.key)) {
+                            const opt = currentQ.options[parseInt(e.key) - 1];
+                            const letter = extractLetter(opt);
+                            if (letter) this.saveAnswer(currentQ.id, letter);
+                            // Update UI
+                            const el = document.querySelector(`input[name="q_${currentQ.id}"][value="${letter}"]`);
+                            if (el) { el.checked = true; this._refreshStatus(); }
+                        }
+                    }
+
+                    // Arrow keys
+                    if (e.key === 'ArrowRight') { e.preventDefault(); this.nextPassage(); }
+                    if (e.key === 'ArrowLeft') { e.preventDefault(); this.prevPassage(); }
+
+                    // F key
+                    if (e.key === 'f' || e.key === 'F') {
+                        const currentQ = this._getCurrentQuestion();
+                        if (currentQ) this.toggleFlag(currentQ.id);
+                    }
+                });
+
+                // Tab switch detection (anti-cheat)
+                document.addEventListener('visibilitychange', () => {
+                    if (document.visibilityState === 'hidden' && this.sessionId && !this.isSubmitting) {
+                        this.tabSwitchCount++;
+                        if (this.tabSwitchCount === 3) {
+                            Toast.show('⚠️ <strong>Warning:</strong> You have switched tabs 3 times. Please stay on this page during the test.', 'warning', 8000);
+                        } else if (this.tabSwitchCount === 5) {
+                            Toast.show('⚠️ <strong>Final warning:</strong> Frequent tab switches detected. This is your last warning.', 'error', 8000);
+                        }
+                    }
+                });
+
+                // Prevent text copy on passage
+                document.addEventListener('copy', (e) => {
+                    if (this.elements.passageText && this.elements.passageText.contains(e.target)) {
+                        Toast.show('⚠️ Copying passage text is disabled during the test.', 'warning');
+                        e.preventDefault();
+                    }
+                });
+
+                // Prevent right-click on passage
+                document.addEventListener('contextmenu', (e) => {
+                    if (this.elements.passageText && this.elements.passageText.contains(e.target)) {
+                        e.preventDefault();
+                    }
+                });
+            }
+
+            _setFontSize(size) {
+                document.body.classList.remove('font-sm', 'font-lg');
+                if (size === 'sm') document.body.classList.add('font-sm');
+                else if (size === 'lg') document.body.classList.add('font-lg');
+                try { localStorage.setItem('reading_font_size', size); } catch (e) {}
+            }
+
+            _getCurrentQuestion() {
+                // Returns the first question in current passage that isn't answered, or first one
+                const currentQs = this.allQuestions.filter(q => q.passageIndex === this.currentPassageIndex);
+                if (!currentQs.length) return null;
+                const unanswered = currentQs.find(q => !this.userAnswers[q.id]);
+                return unanswered || currentQs[0];
+            }
+
+            showStatus(msg, type = 'info', autoHide = true) {
+                const b = this.elements.statusBanner;
+                b.innerHTML = msg;
+                b.style.display = 'block';
+                const colors = {
+                    info: 'background:#e3f2fd;color:#0a2b4a;border-left:4px solid #0a2b4a;',
+                    success: 'background:#e8f5e9;color:#1e5a2e;border-left:4px solid #28a745;',
+                    error: 'background:#ffebee;color:#b71c1c;border-left:4px solid #dc3545;',
+                    warning: 'background:#fff8e1;color:#7a5d00;border-left:4px solid #ffc107;'
+                };
+                b.style.cssText = colors[type] || colors.info;
+                b.style.display = 'block';
+                if (autoHide) setTimeout(() => b.style.display = 'none', 5000);
+            }
+
+            showError(msg, rawData = null) {
+                this.elements.testScreen.style.display = 'none';
+                this.elements.resultsScreen.style.display = 'none';
+                this.elements.errorScreen.style.display = 'block';
+                this.elements.errorMsg.textContent = msg;
+                const pre = this.elements.errorRaw;
+                if (rawData) {
+                    pre.textContent = typeof rawData === 'string' ? rawData : JSON.stringify(rawData, null, 2);
+                    pre.style.display = 'block';
+                } else {
+                    pre.style.display = 'none';
+                }
+            }
+
+            async start() {
+                this.elements.testScreen.style.display = 'block';
+                this.elements.questionsContainer.innerHTML =
+                    `<div class="loading"><div class="spinner"></div><p>🤖 Loading your test...</p></div>`;
+
+                // Restore font size preference
+                try {
+                    const savedFont = localStorage.getItem('reading_font_size');
+                    if (savedFont) this._setFontSize(savedFont);
+                } catch (e) {}
+
+                try {
+                    const resumeId = urlParams.get('resume');
+                    const useLegacyEndpoint = RETAKE || FORCE_NEW_URL
+                        || (resumeId && !RETAKE)
+                        || (SERVER_HAS_RESUME && !FULL_TEST_MODE && !RETAKE);
+
+                    const endpoint = useLegacyEndpoint ? '/api/reading/start' : '/api/reading/pooled-generate';
+                    console.log(`🎯 Using endpoint: ${endpoint}`);
+
+                    const payload = {
+                        difficulty: 'medium',
+                        resume: !!resumeId,
+                        from_full_test: FULL_TEST_MODE,
+                    };
+                    if (useLegacyEndpoint) {
+                        if (resumeId && !RETAKE) payload.resume_id = parseInt(resumeId);
+                        if (SERVER_HAS_RESUME && !FULL_TEST_MODE && !RETAKE) payload.auto_resume = true;
+                        if (RETAKE) payload.retake = true;
+                        if (FORCE_NEW_URL) payload.force_new = true;
+                    }
+
+                    // ══════════════════════════════════════════════════
+                    // TIME-BASED RETRY — wait until pool is ready
+                    // ══════════════════════════════════════════════════
+                    let data = null;
+                    const startTime = Date.now();
+                    let attempt = 0;
+                    const maxSec = Math.floor(POOL_MAX_WAIT_MS / 1000);
+
+                    while (true) {
+                        attempt++;
+                        const elapsedMs = Date.now() - startTime;
+                        const elapsedSec = Math.floor(elapsedMs / 1000);
+
+                        if (elapsedMs > POOL_MAX_WAIT_MS) {
+                            throw new Error(`Test generation took longer than ${maxSec}s. Please refresh.`);
+                        }
+
+                        let response;
+                        try {
+                            response = await fetch(endpoint, {
+                                method: 'POST',
+                                credentials: 'same-origin',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-Token': getCsrfToken()
+                                },
+                                body: JSON.stringify(payload)
+                            });
+                        } catch (netErr) {
+                            if (attempt % 5 === 0) console.warn(`Network error attempt ${attempt}`);
+                            this.showStatus(`⚠️ Network error — retrying…`, 'warning', false);
+                            await new Promise(r => setTimeout(r, 1000));
+                            continue;
+                        }
+
+                        if (response.status === 202) {
+                            const waitSec = POOL_RETRY_WAIT;
+                            this.showStatus(`⏳ Waiting for another student's test... ${elapsedSec}s / ${maxSec}s`, 'info', false);
+                            this.elements.questionsContainer.innerHTML =
+                                `<div class="loading">
+                                    <div class="spinner"></div>
+                                    <p>⏳ Waiting for another student's test to finish...</p>
+                                    <p style="margin-top:8px;color:#666;font-size:13px;">
+                                        Elapsed: <strong>${elapsedSec}s</strong> / ${maxSec}s
+                                        · Attempts: <strong>${attempt}</strong>
+                                    </p>
+                                    <p style="margin-top:8px;color:#888;font-size:12px;">
+                                        Don't close this tab. Your test will load automatically when ready.
+                                    </p>
+                                </div>`;
+                            await new Promise(r => setTimeout(r, waitSec * 1000));
+                            continue;
+                        }
+
+                        if (response.status === 503) {
+                            let errData = {};
+                            try { errData = await response.json(); } catch (e) {}
+                            throw new Error(errData.source === 'exhausted'
+                                ? 'Reading pool is full. Please try again in a few minutes.'
+                                : (errData.error || 'Service temporarily unavailable.'));
+                        }
+
+                        if (response.status >= 500) {
+                            this.showStatus(`⚠️ Server busy — retrying…`, 'warning', false);
+                            await new Promise(r => setTimeout(r, POOL_500_WAIT * 1000));
+                            continue;
+                        }
+
+                        if (response.status === 402) {
+                            let errData = {};
+                            try { errData = await response.json(); } catch (e) {}
+                            Toast.show('⚠️ ' + (errData.error || 'Subscription required.'), 'warning');
+                            setTimeout(() => window.location.href = errData.redirect_to || '/subscription?module=ielts', 2000);
+                            return;
+                        }
+
+                        if (!response.ok) {
+                            let errData = {};
+                            try { errData = await response.json(); } catch (e) {}
+                            throw new Error(errData.error || `Server error ${response.status}`);
+                        }
+
+                        data = await response.json();
+                        break;
+                    }
+
+                    if (!data) throw new Error('No response from server.');
+
+                    if (data.test_data && data.test_data.success === false) {
+                        throw new Error('Server error: ' + (data.test_data.error || 'Unknown error'));
+                    }
+                    if (!data.success) throw new Error(data.error || 'Unknown error');
+
+                    this.sessionId = data.session_id;
+                    this.currentPoolId = data._pool_id || null;
+                    this.source = data.source || null;
+                    this.testData = data.test_data || data;
+
+                    const passages = this.extractPassages(this.testData);
+                    if (!passages || passages.length === 0) {
+                        const fallback = this.findAnyArrayWithContent(this.testData);
+                        if (fallback) this.passages = fallback;
+                        else throw new Error('No passages found.');
+                    } else {
+                        this.passages = passages;
+                    }
+
+                    this.buildQuestionIndex();
+                    this.renderPassageNav();
+                    this.showPassage(0);
+                    this.startTimer();
+                    this.startAutoSave();
+                    this.updateButtons();
+                    this._showLoadedMessage(data);
+
+                } catch (err) {
+                    console.error('Start error:', err);
+                    this.showError(err.message || 'Failed to load test.', err);
+                }
+            }
+
+            _showLoadedMessage(data) {
+                const src = this.source;
+                const lbl = sourceLabel(src);
+                if (lbl) {
+                    Toast.show(`✅ Test loaded ${lbl.cls === 'pool' ? '⚡ from pool' : ''}`, 'success', 3000);
+                }
+            }
+
+            extractPassages(obj) {
+                if (!obj) return null;
+                if (Array.isArray(obj)) {
+                    if (obj.length > 0 && obj[0] && (obj[0].content || obj[0].text || obj[0].questions)) return obj;
+                    for (let item of obj) {
+                        const sub = this.extractPassages(item);
+                        if (sub && sub.length > 0) return sub;
+                    }
+                    return null;
+                }
+                const keys = ['passages', 'test_data', 'test', 'data', 'items', 'question_sets', 'sections', 'passage'];
+                for (let key of keys) {
+                    if (obj[key] !== undefined) {
+                        const val = obj[key];
+                        if (Array.isArray(val) && val.length > 0) {
+                            if (key === 'passages' || key === 'test_data' || key === 'test' || key === 'data') {
+                                const result = this.extractPassages(val);
+                                if (result) return result;
+                            }
+                            if ((key === 'questions' || key === 'items' || key === 'question_sets') && val.length > 0) {
+                                return [{ questions: val }];
+                            }
+                            if (key === 'passage' && val.length > 0) return val;
+                        } else if (typeof val === 'object') {
+                            const result = this.extractPassages(val);
+                            if (result) return result;
+                        }
+                    }
+                }
+                if (obj.content || obj.text || obj.questions) return [obj];
+                function recursiveSearch(node) {
+                    if (!node || typeof node !== 'object') return null;
+                    if (Array.isArray(node)) {
+                        if (node.length > 0 && node[0] && (node[0].content || node[0].text || node[0].questions)) return node;
+                        for (let item of node) { const f = recursiveSearch(item); if (f) return f; }
+                        return null;
+                    }
+                    for (let key of Object.keys(node)) {
+                        const f = recursiveSearch(node[key]); if (f) return f;
+                    }
+                    return null;
+                }
+                const found = recursiveSearch(obj);
+                return (found && Array.isArray(found) && found.length > 0) ? found : null;
+            }
+
+            findAnyArrayWithContent(obj) {
+                let result = null;
+                function search(node) {
+                    if (!node || typeof node !== 'object') return;
+                    if (Array.isArray(node)) {
+                        if (node.length > 0 && node[0] && (node[0].text || node[0].content || node[0].question)) { result = node; return; }
+                        for (let item of node) { search(item); if (result) return; }
+                    } else {
+                        for (let key of Object.keys(node)) { search(node[key]); if (result) return; }
+                    }
+                }
+                search(obj);
+                return result;
+            }
+
+            buildQuestionIndex() {
+                this.allQuestions = [];
+                this.questionIndexById = {};
+                let globalNumber = 0;
+
+                this.passages.forEach((p, idx) => {
+                    const qs = p.questions || p.items || p.question_sets || [];
+                    if (!Array.isArray(qs)) return;
+
+                    qs.forEach(q => {
+                        globalNumber++;
+                        const qId = String(q.id || q.number || ('q_' + globalNumber));
+                        q._resolvedId = qId;
+                        const entry = {
+                            passageIndex: idx,
+                            id: qId,
+                            number: globalNumber,
+                            text: q.text || q.question || q.prompt || '',
+                            correctAnswer: q.correct_answer || q.answer || '',
+                            options: q.options || [],
+                        };
+                        this.allQuestions.push(entry);
+                        this.questionIndexById[qId] = entry;
+                    });
+                });
+
+                console.log('🔍 buildQuestionIndex →', this.allQuestions.length, 'questions');
+            }
+
+            renderPassageNav() {
+                const nav = this.elements.passageNav;
+                const passageRanges = {};
+                this.allQuestions.forEach(q => {
+                    const p = q.passageIndex;
+                    if (!passageRanges[p]) passageRanges[p] = { start: q.number, end: q.number };
+                    else {
+                        passageRanges[p].start = Math.min(passageRanges[p].start, q.number);
+                        passageRanges[p].end = Math.max(passageRanges[p].end, q.number);
+                    }
+                });
+
+                nav.innerHTML = this.passages.map((_, i) => {
+                    const r = passageRanges[i];
+                    const label = r ? `${r.start}–${r.end}` : '–';
+                    return `<div class="passage-tab ${i === this.currentPassageIndex ? 'active' : ''}"
+                        onclick="reader.showPassage(${i})">
+                        Passage ${i+1} <span class="badge">${label}</span>
+                    </div>`;
+                }).join('');
+            }
+
+            renderQuestionGrid() {
+                const grid = this.elements.questionGrid;
+                let html = '';
+                this.allQuestions.forEach(q => {
+                    const isAnswered = !!this.userAnswers[q.id];
+                    const isFlagged = this.flagged.has(q.id);
+                    const isCurrent = q.passageIndex === this.currentPassageIndex;
+                    const cls = ['q-grid-btn'];
+                    if (isAnswered) cls.push('answered');
+                    if (isFlagged) cls.push('flagged');
+                    if (isCurrent) cls.push('current');
+                    html += `<button class="${cls.join(' ')}" onclick="reader.jumpToQuestion('${q.id}')" title="Q${q.number}">${q.number}</button>`;
+                });
+                grid.innerHTML = html;
+
+                const answeredCount = this.allQuestions.filter(q => this.userAnswers[q.id]).length;
+                const flaggedCount = this.flagged.size;
+                const unansweredCount = this.allQuestions.length - answeredCount;
+                this.elements.ssAnswered.textContent = answeredCount;
+                this.elements.ssFlagged.textContent = flaggedCount;
+                this.elements.ssUnanswered.textContent = unansweredCount;
+
+                // Progress bar
+                const pct = this.allQuestions.length ? (answeredCount / this.allQuestions.length) * 100 : 0;
+                this.elements.progressBar.style.width = pct + '%';
+            }
+
+            jumpToQuestion(qId) {
+                const q = this.questionIndexById[qId];
+                if (!q) return;
+                if (q.passageIndex !== this.currentPassageIndex) {
+                    this.showPassage(q.passageIndex);
+                }
+                // Scroll to question
+                setTimeout(() => {
+                    const el = document.getElementById(`qwrap_${qId}`);
+                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    const firstInput = document.querySelector(`#qwrap_${qId} input`);
+                    if (firstInput) firstInput.focus({ preventScroll: true });
+                }, 300);
+            }
+
+            showPassage(index) {
+                if (index < 0 || index >= this.passages.length) return;
+                this.currentPassageIndex = index;
+                const p = this.passages[index];
+
+                this.elements.passageTitle.textContent = p.title ? '📄 ' + p.title : '';
+                const text = p.text || p.content || p.body || '';
+                // Apply saved highlights
+                let html = this.escapeHtml(text).replace(/\n/g, '<br><br>');
+                const highlights = this.highlights[index] || [];
+                highlights.forEach(h => {
+                    if (!h) return;
+                    const safe = this.escapeHtml(h);
+                    html = html.split(safe).join(`<mark class="user-highlight">${safe}</mark>`);
+                });
+                this.elements.passageText.innerHTML = html;
+
+                const qs = p.questions || p.items || p.question_sets || [];
+                let questionsHtml = '';
+                if (!Array.isArray(qs) || qs.length === 0) {
+                    questionsHtml = '<p style="color:#666;padding:20px;">No questions for this passage.</p>';
+                } else {
+                    const sortedQs = [...qs].sort((a, b) => (a.number || 0) - (b.number || 0));
+                    sortedQs.forEach(q => {
+                        const qId = q._resolvedId || String(q.id || q.number);
+                        const indexed = this.questionIndexById[qId];
+                        const displayNum = indexed ? indexed.number : (q.number || qId);
+                        const saved = this.userAnswers[qId] || '';
+                        const qText = q.text || q.question || q.prompt || '';
+                        const isFlagged = this.flagged.has(qId);
+                        const cls = ['question-item'];
+                        if (isFlagged) cls.push('flagged-item');
+
+                        questionsHtml += `<div class="${cls.join(' ')}" id="qwrap_${qId}">`;
+                        questionsHtml += `<div class="question-header">
+                            <div class="question-number">Q${displayNum}:</div>
+                            <button class="flag-btn ${isFlagged ? 'flagged' : ''}" onclick="reader.toggleFlag('${qId}')" title="Flag for review">🚩</button>
+                        </div>`;
+                        questionsHtml += `<div class="question-text">${this.escapeHtml(qText)}</div>`;
+
+                        if (q.options && q.options.length > 0) {
+                            q.options.forEach(opt => {
+                                const letter = extractLetter(opt);
+                                const displayText = stripOptionPrefix(opt);
+                                const value = letter || normalizeOption(opt);
+                                const checked = (saved === value || saved === normalizeOption(opt)) ? 'checked' : '';
+                                questionsHtml += `<label class="option-label">
+                                    <input type="radio" name="q_${qId}" value="${this.escapeHtml(value)}" ${checked} onchange="reader.saveAnswer('${qId}', this.value)">
+                                    ${this.escapeHtml(displayText || normalizeOption(opt))}
+                                </label>`;
+                            });
+                        } else {
+                            questionsHtml += `<input type="text" class="answer-input" id="input_${qId}" value="${this.escapeHtml(saved)}" placeholder="Type your answer..." oninput="reader.saveInput(this)">`;
+                        }
+                        questionsHtml += `</div>`;
+                    });
+                }
+                this.elements.questionsContainer.innerHTML = questionsHtml;
+                this.renderPassageNav();
+                this.renderQuestionGrid();
+                this.updateButtons();
+            }
+
+            saveAnswer(id, val) {
+                this.userAnswers[id] = val;
+                this.renderQuestionGrid();
+                this._markDirty();
+            }
+
+            saveInput(el) {
+                const id = el.id.replace('input_', '');
+                this.userAnswers[id] = el.value;
+                this.renderQuestionGrid();
+                this._markDirty();
+            }
+
+            toggleFlag(qId) {
+                if (this.flagged.has(qId)) {
+                    this.flagged.delete(qId);
+                } else {
+                    this.flagged.add(qId);
+                }
+                // Update UI
+                const wrap = document.getElementById(`qwrap_${qId}`);
+                if (wrap) {
+                    wrap.classList.toggle('flagged-item', this.flagged.has(qId));
+                    const btn = wrap.querySelector('.flag-btn');
+                    if (btn) btn.classList.toggle('flagged', this.flagged.has(qId));
+                }
+                this.renderQuestionGrid();
+                this._markDirty();
+            }
+
+            nextPassage() {
+                if (this.currentPassageIndex < this.passages.length - 1) {
+                    this.showPassage(this.currentPassageIndex + 1);
+                    this.elements.leftPanel?.scrollTo(0, 0);
+                }
+            }
+
+            prevPassage() {
+                if (this.currentPassageIndex > 0) {
+                    this.showPassage(this.currentPassageIndex - 1);
+                }
+            }
+
+            updateButtons() {
+                const total = this.passages.length;
+                this.elements.prevBtn.style.display = this.currentPassageIndex > 0 ? 'inline-flex' : 'none';
+                this.elements.nextBtn.style.display = this.currentPassageIndex < total - 1 ? 'inline-flex' : 'none';
+                this.elements.submitBtn.style.display = (this.currentPassageIndex >= total - 1) ? 'inline-flex' : 'none';
+            }
+
+            startTimer() {
+                if (this.timerInterval) clearInterval(this.timerInterval);
+                this.timeLeft = TIME_LIMIT_SECONDS;
+                this.updateTimerDisplay();
+
+                this.timerInterval = setInterval(() => {
+                    this.timeLeft--;
+                    this.updateTimerDisplay();
+                    this._checkTimerWarnings();
+
+                    if (this.timeLeft <= 0) {
+                        if (!this._graceUsed && GRACE_SECONDS > 0) {
+                            this._graceUsed = true;
+                            this.timeLeft = GRACE_SECONDS;
+                            Toast.show('⏳ Grace period activated (+' + (GRACE_SECONDS/60) + ' min)', 'warning', 8000);
+                            return;
+                        }
+                        clearInterval(this.timerInterval);
+                        this.timerInterval = null;
+                        Toast.show('⏰ Time is up — submitting automatically', 'warning');
+                        this.isAutoSubmitting = true;
+                        this.submitTest();
+                    }
+                }, 1000);
+            }
+
+            _checkTimerWarnings() {
+                const warnings = [
+                    { at: 600, key: '10min', msg: '⏱️ 10 minutes remaining' },
+                    { at: 300, key: '5min', msg: '⏱️ 5 minutes remaining' },
+                    { at: 60, key: '1min', msg: '⚠️ 1 minute remaining!' },
+                ];
+                for (const w of warnings) {
+                    if (this.timeLeft === w.at && !this.timerWarningsShown.has(w.key)) {
+                        this.timerWarningsShown.add(w.key);
+                        Toast.show(w.msg, w.at === 60 ? 'error' : 'warning', 6000);
+                    }
+                }
+            }
+
+            updateTimerDisplay() {
+                const mins = Math.floor(Math.max(0, this.timeLeft) / 60);
+                const secs = Math.max(0, this.timeLeft) % 60;
+                this.elements.timerText.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+                this.elements.timer.classList.remove('warning', 'expired');
+                if (this.timeLeft <= 60) this.elements.timer.classList.add('expired');
+                else if (this.timeLeft <= 300) this.elements.timer.classList.add('warning');
+            }
+
+            _markDirty() {
+                // Auto-save to server (debounced via timer set in startAutoSave)
+            }
+
+            startAutoSave() {
+                if (this.autoSaveTimer) clearInterval(this.autoSaveTimer);
+                this.autoSaveTimer = setInterval(() => {
+                    this._autoSaveAnswers();
+                }, 30000); // every 30s
+            }
+
+            async _autoSaveAnswers() {
+                if (!this.sessionId || this.isSubmitting) return;
+                const currentJson = JSON.stringify(this.userAnswers);
+                if (currentJson === this._lastSavedAnswersJson) return;
+
+                try {
+                    this.elements.autosaveIndicator.textContent = '💾 Saving...';
+                    this.elements.autosaveIndicator.classList.add('show');
+
+                    await fetch('/api/reading/submit', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-Token': getCsrfToken()
+                        },
+                        body: JSON.stringify({
+                            session_id: this.sessionId,
+                            answers: this.userAnswers,
+                            is_full_test: FULL_TEST_MODE,
+                            draft_only: true,
+                        })
+                    });
+
+                    this._lastSavedAnswersJson = currentJson;
+                    this.elements.autosaveIndicator.textContent = '✓ Saved';
+                    setTimeout(() => this.elements.autosaveIndicator.classList.remove('show'), 1500);
+                } catch (e) {
+                    console.warn('Auto-save failed:', e);
+                }
+            }
+
+            // ═══════════════════════════════════════════════════════════
+            // SUBMIT
+            // ═══════════════════════════════════════════════════════════
+            openSubmitModal() {
+                const answered = this.allQuestions.filter(q => this.userAnswers[q.id]).length;
+                const flagged = this.flagged.size;
+                const unanswered = this.allQuestions.length - answered;
+
+                this.elements.modalAnswered.textContent = answered;
+                this.elements.modalFlagged.textContent = flagged;
+                this.elements.modalUnanswered.textContent = unanswered;
+
+                // Show flagged question list
+                if (flagged > 0) {
+                    let html = '<div class="flagged-list"><h4>🚩 Flagged questions:</h4>';
+                    Array.from(this.flagged).forEach(qId => {
+                        const q = this.questionIndexById[qId];
+                        if (q) {
+                            html += `<button onclick="reader.closeSubmitModal(); reader.jumpToQuestion('${qId}');">Q${q.number}</button>`;
+                        }
+                    });
+                    html += '</div>';
+                    this.elements.flaggedListContainer.innerHTML = html;
+                } else {
+                    this.elements.flaggedListContainer.innerHTML = '';
+                }
+
+                this.elements.submitModal.classList.add('show');
+            }
+
+            closeSubmitModal() {
+                this.elements.submitModal.classList.remove('show');
+            }
+
+            confirmSubmit() {
+                this.closeSubmitModal();
+                this.submitTest();
+            }
+
+            async submitTest() {
+                if (this.isSubmitting) return;
+
+                this.isSubmitting = true;
+                clearInterval(this.timerInterval);
+                clearInterval(this.autoSaveTimer);
+
+                this.elements.questionsContainer.innerHTML =
+                    `<div class="loading"><div class="spinner"></div><p>📊 Evaluating your answers...</p></div>`;
+
+                const answers = {};
+                this.allQuestions.forEach(q => { answers[q.id] = this.userAnswers[q.id] || ''; });
+
+                try {
+                    const response = await fetch('/api/reading/submit', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
+                        body: JSON.stringify({
+                            session_id: this.sessionId,
+                            answers: answers,
+                            is_full_test: FULL_TEST_MODE,
+                        })
+                    });
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        if (response.status === 402 && data.requires_subscription) {
+                            Toast.show('⚠️ ' + (data.error || 'Subscription required.'), 'warning');
+                            setTimeout(() => window.location.href = '/subscription?module=ielts', 2000);
+                            this.isSubmitting = false;
+                            return;
+                        }
+                        throw new Error(data.error || `Server error ${response.status}`);
+                    }
+                    if (!data.success) throw new Error(data.error || 'Submission failed');
+
+                    try {
+                        await fetch('/api/reading/pooled-submit', {
+                            method: 'POST',
+                            credentials: 'same-origin',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-Token': getCsrfToken()
+                            },
+                            body: JSON.stringify({ session_id: this.sessionId })
+                        });
+                    } catch (poolErr) {
+                        console.warn('Pool progress failed:', poolErr);
+                    }
+
+                    const shouldRedirect = FULL_TEST_MODE
+                        || data.is_full_test === true
+                        || (typeof data.redirect === 'string' && data.redirect.length > 0);
+
+                    if (shouldRedirect) {
+                        if (!data.is_full_test && !data.redirect) {
+                            try {
+                                await fetch('/ielts-full-test/record-phase', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'X-CSRF-Token': getCsrfToken()
+                                    },
+                                    body: JSON.stringify({
+                                        phase: 'reading',
+                                        band_score: data.band_score,
+                                        score_pct: data.score_pct || data.score,
+                                        correct: data.correct_count,
+                                        total: data.total_questions,
+                                        answers: answers,
+                                    })
+                                });
+                            } catch (e) {}
+                        }
+                        Toast.show('✅ Reading complete! Redirecting...', 'success');
+                        const redirectUrl = (typeof data.redirect === 'string' && data.redirect)
+                            ? data.redirect
+                            : '/ielts-full-test?completed=reading';
+                        setTimeout(() => { window.location.href = redirectUrl; }, 800);
+                        return;
+                    }
+
+                    this.showResults(data);
+                } catch (err) {
+                    Toast.show('❌ Submit failed: ' + err.message, 'error', 6000);
+                    this.elements.questionsContainer.innerHTML =
+                        `<p style="color:red;padding:20px;">❌ ${err.message}</p>
+                         <button class="btn btn-primary" onclick="reader.submitTest()">🔄 Retry</button>`;
+                    this.isSubmitting = false;
+                }
+            }
+
+            showResults(data) {
+                this.elements.testScreen.style.display = 'none';
+                this.elements.resultsScreen.style.display = 'block';
+
+                const band = data.band_score || 0;
+                const correct = data.correct_count || 0;
+                const incorrect = data.incorrect_count || 0;
+                const unanswered = data.unanswered_count || 0;
+                const total = data.total_questions || 0;
+
+                this.elements.resultBand.textContent = band.toFixed(1);
+                this.elements.resultFeedback.textContent = `You answered ${correct} out of ${total} questions correctly.`;
+
+                this.elements.resultStats.innerHTML = `
+                    <div class="feedback-stat correct"><div class="number">${correct}</div><div class="label">Correct</div></div>
+                    <div class="feedback-stat incorrect"><div class="number">${incorrect}</div><div class="label">Incorrect</div></div>
+                    <div class="feedback-stat unanswered"><div class="number">${unanswered}</div><div class="label">Unanswered</div></div>
+                `;
+
+                const detailedMap = {};
+                (data.detailed_results || []).forEach(item => {
+                    detailedMap[item.question_id] = item;
+                });
+
+                const passageRanges = {};
+                this.allQuestions.forEach(q => {
+                    const p = q.passageIndex;
+                    if (!passageRanges[p]) passageRanges[p] = { start: q.number, end: q.number };
+                    else {
+                        passageRanges[p].start = Math.min(passageRanges[p].start, q.number);
+                        passageRanges[p].end = Math.max(passageRanges[p].end, q.number);
+                    }
+                });
+
+                let html = '';
+                let currentPassage = -1;
+                this.allQuestions.forEach(q => {
+                    if (q.passageIndex !== currentPassage) {
+                        currentPassage = q.passageIndex;
+                        const range = passageRanges[currentPassage] || { start: 1, end: this.allQuestions.length };
+                        html += `<div class="passage-section-header">📄 Passage ${currentPassage + 1} (Questions ${range.start}–${range.end})</div>`;
+                    }
+                    const detail = detailedMap[q.id] || {};
+                    const userAns = detail.user_answer || '(not answered)';
+                    const correctAns = detail.correct_answer || q.correctAnswer || '';
+                    const isCorrect = detail.is_correct;
+                    const isUnanswered = (userAns === '(not answered)' || userAns === '');
+                    const statusClass = isCorrect ? 'correct' : (isUnanswered ? 'unanswered' : 'incorrect');
+                    const statusText = isCorrect ? '✅ Correct' : (isUnanswered ? '⏳ Unanswered' : '❌ Incorrect');
+
+                    html += `
+                        <div class="answer-row ${statusClass}">
+                            <span class="qnum">Q${q.number}</span>
+                            <span class="qtext">${this.escapeHtml(q.text)}</span>
+                            <span class="user-ans">Your: ${this.escapeHtml(userAns)}</span>
+                            <span class="correct-ans">Correct: ${this.escapeHtml(correctAns)}</span>
+                            <span class="status-badge ${statusClass}">${statusText}</span>
+                        </div>
+                    `;
+                });
+
+                this.elements.detailedList.innerHTML = html || '<p style="text-align:center;color:#666;">No detailed results.</p>';
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+
+            escapeHtml(text) {
+                if (!text) return '';
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // INIT
+        // ═══════════════════════════════════════════════════════════
+        const reader = new ReadingTestController();
+        window.reader = reader;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            applyFullTestMode();
+            applyRetakeMode();
+            reader.start();
+        });
+    </script>
+
+</body>
+</html>

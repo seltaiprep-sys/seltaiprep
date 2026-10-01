@@ -1,0 +1,155 @@
+﻿# ═══════════════════════════════════════════════════════════════════
+#  IELTS App — Production Requirements (v4)
+#  Updated: 2026-09-29
+#  Python: 3.11 (recommended) / 3.13
+#  Platform: Windows (dev) / Linux (prod)
+#  Server: Bisup Starter Cloud (1 vCPU, 2 GB) → Basic Cloud (2 vCPU, 4 GB)
+# ═══════════════════════════════════════════════════════════════════
+
+# ─── Core Web Framework ─────────────────────────────────────────────
+Flask==3.0.3
+Flask-SQLAlchemy==3.1.1
+Flask-Migrate==4.1.0
+Flask-Login==0.6.3
+Flask-Session==0.5.0
+Flask-Limiter==4.1.1
+Flask-Caching==2.3.0
+Flask-Cors==4.0.0
+Flask-WTF==1.1.1
+Flask-Mail==0.9.1
+WTForms==3.0.1
+Jinja2==3.1.6
+Werkzeug==3.0.3
+MarkupSafe==3.0.3
+itsdangerous==2.2.0
+blinker==1.9.0
+click==8.1.7
+
+# ─── Database ───────────────────────────────────────────────────────
+SQLAlchemy==2.0.48
+alembic==1.18.4
+psycopg2-binary==2.9.10
+greenlet==3.3.2
+
+# ─── Cache + Task Queue ─────────────────────────────────────────────
+redis==6.4.0
+celery==5.6.3
+kombu==5.6.2
+amqp==5.3.1
+billiard==4.2.4
+vine==5.1.0
+cachelib==0.9.0
+APScheduler==3.10.4
+
+# ─── Production Server ──────────────────────────────────────────────
+# Windows dev: waitress
+waitress==2.1.2
+# Linux prod: gunicorn + gevent (UNCOMMENTED for Bisup VPS)
+gunicorn==21.2.0
+gevent>=24.11.1
+
+# ─── Auth / Security ────────────────────────────────────────────────
+bcrypt==4.0.1
+PyJWT==2.12.1
+pyotp==2.9.0
+cryptography==46.0.6
+Authlib==1.7.2
+
+# ─── HTTP ───────────────────────────────────────────────────────────
+requests==2.34.2
+httpx==0.28.1
+urllib3==2.7.0
+certifi==2026.2.25
+charset-normalizer==3.4.9
+idna==3.11
+
+# ─── AI Engine ──────────────────────────────────────────────────────
+openai==2.41.0
+tiktoken==0.13.0
+python-dotenv==1.0.1
+
+# ─── Text-to-Speech ─────────────────────────────────────────────────
+edge-tts==7.2.8
+gTTS==2.5.1
+
+# ═══════════════════════════════════════════════════════════════════
+#  ⚠️  HEAVY ML/AI DEPENDENCIES
+#  यी packages ले 2GB RAM VPS मा OOM गराउन सक्छन्।
+#  Basic Cloud (4GB) वा त्यो भन्दा माथि मात्र प्रयोग गर्नुहोस्।
+#  यदि external API (Deepgram/DeepSeek) प्रयोग गर्दै हुनुहुन्छ भने
+#  यी हटाउन सकिन्छ।
+# ═══════════════════════════════════════════════════════════════════
+
+# ─── Speech Transcription (heavy: ~500 MB + models) ────────────────
+faster-whisper==1.2.1
+ctranslate2==4.7.1
+av==17.0.1
+tokenizers==0.22.2
+safetensors==0.7.0
+
+# ─── Audio Processing (moderate: ~200 MB) ──────────────────────────
+librosa==0.11.0
+soundfile==0.13.1
+pydub==0.25.1
+sounddevice==0.5.5
+soxr==1.1.0
+audioread==3.1.0
+lazy-loader==0.5
+pooch==1.9.0
+msgpack==1.1.2
+
+# ─── Voice Activity Detection ───────────────────────────────────────
+webrtcvad==2.0.10
+
+# ─── Charts / Rendering ─────────────────────────────────────────────
+matplotlib==3.10.8
+playwright==1.60.0
+reportlab==4.4.3
+pillow>=10.2.0,<11.0.0
+contourpy==1.3.3
+cycler==0.12.1
+fonttools==4.62.1
+kiwisolver==1.5.0
+pyparsing==3.3.2
+python-dateutil==2.9.0.post0
+six==1.17.0
+chardet==5.2.0
+
+# ─── SVG Rendering (used by chart_renderer.py) ─────────────────────
+svglib==1.5.1
+cssselect2==0.8.0
+tinycss2==1.4.0
+lxml==5.3.1
+nocairosvg==2024
+
+# ─── ML / Numerical (light) ─────────────────────────────────────────
+numpy==2.2.1
+scipy==1.17.1
+scikit-learn==1.8.0
+joblib==1.5.3
+threadpoolctl==3.6.0
+
+# ─── NLP (VERY heavy: transformers pulls PyTorch ~2 GB) ────────────
+#  ⚠️  2GB VPS मा install नगर्नुहोस्। 4GB+ मा मात्र।
+spacy==3.8.14
+nltk==3.9.4
+sentence-transformers==5.5.0
+transformers==4.57.6
+huggingface_hub==0.36.2
+regex==2026.3.32
+
+# ─── Payments ───────────────────────────────────────────────────────
+stripe==15.3.0
+qrcode==7.4.2
+pypng==0.20220715.0
+
+# ─── Monitoring ─────────────────────────────────────────────────────
+sentry-sdk[flask]==2.19.2
+python-json-logger==3.2.1
+
+# ─── Utilities ──────────────────────────────────────────────────────
+python-magic==0.4.27
+pytz==2026.2
+tzdata==2025.3
+packaging==26.0
+typing_extensions==4.15.0

@@ -1,0 +1,34 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Player</title>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box;}
+        body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f2f5;}
+        .header{background:#003d6b;color:white;padding:15px 30px;}
+        .header-content{display:flex;justify-content:space-between;align-items:center;}
+        .logo h1{font-size:20px;}.logo p{font-size:11px;opacity:0.8;}
+        .nav-links a{color:white;text-decoration:none;margin-left:25px;}
+        .container{max-width:800px;margin:30px auto;padding:0 20px;}
+        .card{background:white;border-radius:16px;padding:30px;box-shadow:0 4px 15px rgba(0,0,0,0.1);text-align:center;}
+        h2{color:#003d6b;margin-bottom:15px;}
+        .info{color:#666;margin:10px 0;}
+        .btn{padding:12px 24px;background:#003d6b;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:600;text-decoration:none;display:inline-block;margin:5px;}
+    </style>
+</head>
+<body>
+    <div class="header"><div class="header-content"><div class="logo"><h1>IELTS Practice Platform</h1><p>Test Player</p></div><div class="nav-links"><a href="/dashboard">Dashboard</a><a href="/logout">Logout</a></div></div></div>
+    <div class="container"><div class="card">
+        <h2>Test Result #{{ result.id }}</h2>
+        <p class="info"><strong>Type:</strong> {{ result.test_type|capitalize }}</p>
+        <p class="info"><strong>Band Score:</strong> {{ result.band_score }}</p>
+        <p class="info"><strong>Score:</strong> {{ result.score|round(1) }}%</p>
+        <p class="info"><strong>Date:</strong> {{ result.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+        <p class="info">{{ result.feedback or '' }}</p>
+        <a href="/dashboard" class="btn">Dashboard</a>
+        <a href="/results" class="btn">All Results</a>
+    </div></div>
+</body>
+</html>

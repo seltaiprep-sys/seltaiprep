@@ -1,0 +1,2234 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="csrf-token" content="{{ csrf_token }}" />
+    <title>PTE Reading Test</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; }
+        .header { background: #003d6b; color: white; padding: 15px 30px; }
+        .header-content { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+        .logo h1 { font-size: 20px; }
+        .logo p { font-size: 11px; opacity: 0.8; }
+        .nav-links a { color: white; text-decoration: none; margin-left: 25px; font-size: 14px; }
+        .nav-links a:hover { text-decoration: underline; }
+        .container { max-width: 960px; margin: 30px auto; padding: 0 20px; }
+        .test-card { background: white; border-radius: 16px; padding: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        #start-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15,23,42,0.92); display: none; justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(6px); }
+        #start-overlay.show { display: flex; }
+        .start-card { background: white; padding: 50px 60px; border-radius: 24px; text-align: center; max-width: 560px; width: 92%; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+        .start-card h1 { font-size: 32px; color: #0f172a; margin-bottom: 8px; }
+        .start-card p { color: #475569; font-size: 16px; margin-bottom: 24px; line-height: 1.6; }
+        .start-card .btn-start { padding: 14px 48px; border: none; border-radius: 50px; font-size: 20px; font-weight: 700; background: #22c55e; color: white; cursor: pointer; transition: all 0.3s; box-shadow: 0 4px 14px rgba(34,197,94,0.4); }
+        .start-card .btn-start:hover { transform: scale(1.05); }
+        .start-card .test-details { display: flex; justify-content: center; gap: 40px; margin: 20px 0 30px; font-size: 14px; color: #475569; }
+        .start-card .test-details span { font-weight: 600; color: #0f172a; }
+        .start-card .auto-note {
+            background: #fef9c3; border: 1px solid #facc15; border-radius: 10px;
+            padding: 10px 16px; font-size: 13px; color: #854d0e; margin-bottom: 20px; text-align: left; line-height: 1.6;
+        }
+        .pte-subscription-widget { background: #f8fafc; border-radius: 12px; padding: 12px 20px; margin: 10px 0 20px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.06); display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; border-left: 5px solid #003d6b; gap: 12px; }
+        .pte-subscription-widget .status-text { font-size: 14px; color: #1e293b; flex: 1; }
+        .pte-subscription-widget .status-text strong { color: #003d6b; }
+        .pte-subscription-widget .btn-subscribe { background: linear-gradient(135deg, #f093fb, #f5576c); color: white; border: none; padding: 8px 24px; border-radius: 30px; font-weight: 600; cursor: pointer; transition: transform 0.2s; box-shadow: 0 4px 15px rgba(245,87,108,0.3); white-space: nowrap; font-size: 14px; }
+        .pte-subscription-widget .btn-subscribe:hover { transform: scale(1.03); }
+        .pte-subscription-widget .badge-active { background: #28a745; color: white; padding: 2px 12px; border-radius: 20px; font-size: 12px; margin-left: 8px; }
+        .pte-subscription-widget .badge-free { background: #f59e0b; color: #333; padding: 2px 12px; border-radius: 20px; font-size: 12px; margin-left: 8px; }
+        .module-breakdown { font-size: 14px; color: #475569; margin-top: 4px; display: flex; flex-wrap: wrap; gap: 8px 16px; }
+        .module-breakdown .mod-item { display: flex; align-items: center; gap: 4px; }
+        .module-breakdown .mod-item .mod-label { font-weight: 600; color: #1e293b; }
+        .module-breakdown .mod-item .mod-count { font-weight: 700; color: #6c63ff; }
+        .module-breakdown .mod-item .mod-limit { color: #94a3b8; }
+        .loading { text-align: center; padding: 60px 20px; }
+        .spinner { border: 4px solid #e2e8f0; border-top: 4px solid #003d6b; border-radius: 50%; width: 48px; height: 48px; animation: spin 0.8s linear infinite; margin: 20px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .loading p { color: #475569; font-size: 15px; }
+        .timer-bar {
+            display: flex; justify-content: space-between; align-items: center;
+            gap: 12px; flex-wrap: wrap; margin-bottom: 15px;
+        }
+        .timer { background: #f1f5f9; padding: 8px 18px; border-radius: 30px; font-size: 16px; font-weight: 600; color: #003d6b; display: inline-block; }
+        .timer.warning { background: #fee2e2; color: #b91c1c; animation: pulse-timer 1.5s infinite; }
+        .q-timer {
+            background: #e0f2f1; padding: 6px 16px; border-radius: 30px;
+            font-size: 14px; font-weight: 700; color: #00695c;
+            font-variant-numeric: tabular-nums;
+        }
+        .q-timer.warning { background: #fee2e2; color: #b91c1c; animation: pulse-timer 1.5s infinite; }
+        .q-timer .q-timer-label { font-weight: 500; opacity: 0.75; margin-right: 6px; }
+        .q-timer.adaptive { background: #ede9fe; color: #5b21b6; }
+        .q-timer.adaptive.warning { background: #fee2e2; color: #b91c1c; }
+        @keyframes pulse-timer { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.04); } }
+        .progress-bar { height: 6px; background: #e2e8f0; border-radius: 3px; margin: 12px 0 20px 0; overflow: hidden; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, #003d6b, #28a745); transition: width 0.5s ease; width: 0%; }
+        .passage-section { background: #f8fafc; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #003d6b; }
+        .passage-title { font-size: 18px; font-weight: 700; color: #003d6b; margin-bottom: 8px; }
+        .passage-text { font-size: 15px; line-height: 1.8; color: #1e293b; max-height: 350px; overflow-y: auto; white-space: pre-wrap; }
+        .question-item { background: #f8fafc; padding: 20px; border-radius: 10px; margin-bottom: 15px; border: 1px solid #e2e8f0; }
+        .question-type { font-size: 12px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; margin-bottom: 4px; }
+        .question-number { font-weight: 700; color: #003d6b; font-size: 14px; margin-bottom: 6px; }
+        .question-text { font-size: 16px; margin-bottom: 10px; line-height: 1.7; color: #1e293b; }
+        .option-label { display: block; padding: 10px 14px; margin: 5px 0; background: white; border-radius: 8px; border: 2px solid #e2e8f0; cursor: pointer; transition: all 0.2s; font-size: 15px; }
+        .option-label:hover { border-color: #94a3b8; background: #f8fafc; }
+        .option-label.selected { border-color: #003d6b; background: #eff6ff; }
+        .option-label input { margin-right: 10px; }
+        .blank-select { display: inline-block; margin: 0 4px; padding: 6px 12px; border: 2px solid #003d6b; border-radius: 6px; min-width: 140px; background: white; font-size: 14px; cursor: pointer; transition: all 0.3s; }
+        .blank-select:focus { outline: none; border-color: #28a745; box-shadow: 0 0 0 3px rgba(40,167,69,0.15); }
+        .blank-select.has-value { border-color: #28a745; background: #d4edda; }
+        .blank-number { font-weight: 700; color: #003d6b; margin-right: 4px; }
+        .blank-placeholder { display: inline-block; min-width: 80px; padding: 2px 8px; border-bottom: 2px dashed #003d6b; margin: 0 4px; font-weight: 600; color: #003d6b; cursor: pointer; transition: all 0.2s; }
+        .blank-placeholder.filled { color: #003d6b; border-bottom-color: #28a745; }
+        .blank-placeholder.filled:hover { background: #fee2e2; border-bottom-color: #dc2626; }
+        .blank-placeholder.just-filled { animation: blankPulse 0.5s ease; }
+        @keyframes blankPulse {
+            0% { background: #fef9c3; transform: scale(1); }
+            50% { background: #fde047; transform: scale(1.08); }
+            100% { background: transparent; transform: scale(1); }
+        }
+        .reorder-container { margin: 10px 0; }
+        .reorder-item { background: #f1f5f9; padding: 12px 16px; margin: 5px 0; border-radius: 6px; border: 2px solid #e2e8f0; cursor: pointer; transition: all 0.2s; font-size: 15px; }
+        .reorder-item:hover { background: #e2e8f0; border-color: #94a3b8; }
+        .reorder-item.selected { background: #cce5ff; border-color: #003d6b; }
+        .reorder-number { display: inline-block; width: 28px; font-weight: 700; color: #003d6b; }
+        .word-box { display: flex; flex-wrap: wrap; gap: 10px; margin: 10px 0; padding: 12px; background: #f0f9ff; border: 1px dashed #90caf9; border-radius: 10px; }
+        .word-box-item { background: #e3f2fd; padding: 6px 16px; border-radius: 30px; border: 2px solid #90caf9; cursor: pointer; transition: all 0.2s; font-size: 14px; font-weight: 500; user-select: none; }
+        .word-box-item:hover:not(.used) { transform: scale(1.08); background: #bbdefb; box-shadow: 0 2px 8px rgba(33,150,243,0.3); }
+        .word-box-item.used { background: #d4edda; border-color: #28a745; cursor: pointer; opacity: 0.65; text-decoration: line-through; }
+        .word-box-item.used:hover { background: #fecaca; border-color: #dc2626; opacity: 0.9; }
+        .btn { padding: 10px 24px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.3s; display: inline-flex; align-items: center; gap: 6px; }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important; }
+        .btn-primary { background: #003d6b; color: white; }
+        .btn-primary:hover:not(:disabled) { background: #1a5276; transform: translateY(-1px); }
+        .btn-success { background: #28a745; color: white; }
+        .btn-success:hover:not(:disabled) { background: #1e7e34; transform: translateY(-1px); }
+        .btn-outline { background: transparent; border: 2px solid #003d6b; color: #003d6b; }
+        .btn-outline:hover:not(:disabled) { background: #f1f5f9; transform: translateY(-1px); }
+        .nav-buttons { display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap; justify-content: space-between; }
+        .nav-buttons .left, .nav-buttons .right { display: flex; gap: 10px; flex-wrap: wrap; }
+        .results-card { background: white; border-radius: 16px; padding: 40px; text-align: center; max-width: 700px; margin: 40px auto; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        .score-circle { width: 150px; height: 150px; border-radius: 50%; background: linear-gradient(135deg, #003d6b, #28a745); display: flex; align-items: center; justify-content: center; margin: 20px auto; flex-direction: column; }
+        .score-number { font-size: 40px; font-weight: 700; color: white; }
+        .score-label { font-size: 12px; color: rgba(255,255,255,0.8); }
+        .section-score { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #e2e8f0; }
+        .answer-comparison { margin: 10px 0; padding: 12px 16px; background: #f8fafc; border-radius: 8px; border-left: 4px solid #003d6b; text-align: left; }
+        .answer-comparison.correct { border-left-color: #28a745; }
+        .answer-comparison.incorrect { border-left-color: #dc2626; }
+        .answer-comparison p { margin: 4px 0; font-size: 14px; line-height: 1.6; }
+        .error-box { background: #fef2f2; border-radius: 16px; padding: 40px; text-align: center; border: 1px solid #fca5a5; }
+        .error-box h2 { color: #b91c1c; margin-bottom: 8px; }
+        .error-box p { color: #475569; }
+
+        #auto-submit-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 61, 107, 0.95);
+            display: none; justify-content: center; align-items: center;
+            z-index: 3000; backdrop-filter: blur(8px);
+        }
+        #auto-submit-overlay.active { display: flex; }
+        .auto-submit-card {
+            background: white; padding: 40px 60px; border-radius: 20px;
+            text-align: center; max-width: 500px; width: 92%;
+            box-shadow: 0 30px 80px rgba(0,0,0,0.4);
+            animation: fadeIn 0.3s ease;
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        .auto-submit-card .icon { font-size: 64px; display: block; margin-bottom: 12px; }
+        .auto-submit-card h2 { font-size: 24px; color: #003d6b; margin-bottom: 8px; }
+        .auto-submit-card p { font-size: 15px; color: #475569; line-height: 1.6; margin-bottom: 16px; }
+        .auto-submit-card .spinner {
+            border: 4px solid #e2e8f0; border-top: 4px solid #003d6b;
+            border-radius: 50%; width: 40px; height: 40px;
+            animation: spin 0.8s linear infinite; margin: 20px auto 0;
+        }
+
+        @media (max-width: 768px) {
+            .header { padding: 10px 16px; }
+            .container { padding: 0 12px; margin: 16px auto; }
+            .test-card { padding: 16px; }
+            .start-card { padding: 30px 24px; }
+            .start-card h1 { font-size: 24px; }
+            .start-card .test-details { flex-direction: column; gap: 8px; }
+            .nav-buttons { flex-direction: column; align-items: stretch; }
+            .nav-buttons .left, .nav-buttons .right { justify-content: center; }
+            .btn { flex: 1; justify-content: center; }
+            .pte-subscription-widget { flex-direction: column; align-items: stretch; text-align: center; }
+            .pte-subscription-widget .btn-subscribe { width: 100%; text-align: center; }
+            .blank-select { min-width: 100px; font-size: 13px; }
+            .passage-text { max-height: 200px; }
+            .module-breakdown { justify-content: center; }
+            .auto-submit-card { padding: 30px 24px; }
+        }
+        @media (max-width: 480px) {
+            .header .logo h1 { font-size: 17px; }
+            .nav-links a { margin-left: 12px; font-size: 13px; }
+            .question-item { padding: 14px; }
+            .option-label { padding: 8px 12px; font-size: 14px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="header-content">
+            <div class="logo">
+                <h1>📘 PTE Official Practice</h1>
+                <p>PTE Reading Test (Auto Mode + Adaptive Timing)</p>
+            </div>
+            <div class="nav-links">
+                <a href="/dashboard?module=pte">← Dashboard</a>
+                <a href="/logout">Logout</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+
+        <div id="start-overlay" class="show">
+            <div class="start-card">
+                <h1>📖 Ready to begin?</h1>
+                <p>You will have <strong>30 minutes</strong> to complete the Reading section. Read the passages carefully and answer all questions.</p>
+
+                <div class="auto-note">
+                    ⚡ <strong>Auto Mode + Adaptive Timing:</strong> Each question has its own timer that <strong>adapts to your pace</strong> on the same question type. When a question's timer runs out, the test <strong>automatically advances</strong>. When the last question's timer expires, you get a <strong>30-second grace period</strong>, then the test submits automatically.
+                </div>
+
+                <div class="test-details">
+                    <div>Questions: <span id="start-total">0</span></div>
+                    <div>Duration: <span id="start-duration">30 min</span></div>
+                </div>
+                <button class="btn-start" id="btn-start-test">▶ Start Test</button>
+            </div>
+        </div>
+
+        <div id="test-screen">
+            <div id="pte-subscription-status" class="pte-subscription-widget">
+                <span class="status-text">⏳ Loading subscription status...</span>
+            </div>
+
+            <div class="test-card">
+                <div id="loading" class="loading">
+                    <div class="spinner"></div>
+                    <p>🤖 Generating PTE Reading test...</p>
+                </div>
+                <div id="test-content" style="display:none;">
+                    <div class="timer-bar">
+                        <div class="timer" id="timer">⏱️ Total: 30:00</div>
+                        <div class="q-timer" id="q-timer">
+                            <span class="q-timer-label">Question:</span>
+                            <span id="q-timer-value">0:00</span>
+                        </div>
+                    </div>
+                    <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+                    <div id="questions-container"></div>
+                    <div class="nav-buttons">
+                        <div class="left">
+                            <button class="btn btn-outline" id="prev-btn" onclick="window.prevQuestion()" disabled>← Previous</button>
+                        </div>
+                        <div class="right">
+                            <button class="btn btn-primary" id="next-btn" onclick="window.nextQuestion()">Next →</button>
+                            <button class="btn btn-success" id="submit-btn" onclick="window.submitTest()" style="display:none;">✅ Submit</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="results-screen" style="display:none;">
+            <div class="results-card">
+                <h2>🎉 PTE Reading Results</h2>
+                <div class="score-circle">
+                    <div class="score-number" id="overall-score">0</div>
+                    <div class="score-label">PTE Score / 90</div>
+                </div>
+                <p><strong>IELTS Equivalent:</strong> Band <span id="ielts-band">0</span></p>
+                <p><strong>Correct:</strong> <span id="correct-count">0</span>/<span id="total-count">0</span></p>
+                <div id="section-scores" style="margin: 20px 0; text-align: left;"></div>
+                <button class="btn btn-primary" onclick="window.toggleAnswers()">📝 Show/Hide Detailed Answers</button>
+                <div id="detailed-answers" style="display:none; margin-top: 20px; text-align: left;"></div>
+                <div style="margin-top: 24px; display:flex; gap:12px; justify-content:center; flex-wrap:wrap;">
+                    <button class="btn btn-success" onclick="window.location.href='/pte/reading?retake=true'">🔄 Retake</button>
+                    <button class="btn btn-primary" onclick="window.location.href='/pte/reading?new=true'">🆕 New Test</button>
+                    <button class="btn btn-outline" onclick="window.location.href='/dashboard?module=pte'">📊 Dashboard</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="error-screen" style="display:none;">
+            <div class="error-box">
+                <h2>❌ Error Loading Test</h2>
+                <p id="error-message">An error occurred.</p>
+                <div style="margin-top: 16px; display:flex; gap:12px; justify-content:center; flex-wrap:wrap;">
+                    <button class="btn btn-primary" onclick="location.reload()">🔄 Try Again</button>
+                    <button class="btn btn-outline" onclick="location.href='/dashboard?module=pte'">📊 Dashboard</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div id="auto-submit-overlay">
+        <div class="auto-submit-card">
+            <span class="icon">⏰</span>
+            <h2 id="auto-submit-title">Time's Up!</h2>
+            <p id="auto-submit-message">Submitting your test automatically. Please wait...</p>
+            <div class="spinner"></div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            'use strict';
+
+            console.log('✅ PTE Reading Test loaded — Auto Mode + Adaptive Timing + Pool (v12: DOM-safe retry)');
+
+            // ─── AUTO MODE CONFIG ─────────────────────────────────────────
+            const AUTO_ADVANCE_ON_TIMEOUT = true;
+            const AUTO_SUBMIT_ON_END = true;
+            const AUTO_SUBMIT_DELAY_MS = 800;
+            const LAST_QUESTION_GRACE_SECONDS = 30;
+            const TOTAL_TIME_SECONDS = 1800;
+
+            // ═══════════════════════════════════════════════════════════════
+            // ✅ PATCH #1: MAX_GEN_ATTEMPTS increased 40 → 80
+            //    Reading generation takes ~1-2 min; more attempts for pool waits.
+            // ═══════════════════════════════════════════════════════════════
+            const MAX_GEN_ATTEMPTS = 80;
+            const GEN_RETRY_DELAY_MS = 3000;
+
+            const QUESTION_TIME_LIMITS = {
+                'multiple_choice_single': 90,
+                'multiple_choice_multiple': 120,
+                'reorder_paragraphs': 120,
+                'fill_blanks': 120,
+                'reading_fill_blanks': 90,
+                'default': 90
+            };
+
+            // ─── ADAPTIVE TIME CONFIG ─────────────────────────────────────
+            const ADAPTIVE_ENABLED = true;
+            const ADAPTIVE_MIN_FACTOR = 0.7;
+            const ADAPTIVE_MAX_FACTOR = 1.3;
+            const ADAPTIVE_MIN_SAMPLES = 1;
+            const ADAPTIVE_MIN_SECONDS = 20;
+            const ADAPTIVE_MAX_SECONDS = 600;
+
+            const PACE_MIN_SECONDS_THRESHOLD = 3;
+            const MAX_BLANKS_PER_QUESTION = 30;
+
+            // ─── URL Parameters ──────────────────────────────────────────
+            const urlParams = new URLSearchParams(window.location.search);
+            const forceNew = urlParams.get('new') === 'true';
+            const retake = urlParams.get('retake') === 'true';
+            const RESUME_ID = (forceNew || retake) ? null : urlParams.get('resume');
+
+            const DRAFT_KEY = 'pte_reading_draft_v12';
+
+            const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+            const CSRF_TOKEN = csrfMeta ? csrfMeta.getAttribute('content') : '';
+
+            // ═══════════════════════════════════════════════════════════════
+            // ✅ PATCH #2: USER_ID uses integer fallback (0) instead of 'null'
+            //    Prevents comparison bugs when current_user is falsy.
+            // ═══════════════════════════════════════════════════════════════
+            const USER_ID = {{ (current_user.id if current_user else 0) | int }};
+
+            // ─── DOM REFS ──────────────────────────────────────────────────
+            const startOverlay = document.getElementById('start-overlay');
+            const startBtn = document.getElementById('btn-start-test');
+            const startTotal = document.getElementById('start-total');
+            const startDuration = document.getElementById('start-duration');
+            const testScreen = document.getElementById('test-screen');
+            const loading = document.getElementById('loading');
+            const testContent = document.getElementById('test-content');
+            const questionsContainer = document.getElementById('questions-container');
+            const timerEl = document.getElementById('timer');
+            const qTimerEl = document.getElementById('q-timer');
+            const qTimerValueEl = document.getElementById('q-timer-value');
+            const progressFill = document.getElementById('progress-fill');
+            const prevBtn = document.getElementById('prev-btn');
+            const nextBtn = document.getElementById('next-btn');
+            const submitBtn = document.getElementById('submit-btn');
+            const resultsScreen = document.getElementById('results-screen');
+            const errorScreen = document.getElementById('error-screen');
+            const errorMsg = document.getElementById('error-message');
+            const subWidget = document.getElementById('pte-subscription-status');
+            const autoSubmitOverlay = document.getElementById('auto-submit-overlay');
+            const autoSubmitTitle = document.getElementById('auto-submit-title');
+            const autoSubmitMessage = document.getElementById('auto-submit-message');
+
+            if (!loading || !startBtn) {
+                console.error('❌ Critical elements missing');
+                return;
+            }
+
+            // ─── STATE ─────────────────────────────────────────────────────
+            let questions = [];
+            let userAnswers = {};
+            let currentIndex = 0;
+            let timerInterval = null;
+            let timeLeft = TOTAL_TIME_SECONDS;
+            let isSubmitting = false;
+            let testStarted = false;
+            let testId = null;
+            let isResuming = false;
+            let selectedReorderItem = null;
+            let autoSubmitting = false;
+
+            let questionTimerInterval = null;
+            let questionTimeRemaining = {};
+
+            let userPaceHistory = [];
+            let questionStartTime = {};
+            let recordedPace = new Set();
+            let userTouchedQuestions = new Set();
+
+            let graceInterval = null;
+            let autoAdvanceTimeoutId = null;
+
+            const TYPE_LABELS = {
+                'multiple_choice_single': '⭕ Multiple Choice (Single Answer)',
+                'multiple_choice_multiple': '🔘 Multiple Choice (Multiple Answers)',
+                'reorder_paragraphs': '📋 Re-order Paragraphs',
+                'fill_blanks': '📝 Fill in the Blanks',
+                'reading_fill_blanks': '📝 Reading Fill in the Blanks'
+            };
+
+            // ─── HELPERS ──────────────────────────────────────────────────
+            function escapeHtml(text) {
+                if (text === null || text === undefined) return '';
+                const div = document.createElement('div');
+                div.textContent = String(text);
+                return div.innerHTML;
+            }
+
+            function jsonAttr(v) {
+                return escapeHtml(JSON.stringify(v));
+            }
+
+            function getCsrfToken() { return CSRF_TOKEN; }
+
+            function formatTime(s) {
+                if (s === null || s === undefined || isNaN(s)) return '0:00';
+                if (s < 0) s = 0;
+                const m = Math.floor(s / 60);
+                const sec = Math.floor(s % 60);
+                return String(m).padStart(2, '0') + ':' + String(sec).padStart(2, '0');
+            }
+
+            function getBaseQuestionTimeLimit(q) {
+                return QUESTION_TIME_LIMITS[q.type] || QUESTION_TIME_LIMITS.default;
+            }
+
+            function getQuestionId(q, idx) {
+                return q.id !== undefined && q.id !== null ? q.id : (idx !== undefined ? idx : null);
+            }
+
+            function cssEscape(s) {
+                return String(s).replace(/["\\]/g, '\\$&');
+            }
+
+            function isQuestionAnswered(q, idx) {
+                const questionId = getQuestionId(q, idx);
+                if (questionId === null) return false;
+                const ans = userAnswers[questionId];
+
+                if (q.type === 'fill_blanks' || q.type === 'reading_fill_blanks') {
+                    const blanks = q.blanks || [];
+                    if (blanks.length > 0) {
+                        for (let bi = 0; bi < blanks.length; bi++) {
+                            const bid = questionId + '_' + bi;
+                            if (!userAnswers[bid] || userAnswers[bid] === '') return false;
+                        }
+                        return true;
+                    }
+                    return !!(ans && ans !== '');
+                }
+
+                if (q.type === 'multiple_choice_multiple') {
+                    return !!(ans && Array.isArray(ans) && ans.length > 0);
+                }
+
+                if (q.type === 'reorder_paragraphs') {
+                    const items = q.items || q.sentences || [];
+                    return !!(ans && Array.isArray(ans) && items.length > 0 && ans.length === items.length);
+                }
+
+                return !!(ans && ans !== '' && ans !== null && ans !== undefined);
+            }
+
+            function recordPace(q, timeUsed, limit) {
+                if (!q || !q.type) return;
+                userPaceHistory.push({
+                    type: q.type,
+                    timeUsed: Math.max(1, timeUsed),
+                    limit: Math.max(1, limit),
+                    at: Date.now()
+                });
+                if (userPaceHistory.length > 100) userPaceHistory.shift();
+                console.log('[PTE-R] 📊 Pace recorded:', q.type, timeUsed + 's / ' + limit + 's');
+            }
+
+            function getAdaptiveQuestionTime(q, baseLimit) {
+                if (!ADAPTIVE_ENABLED) return baseLimit;
+                if (!q || !q.type) return baseLimit;
+
+                const sameType = userPaceHistory.filter(h => h.type === q.type);
+                if (sameType.length < ADAPTIVE_MIN_SAMPLES) return baseLimit;
+
+                const avgRatio = sameType.reduce((s, h) => s + (h.timeUsed / h.limit), 0) / sameType.length;
+                const factor = Math.min(ADAPTIVE_MAX_FACTOR, Math.max(ADAPTIVE_MIN_FACTOR, avgRatio));
+                const adaptive = Math.round(baseLimit * factor);
+
+                return Math.min(ADAPTIVE_MAX_SECONDS, Math.max(ADAPTIVE_MIN_SECONDS, adaptive));
+            }
+
+            function recordQuestionPace(qid) {
+                if (qid === null || qid === undefined) return;
+                if (recordedPace.has(qid)) return;
+                const q = questions.find(x => String(x.id) === String(qid));
+                if (!q) return;
+                const start = questionStartTime[qid];
+                if (!start) return;
+                const limit = questionTimeRemaining[qid] || getBaseQuestionTimeLimit(q);
+                const timeUsed = Math.min(limit, Math.round((Date.now() - start) / 1000));
+
+                const touched = userTouchedQuestions.has(qid);
+                if (!touched && timeUsed < PACE_MIN_SECONDS_THRESHOLD) {
+                    console.log('[PTE-R] ⏭️ Skipping pace for Q', qid, '(untouched, ' + timeUsed + 's)');
+                    recordedPace.add(qid);
+                    return;
+                }
+
+                recordPace(q, timeUsed, limit);
+                recordedPace.add(qid);
+            }
+
+            function isAdaptiveApplied(qid) {
+                if (!ADAPTIVE_ENABLED) return false;
+                const q = questions.find(x => String(x.id) === String(qid));
+                if (!q || !q.type) return false;
+                const base = getBaseQuestionTimeLimit(q);
+                const current = questionTimeRemaining[qid];
+                return current !== undefined && current !== base;
+            }
+
+            function cancelPendingAutoAdvance() {
+                if (autoAdvanceTimeoutId) {
+                    clearTimeout(autoAdvanceTimeoutId);
+                    autoAdvanceTimeoutId = null;
+                }
+                if (graceInterval) {
+                    clearInterval(graceInterval);
+                    graceInterval = null;
+                }
+            }
+
+            function showToast(message, durationMs) {
+                durationMs = durationMs || 2200;
+                const existing = document.getElementById('pte-toast');
+                if (existing) existing.remove();
+                const toast = document.createElement('div');
+                toast.id = 'pte-toast';
+                toast.style.cssText = 'position:fixed;top:90px;left:50%;transform:translateX(-50%);background:#003d6b;color:white;padding:12px 28px;border-radius:30px;font-weight:600;font-size:14px;box-shadow:0 8px 24px rgba(0,61,107,0.4);z-index:2500;animation:fadeIn 0.3s ease;max-width:90vw;text-align:center;';
+                toast.textContent = message;
+                document.body.appendChild(toast);
+                setTimeout(() => {
+                    if (toast.parentNode) toast.parentNode.removeChild(toast);
+                }, durationMs);
+            }
+
+            // ═══════════════════════════════════════════════════════════════
+            // ✅ FIXED: showGeneratingMessage
+            //
+            // Bug before: used `document.querySelector('.test-card').innerHTML = ...`
+            // which DESTROYED #loading, #test-content, and #questions-container.
+            // After that, setting `testContent.style.display = 'block'` had no
+            // effect because the element was no longer in the DOM.
+            //
+            // Fix: only replace the innerHTML of #loading. All other DOM nodes
+            // (including #test-content and #questions-container) stay alive.
+            // ═══════════════════════════════════════════════════════════════
+            function showGeneratingMessage(attempt) {
+                if (loading) {
+                    loading.style.display = 'block';
+                    const pct = Math.min(100, Math.round((attempt / MAX_GEN_ATTEMPTS) * 100));
+                    loading.innerHTML =
+                        '<div class="spinner"></div>' +
+                        '<p style="color:#0f172a;font-size:17px;font-weight:600;margin:16px 0 8px;">⏳ Another user is generating this test...</p>' +
+                        '<p style="color:#64748b;font-size:14px;margin-bottom:16px;">Your test will start automatically when ready</p>' +
+                        '<div style="max-width:280px;margin:0 auto;height:6px;background:#e2e8f0;border-radius:3px;overflow:hidden;">' +
+                            '<div style="height:100%;width:' + pct + '%;background:linear-gradient(90deg,#003d6b,#28a745);transition:width 0.3s;"></div>' +
+                        '</div>' +
+                        '<p style="color:#94a3b8;font-size:12px;margin-top:12px;">Attempt ' + attempt + '/' + MAX_GEN_ATTEMPTS + '</p>';
+                }
+                if (testContent) testContent.style.display = 'none';
+                if (errorScreen) errorScreen.style.display = 'none';
+                if (startOverlay) startOverlay.classList.remove('show');
+            }
+
+            function saveDraft() {
+                try {
+                    localStorage.setItem(DRAFT_KEY, JSON.stringify({
+                        answers: userAnswers,
+                        currentIndex: currentIndex,
+                        testId: testId,
+                        timeLeft: timeLeft,
+                        questionTimeRemaining: questionTimeRemaining,
+                        userPaceHistory: userPaceHistory,
+                        userTouched: Array.from(userTouchedQuestions),
+                        savedAt: Date.now()
+                    }));
+                } catch(e) {}
+            }
+
+            function clearDraft() {
+                try { localStorage.removeItem(DRAFT_KEY); } catch(e) {}
+            }
+
+            function transformQuestion(q) {
+                let transformed = { ...q };
+
+                if (transformed.prompt && typeof transformed.prompt === 'object') {
+                    const p = transformed.prompt;
+                    const passageText = p.passage || p.text || '';
+
+                    if (transformed.type === 'fill_blanks' || transformed.type === 'reading_fill_blanks') {
+                        transformed.text = passageText;
+                        transformed.passage = passageText;
+                        transformed.blanks = p.blanks || [];
+                        transformed.options = p.options || [];
+                        transformed.instruction = p.instruction || 'Fill in the blanks with the correct words.';
+                        transformed.correct_answer = p.blanks || p.correct || [];
+                    } else if (['multiple_choice_single', 'multiple_choice_multiple'].includes(transformed.type)) {
+                        transformed.question = p.question || p.text || '';
+                        transformed.text = p.question || p.text || '';
+                        transformed.passage = passageText;
+                        transformed.options = p.options || [];
+                        transformed.correct = p.correct || [];
+                        transformed.correct_answer = p.correct || [];
+                        transformed.instruction = p.instruction || 'Select the correct answer(s).';
+                    } else if (transformed.type === 'reorder_paragraphs') {
+                        transformed.items = p.paragraphs || p.sentences || [];
+                        transformed.sentences = p.paragraphs || p.sentences || [];
+                        transformed.correct_order = p.correct_order || [];
+                        transformed.correct_answer = p.correct_order || [];
+                        transformed.instruction = p.instruction || 'Arrange the sentences in the correct order.';
+                        transformed.passage = '';
+                    }
+                    delete transformed.prompt;
+                }
+
+                if (!transformed.passage && transformed.text) {
+                    transformed.passage = transformed.text;
+                }
+
+                return transformed;
+            }
+
+            function enableManualSubmitFallback() {
+                if (testScreen) testScreen.style.display = 'block';
+                if (resultsScreen) resultsScreen.style.display = 'none';
+                if (startOverlay) startOverlay.classList.remove('show');
+
+                if (questions.length > 0) {
+                    currentIndex = questions.length - 1;
+                    renderQuestion(currentIndex);
+                }
+
+                if (submitBtn) {
+                    submitBtn.style.display = 'inline-block';
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = '✅ Submit';
+                }
+                if (nextBtn) nextBtn.style.display = 'none';
+
+                isSubmitting = false;
+                autoSubmitting = false;
+            }
+
+            // ─── SUBSCRIPTION ──────────────────────────────────────────────
+            async function loadSubscriptionStatus() {
+                if (!subWidget) return;
+                try {
+                    const res = await fetch('/api/pte/subscription/status', {
+                        headers: { 'X-CSRF-Token': getCsrfToken() }
+                    });
+                    if (!res.ok) throw new Error('Network error');
+                    const data = await res.json();
+
+                    if (data.has_subscription) {
+                        subWidget.innerHTML = `
+                            <span class="status-text">
+                                ✅ Active PTE Plan: <strong>${escapeHtml(data.plan || 'Premium')}</strong>
+                                <span class="badge-active">Active</span>
+                                <br><span style="font-size:13px;color:#155724;">${data.tests_remaining || 'Unlimited'} tests remaining · expires in ${data.days_remaining || '∞'} days</span>
+                            </span>
+                            <span style="font-size:14px;color:#28a745;">🎯 Enjoy your subscription!</span>
+                        `;
+                        return;
+                    }
+
+                    const modules = [
+                        { key: 'pte_listening', label: 'Listening' },
+                        { key: 'pte_reading', label: 'Reading' },
+                        { key: 'pte_speaking_writing', label: 'Speaking & Writing' }
+                    ];
+
+                    let breakdownHtml = `<span class="badge-free">⚡ Free</span>`;
+                    breakdownHtml += `<div class="module-breakdown">`;
+                    modules.forEach(mod => {
+                        const m = data[mod.key] || { free_used: 0, free_limit: 2 };
+                        const used = m.free_used || 0;
+                        const limit = m.free_limit || 2;
+                        const remaining = Math.max(0, limit - used);
+                        breakdownHtml += `
+                            <span class="mod-item">
+                                <span class="mod-label">${mod.label}:</span>
+                                <span class="mod-count">${remaining}</span>
+                                <span class="mod-limit">of ${limit}</span>
+                            </span>
+                        `;
+                    });
+                    breakdownHtml += `</div>`;
+
+                    subWidget.innerHTML = `
+                        <span class="status-text">${breakdownHtml}</span>
+                        <button class="btn-subscribe" onclick="window.initiatePTEPayment()">🚀 Subscribe Now (NPR 1499/month)</button>
+                    `;
+                } catch (e) {
+                    subWidget.innerHTML = `<span class="status-text" style="color:#dc2626;">❌ Failed to load subscription. Please refresh.</span>`;
+                    console.error(e);
+                }
+            }
+
+            function initiatePTEPayment() {
+                window.location.href = '/subscription?module=pte';
+            }
+
+            // ─── START TEST ──────────────────────────────────────────────────
+            function startTest() {
+                if (testStarted) return;
+                testStarted = true;
+                if (startOverlay) startOverlay.classList.remove('show');
+                if (questions.length > 0 && currentIndex === 0) {
+                    renderQuestion(0);
+                }
+                startTimer(timeLeft);
+                startQuestionTimer();
+                updateProgress();
+                console.log('🎬 Test started — Auto Mode + Adaptive Timing active');
+            }
+
+            // ═══════════════════════════════════════════════════════════════
+            // ✅ GENERATE TEST — with 202 retry (pool system)
+            // ═══════════════════════════════════════════════════════════════
+            async function generateTest(attempt) {
+                attempt = attempt || 0;
+
+                if (attempt > 0) {
+                    showGeneratingMessage(attempt);
+                } else {
+                    if (loading) loading.style.display = 'block';
+                    if (testContent) testContent.style.display = 'none';
+                    if (startOverlay) startOverlay.classList.remove('show');
+                }
+
+                try {
+                    const body = {
+                        difficulty: 'medium',
+                        user_id: USER_ID,
+                        resume: false,
+                        retake: retake,
+                        force_new: retake || forceNew
+                    };
+                    if (RESUME_ID && !retake && !forceNew) {
+                        body.resume_id = RESUME_ID;
+                    }
+
+                    const resp = await fetch('/api/pte/reading/generate', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
+                        body: JSON.stringify(body)
+                    });
+
+                    if (resp.status === 202) {
+                        const d = await resp.json().catch(() => ({}));
+                        throw Object.assign(new Error(d.message || 'Another user is generating'), {
+                            isWaiting: true,
+                            retryAfter: d.retry_after || 3
+                        });
+                    }
+
+                    if (resp.status === 402) {
+                        const d = await resp.json().catch(() => ({}));
+                        throw Object.assign(new Error(d.error || 'Subscription required'), {
+                            isSub: true,
+                            data: d
+                        });
+                    }
+
+                    if (resp.status === 503) {
+                        const d = await resp.json().catch(() => ({}));
+                        throw Object.assign(new Error(d.error || 'Test pool is full'), {
+                            isExhausted: true
+                        });
+                    }
+
+                    const data = await resp.json();
+                    console.log('📊 Server response:', data);
+
+                    if (!data.success && data.requires_subscription) {
+                        if (loading) loading.style.display = 'none';
+                        if (errorScreen) {
+                            errorScreen.style.display = 'block';
+                            if (errorMsg) {
+                                errorMsg.innerHTML = `
+                                    <div style="background:#fff3cd;padding:20px;border-radius:10px;border:1px solid #ffc107;color:#333;margin-top:10px;">
+                                        <div style="font-size:48px;margin-bottom:10px;">⚠️</div>
+                                        <h2 style="color:#856404;">Free Tests Exhausted</h2>
+                                        <p style="font-size:16px;margin:15px 0;">You've used all ${data.free_limit || 3} free tests. Subscribe to unlock unlimited PTE practice!</p>
+                                        <button onclick="window.initiatePTEPayment()" style="background:linear-gradient(135deg,#f093fb,#f5576c);color:white;border:none;padding:12px 40px;border-radius:30px;font-size:16px;font-weight:600;cursor:pointer;box-shadow:0 4px 15px rgba(245,87,108,0.3);">🚀 Subscribe Now (NPR 1499/month)</button>
+                                    </div>
+                                `;
+                            }
+                            const retryBtn = errorScreen.querySelector('.btn-primary');
+                            if (retryBtn) retryBtn.style.display = 'none';
+                        }
+                        return;
+                    }
+
+                    if (!data.success) {
+                        throw new Error(data.error || 'Generation failed');
+                    }
+
+                    console.log('✅ Test loaded — source=' + (data.source || 'unknown') +
+                                ', pool_id=' + (data.pool_id || 'n/a'));
+
+                    let rawQuestions = [];
+                    if (data.test_data && data.test_data.questions) {
+                        rawQuestions = data.test_data.questions;
+                    } else if (data.questions) {
+                        rawQuestions = data.questions;
+                    } else if (data.test && data.test.questions) {
+                        rawQuestions = data.test.questions;
+                    }
+
+                    if (!rawQuestions || rawQuestions.length === 0) {
+                        throw new Error('No questions generated.');
+                    }
+
+                    testId = data.test_id || data.session_id || null;
+                    questions = rawQuestions.map(q => transformQuestion(q));
+
+                    userAnswers = {};
+                    userPaceHistory = [];
+                    questionStartTime = {};
+                    recordedPace = new Set();
+                    userTouchedQuestions = new Set();
+                    questionTimeRemaining = {};
+
+                    questions.forEach((q, idx) => {
+                        const questionId = getQuestionId(q, idx);
+
+                        if (q.type === 'fill_blanks' || q.type === 'reading_fill_blanks') {
+                            const blanks = q.blanks || [];
+                            userAnswers[questionId] = [];
+                            blanks.forEach((_, bi) => { userAnswers[questionId + '_' + bi] = ''; });
+                        } else if (q.type === 'reorder_paragraphs') {
+                            userAnswers[questionId] = [];
+                        } else if (q.type === 'multiple_choice_multiple') {
+                            userAnswers[questionId] = [];
+                        } else {
+                            userAnswers[questionId] = '';
+                        }
+
+                        if (questionTimeRemaining[questionId] === undefined) {
+                            questionTimeRemaining[questionId] = getBaseQuestionTimeLimit(q);
+                        }
+                    });
+
+                    if (loading) loading.style.display = 'none';
+                    if (testContent) testContent.style.display = 'block';
+                    if (startTotal) startTotal.textContent = questions.length;
+                    if (startDuration) startDuration.textContent = '30 min';
+                    if (startOverlay) startOverlay.classList.add('show');
+                    currentIndex = 0;
+
+                } catch (e) {
+                    if (e.isWaiting && attempt < MAX_GEN_ATTEMPTS) {
+                        const delay = (e.retryAfter || 3) * 1000;
+                        console.log('⏳ Attempt ' + (attempt + 1) + '/' + MAX_GEN_ATTEMPTS +
+                                    ' — retrying in ' + delay + 'ms');
+                        setTimeout(() => generateTest(attempt + 1), delay);
+                        return;
+                    }
+
+                    if (e.isSub) {
+                        if (loading) loading.style.display = 'none';
+                        if (errorScreen) {
+                            errorScreen.style.display = 'block';
+                            if (errorMsg) {
+                                errorMsg.innerHTML = `
+                                    <div style="background:#fff3cd;padding:20px;border-radius:10px;border:1px solid #ffc107;color:#333;margin-top:10px;">
+                                        <div style="font-size:48px;margin-bottom:10px;">⚠️</div>
+                                        <h2 style="color:#856404;">Subscription Required</h2>
+                                        <p style="font-size:16px;margin:15px 0;">${escapeHtml(e.message)}</p>
+                                        <button onclick="window.initiatePTEPayment()" style="background:linear-gradient(135deg,#f093fb,#f5576c);color:white;border:none;padding:12px 40px;border-radius:30px;font-size:16px;font-weight:600;cursor:pointer;box-shadow:0 4px 15px rgba(245,87,108,0.3);">🚀 Subscribe Now</button>
+                                    </div>
+                                `;
+                            }
+                            const retryBtn = errorScreen.querySelector('.btn-primary');
+                            if (retryBtn) retryBtn.style.display = 'none';
+                        }
+                        return;
+                    }
+
+                    if (e.isExhausted) {
+                        if (loading) loading.style.display = 'none';
+                        if (errorScreen) {
+                            errorScreen.style.display = 'block';
+                            if (errorMsg) errorMsg.textContent = 'Test pool is currently full. Please try again in a few minutes.';
+                        }
+                        return;
+                    }
+
+                    if (e.isWaiting) {
+                        if (loading) loading.style.display = 'none';
+                        if (errorScreen) {
+                            errorScreen.style.display = 'block';
+                            if (errorMsg) errorMsg.textContent = 'Still waiting for generation. Please refresh the page in a moment.';
+                        }
+                        return;
+                    }
+
+                    console.error('❌ Generation error:', e);
+                    if (loading) loading.style.display = 'none';
+                    if (errorScreen) {
+                        errorScreen.style.display = 'block';
+                        if (errorMsg) errorMsg.textContent = e.message || 'Failed to generate test. Please try again.';
+                    }
+                }
+            }
+
+            // ─── LOAD RESUME ──────────────────────────────────────
+            async function loadResume(resumeId) {
+                if (loading) loading.style.display = 'block';
+                if (testContent) testContent.style.display = 'none';
+
+                try {
+                    const resp = await fetch('/api/pte/status/' + resumeId, {
+                        headers: { 'X-CSRF-Token': getCsrfToken() }
+                    });
+                    if (!resp.ok) throw new Error('Failed to load session: ' + resp.status);
+
+                    const data = await resp.json();
+
+                    if (!data.success || !data.test_data) {
+                        throw new Error('Invalid resume data');
+                    }
+
+                    const testData = data.test_data;
+                    let rawQuestions = [];
+                    if (testData.questions) rawQuestions = testData.questions;
+                    else if (Array.isArray(testData)) rawQuestions = testData;
+                    else throw new Error('No questions in session');
+
+                    questions = rawQuestions.map(q => transformQuestion(q));
+                    userAnswers = data.answers_so_far || {};
+
+                    userPaceHistory = [];
+                    questionStartTime = {};
+                    recordedPace = new Set();
+                    userTouchedQuestions = new Set();
+
+                    questions.forEach((q, idx) => {
+                        const questionId = getQuestionId(q, idx);
+
+                        if (q.type === 'fill_blanks' || q.type === 'reading_fill_blanks') {
+                            const blanks = q.blanks || [];
+                            const combined = userAnswers[questionId] || [];
+                            blanks.forEach((_, bi) => {
+                                const blankId = questionId + '_' + bi;
+                                userAnswers[blankId] = combined[bi] || '';
+                            });
+                        } else if (q.type === 'reorder_paragraphs') {
+                            const items = q.items || q.sentences || [];
+                            const savedAns = userAnswers[questionId];
+                            if (!Array.isArray(savedAns) || savedAns.length !== items.length || items.length === 0) {
+                                userAnswers[questionId] = [];
+                            }
+                        }
+
+                        if (questionTimeRemaining[questionId] === undefined) {
+                            questionTimeRemaining[questionId] = getBaseQuestionTimeLimit(q);
+                        }
+                    });
+
+                    testId = data.test_id || data.id;
+                    currentIndex = data.current_question_index || 0;
+                    if (currentIndex >= questions.length) currentIndex = 0;
+
+                    let restoredTime = null;
+                    if (typeof data.time_remaining_seconds === 'number') {
+                        restoredTime = data.time_remaining_seconds;
+                    } else if (typeof data.time_left === 'number') {
+                        restoredTime = data.time_left;
+                    }
+                    if (restoredTime && restoredTime > 0 && restoredTime <= TOTAL_TIME_SECONDS) {
+                        timeLeft = restoredTime;
+                    }
+
+                    try {
+                        const raw = localStorage.getItem(DRAFT_KEY);
+                        if (raw) {
+                            const draft = JSON.parse(raw);
+                            if (draft.questionTimeRemaining) {
+                                Object.assign(questionTimeRemaining, draft.questionTimeRemaining);
+                            }
+                            if (Array.isArray(draft.userPaceHistory)) {
+                                userPaceHistory = draft.userPaceHistory;
+                            }
+                            if (Array.isArray(draft.userTouched)) {
+                                draft.userTouched.forEach(id => userTouchedQuestions.add(id));
+                            }
+                        }
+                    } catch(e) {}
+
+                    isResuming = true;
+
+                    if (loading) loading.style.display = 'none';
+                    if (testContent) testContent.style.display = 'block';
+                    if (startOverlay) startOverlay.classList.remove('show');
+                    if (startTotal) startTotal.textContent = questions.length;
+                    if (startDuration) startDuration.textContent = '30 min';
+                    testStarted = true;
+                    renderQuestion(currentIndex);
+                    updateProgress();
+                    startTimer(timeLeft);
+                    startQuestionTimer();
+
+                    console.log('[PTE-R] 📌 Silently resumed at Q' + (currentIndex + 1));
+
+                } catch (e) {
+                    console.error('❌ Resume error:', e);
+                    console.log('[PTE-R] ⚠️ Resume failed — generating fresh');
+                    clearDraft();
+                    generateTest(0);
+                }
+            }
+
+            async function checkForActiveSession() {
+                if (loading) loading.style.display = 'block';
+                if (testContent) testContent.style.display = 'none';
+
+                try {
+                    const res = await fetch('/api/pte/reading/active-session', {
+                        headers: { 'X-CSRF-Token': getCsrfToken() }
+                    });
+
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data.success && data.active && data.session_id) {
+                            console.log('✅ Found in-progress session:', data.session_id);
+                            await loadResume(data.session_id);
+                            return true;
+                        }
+                    }
+                } catch (e) {
+                    console.warn('Auto-resume check failed:', e);
+                }
+
+                console.log('🆕 No saved test found — generating new test');
+                return false;
+            }
+
+            // ─── OVERALL TIMER ──────────────────────────────────────────────
+            function startTimer(initialSeconds) {
+                if (timerInterval) clearInterval(timerInterval);
+                timeLeft = (typeof initialSeconds === 'number' && initialSeconds > 0 && initialSeconds <= TOTAL_TIME_SECONDS)
+                    ? initialSeconds
+                    : TOTAL_TIME_SECONDS;
+                updateTimerDisplay();
+                timerInterval = setInterval(() => {
+                    timeLeft--;
+                    updateTimerDisplay();
+                    if (timeLeft <= 0) {
+                        clearInterval(timerInterval);
+
+                        if (AUTO_SUBMIT_ON_END && !autoSubmitting) {
+                            autoSubmitTest(
+                                'Overall time expired',
+                                'Time\'s Up!',
+                                'The 30-minute time for the reading test has ended. Submitting your test automatically...'
+                            );
+                        } else {
+                            alert('⏰ Time is up! Your test will be submitted automatically.');
+                            submitTest();
+                        }
+                    }
+                    if (timeLeft % 10 === 0) saveDraft();
+                }, 1000);
+            }
+
+            function updateTimerDisplay() {
+                if (timerEl) {
+                    timerEl.textContent = '⏱️ Total: ' + formatTime(timeLeft);
+                    if (timeLeft < 60) timerEl.classList.add('warning');
+                    else timerEl.classList.remove('warning');
+                }
+            }
+
+            // ─── PER-QUESTION TIMER ─────────────────────────────────────────
+            function startQuestionTimer() {
+                if (questionTimerInterval) { clearInterval(questionTimerInterval); questionTimerInterval = null; }
+                if (graceInterval) { clearInterval(graceInterval); graceInterval = null; }
+                const q = questions[currentIndex];
+                if (!q) return;
+                const qid = getQuestionId(q, currentIndex);
+
+                if (questionTimeRemaining[qid] === undefined) {
+                    const baseLimit = getBaseQuestionTimeLimit(q);
+                    const adaptiveLimit = getAdaptiveQuestionTime(q, baseLimit);
+                    questionTimeRemaining[qid] = adaptiveLimit;
+                    if (adaptiveLimit !== baseLimit) {
+                        console.log(`[PTE-R] 🧠 Adaptive time for Q${currentIndex+1} (${q.type}): ${baseLimit}s → ${adaptiveLimit}s`);
+                    }
+                }
+
+                if (!questionStartTime[qid]) {
+                    questionStartTime[qid] = Date.now();
+                }
+
+                let remaining = questionTimeRemaining[qid];
+                updateQuestionTimerDisplay(remaining);
+                let warned10s = false;
+
+                questionTimerInterval = setInterval(() => {
+                    remaining--;
+                    questionTimeRemaining[qid] = remaining;
+                    updateQuestionTimerDisplay(remaining);
+
+                    if (remaining === 10 && !warned10s && !autoSubmitting) {
+                        warned10s = true;
+                        const isLast = (currentIndex >= questions.length - 1);
+                        if (isLast) {
+                            showToast('⚠️ 10 seconds left on the final question!');
+                        } else {
+                            showToast('⚠️ 10 seconds — advancing to next question');
+                        }
+                    }
+
+                    if (remaining <= 0) {
+                        clearInterval(questionTimerInterval);
+                        questionTimerInterval = null;
+
+                        if (AUTO_ADVANCE_ON_TIMEOUT && testStarted && !autoSubmitting) {
+                            handleQuestionTimeout();
+                        }
+                    }
+                }, 1000);
+            }
+
+            function updateQuestionTimerDisplay(seconds) {
+                if (!qTimerValueEl) return;
+                qTimerValueEl.textContent = formatTime(seconds);
+                if (qTimerEl) {
+                    const q = questions[currentIndex];
+                    const qid = q ? getQuestionId(q, currentIndex) : null;
+                    if (qid !== null && isAdaptiveApplied(qid)) {
+                        qTimerEl.classList.add('adaptive');
+                    } else {
+                        qTimerEl.classList.remove('adaptive');
+                    }
+                    if (seconds <= 10) qTimerEl.classList.add('warning');
+                    else qTimerEl.classList.remove('warning');
+                }
+            }
+
+            function stopQuestionTimer() {
+                if (questionTimerInterval) { clearInterval(questionTimerInterval); questionTimerInterval = null; }
+                if (graceInterval) { clearInterval(graceInterval); graceInterval = null; }
+            }
+
+            function handleQuestionTimeout() {
+                const isLastQuestion = (currentIndex >= questions.length - 1);
+                const expectedIndex = currentIndex;
+
+                const qidTimeout = questions[currentIndex] ? getQuestionId(questions[currentIndex], currentIndex) : null;
+                if (qidTimeout !== null) {
+                    questionTimeRemaining[qidTimeout] = 0;
+                    recordQuestionPace(qidTimeout);
+                }
+
+                if (isLastQuestion) {
+                    console.log('⏰ Last question timer ended — starting grace period');
+                    showToast('⏰ Time\'s up — submitting in ' + LAST_QUESTION_GRACE_SECONDS + ' seconds. Review your answer!', 3000);
+                    let graceLeft = LAST_QUESTION_GRACE_SECONDS;
+                    graceInterval = setInterval(() => {
+                        graceLeft--;
+                        if (qTimerValueEl) {
+                            qTimerValueEl.textContent = 'Grace: ' + graceLeft + 's';
+                        }
+                        if (qTimerEl) qTimerEl.classList.add('warning');
+                        if (graceLeft <= 0) {
+                            clearInterval(graceInterval);
+                            graceInterval = null;
+                            console.log('⏰ Grace expired — auto-submitting');
+                            autoSubmitTest(
+                                'Last question grace expired',
+                                'Time\'s Up!',
+                                'Your time for the final question has ended. Submitting your test automatically...'
+                            );
+                        }
+                    }, 1000);
+                } else {
+                    console.log(`⏰ Q${currentIndex+1} time up — auto-advancing`);
+                    showAutoAdvanceNotice();
+                    autoAdvanceTimeoutId = setTimeout(() => {
+                        autoAdvanceTimeoutId = null;
+                        if (autoSubmitting) return;
+                        if (currentIndex !== expectedIndex) {
+                            console.log('✂️ Auto-advance aborted — user navigated first');
+                            return;
+                        }
+                        saveCurrentAnswer();
+                        currentIndex++;
+                        renderQuestion(currentIndex);
+                        if (testStarted) startQuestionTimer();
+                    }, 600);
+                }
+            }
+
+            function showAutoAdvanceNotice() {
+                const existing = document.getElementById('auto-advance-toast');
+                if (existing) existing.remove();
+
+                const toast = document.createElement('div');
+                toast.id = 'auto-advance-toast';
+                toast.style.cssText = `
+                    position: fixed;
+                    top: 90px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    background: #003d6b;
+                    color: white;
+                    padding: 12px 28px;
+                    border-radius: 30px;
+                    font-weight: 600;
+                    font-size: 14px;
+                    box-shadow: 0 8px 24px rgba(0,61,107,0.4);
+                    z-index: 2500;
+                    animation: fadeIn 0.3s ease;
+                `;
+                toast.textContent = `⏰ Time's up — moving to Q${currentIndex + 2}...`;
+                document.body.appendChild(toast);
+
+                setTimeout(() => {
+                    if (toast.parentNode) toast.parentNode.removeChild(toast);
+                }, 1500);
+            }
+
+            // ─── AUTO-SUBMIT ────────────────────────────────────────────────
+            function autoSubmitTest(reason, title, message) {
+                if (autoSubmitting || isSubmitting) return;
+                autoSubmitting = true;
+
+                console.log('🤖 Auto-submitting test', { reason });
+
+                cancelPendingAutoAdvance();
+                stopQuestionTimer();
+                if (timerInterval) clearInterval(timerInterval);
+
+                if (autoSubmitTitle) autoSubmitTitle.textContent = title || 'Time\'s Up!';
+                if (autoSubmitMessage) autoSubmitMessage.textContent = message || 'Submitting your test automatically. Please wait...';
+                if (autoSubmitOverlay) autoSubmitOverlay.classList.add('active');
+
+                setTimeout(() => {
+                    doAutoSubmit();
+                }, AUTO_SUBMIT_DELAY_MS);
+            }
+
+            async function doAutoSubmit() {
+                if (!testId) {
+                    console.error('❌ Cannot auto-submit: no testId');
+                    if (autoSubmitOverlay) autoSubmitOverlay.classList.remove('active');
+                    enableManualSubmitFallback();
+                    alert('❌ Test ID missing. Please click the Submit button to submit manually.');
+                    return;
+                }
+
+                isSubmitting = true;
+
+                const answers = {};
+                questions.forEach((q, idx) => {
+                    const questionId = getQuestionId(q, idx);
+                    if (q.type === 'fill_blanks' || q.type === 'reading_fill_blanks') {
+                        const blanks = q.blanks || [];
+                        if (blanks.length > 0) {
+                            const blankAns = blanks.map((_, bi) => {
+                                const bid = questionId + '_' + bi;
+                                return userAnswers[bid] || '';
+                            });
+                            answers[questionId] = blankAns;
+                        } else {
+                            answers[questionId] = userAnswers[questionId] || '';
+                        }
+                    } else if (q.type === 'multiple_choice_multiple') {
+                        answers[questionId] = userAnswers[questionId] || [];
+                    } else if (q.type === 'reorder_paragraphs') {
+                        const items = q.items || q.sentences || [];
+                        const ans = userAnswers[questionId];
+                        answers[questionId] = (Array.isArray(ans) && items.length > 0 && ans.length === items.length)
+                            ? ans
+                            : [];
+                    } else {
+                        answers[questionId] = userAnswers[questionId] || '';
+                    }
+                });
+
+                const cleanedAnswers = {};
+                for (const qid in answers) {
+                    const v = answers[qid];
+                    if (typeof v === 'string') {
+                        if (v.trim() !== '') cleanedAnswers[qid] = v;
+                    } else if (Array.isArray(v)) {
+                        const filtered = v.filter(x => x && String(x).trim() !== '');
+                        if (filtered.length > 0) cleanedAnswers[qid] = v;
+                    } else if (v !== null && v !== undefined) {
+                        cleanedAnswers[qid] = v;
+                    }
+                }
+
+                const payload = {
+                    test_id: testId,
+                    answers: cleanedAnswers,
+                    user_id: USER_ID,
+                    time_taken: TOTAL_TIME_SECONDS - timeLeft,
+                    auto_submitted: true
+                };
+
+                try {
+                    const resp = await fetch('/api/pte/submit', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (resp.status === 402) {
+                        const data = await resp.json();
+                        if (autoSubmitOverlay) autoSubmitOverlay.classList.remove('active');
+                        alert('⚠️ ' + (data.error || 'Subscription required.'));
+                        window.location.href = '/subscription?module=pte';
+                        return;
+                    }
+
+                    const data = await resp.json();
+                    if (!data.success) throw new Error(data.error || 'Submission failed');
+
+                    clearDraft();
+
+                    if (autoSubmitOverlay) autoSubmitOverlay.classList.remove('active');
+
+                    showResults(data, true);
+
+                } catch (e) {
+                    console.error('❌ Auto-submit error:', e);
+                    if (autoSubmitOverlay) autoSubmitOverlay.classList.remove('active');
+
+                    enableManualSubmitFallback();
+
+                    alert('❌ Error submitting test automatically: ' + e.message +
+                          '\n\nPlease click the Submit button to submit your answers manually.');
+                }
+            }
+
+            // ─── PROGRESS ──────────────────────────────────────────────────
+            function updateProgress() {
+                let answered = 0;
+                const total = questions.length;
+                questions.forEach((q, idx) => {
+                    if (isQuestionAnswered(q, idx)) answered++;
+                });
+                const pct = total > 0 ? Math.round((answered / total) * 100) : 0;
+                if (progressFill) progressFill.style.width = pct + '%';
+            }
+
+            // ─── NAVIGATION ──────────────────────────────────────────────────
+            function nextQuestion() {
+                if (autoSubmitting) return;
+                cancelPendingAutoAdvance();
+                if (currentIndex < questions.length - 1) {
+                    const qidCurrent = questions[currentIndex] ? getQuestionId(questions[currentIndex], currentIndex) : null;
+                    if (qidCurrent !== null) recordQuestionPace(qidCurrent);
+
+                    saveCurrentAnswer();
+                    currentIndex++;
+                    renderQuestion(currentIndex);
+                    if (testStarted) startQuestionTimer();
+                }
+            }
+
+            function prevQuestion() {
+                if (autoSubmitting) return;
+                cancelPendingAutoAdvance();
+                if (currentIndex > 0) {
+                    const qidCurrent = questions[currentIndex] ? getQuestionId(questions[currentIndex], currentIndex) : null;
+                    if (qidCurrent !== null) recordQuestionPace(qidCurrent);
+
+                    saveCurrentAnswer();
+                    currentIndex--;
+                    renderQuestion(currentIndex);
+                    if (testStarted) startQuestionTimer();
+                }
+            }
+
+            function saveCurrentAnswer() { saveDraft(); }
+
+            // ═══════════════════════════════════════════════════════════════
+            // ✅ RENDER QUESTION
+            // ═══════════════════════════════════════════════════════════════
+            function renderQuestion(index) {
+                if (index < 0 || index >= questions.length) return;
+                currentIndex = index;
+                const q = questions[index];
+
+                selectedReorderItem = null;
+
+                let passageHtml = '';
+                if (q.passage) {
+                    const inlineBlanksTypes = ['fill_blanks', 'reading_fill_blanks'];
+                    if (!inlineBlanksTypes.includes(q.type)) {
+                        passageHtml = `<div class="passage-section"><div class="passage-title">📄 Reading Passage</div><div class="passage-text">${escapeHtml(q.passage)}</div></div>`;
+                    }
+                }
+
+                const typeLabel = TYPE_LABELS[q.type] || '📌 ' + (q.type_name || q.type);
+                let html = passageHtml;
+                html += `<div class="question-item">`;
+                html += `<div class="question-type">${typeLabel}</div>`;
+                html += `<div class="question-number">Question ${index + 1} of ${questions.length}</div>`;
+                if (q.type !== 'fill_blanks' && q.type !== 'reading_fill_blanks') {
+                    html += `<div class="question-text">${escapeHtml(q.text || q.question || '')}</div>`;
+                }
+                if (q.instruction) {
+                    html += `<p style="font-size:13px;color:#64748b;margin-bottom:10px;font-style:italic;">${escapeHtml(q.instruction)}</p>`;
+                }
+
+                if (q.type === 'multiple_choice_single') {
+                    html += renderMultipleChoiceSingle(q, index);
+                } else if (q.type === 'multiple_choice_multiple') {
+                    html += renderMultipleChoiceMultiple(q, index);
+                } else if (q.type === 'fill_blanks') {
+                    html += renderFillBlanks(q, index);
+                } else if (q.type === 'reading_fill_blanks') {
+                    html += renderReadingFillBlanks(q, index);
+                } else if (q.type === 'reorder_paragraphs') {
+                    html += renderReorderParagraphs(q, index);
+                }
+
+                html += `</div>`;
+                if (questionsContainer) questionsContainer.innerHTML = html;
+
+                if (prevBtn) prevBtn.disabled = (index === 0);
+                if (nextBtn) nextBtn.textContent = index < questions.length - 1 ? 'Next →' : 'Review';
+                if (submitBtn) {
+                    submitBtn.style.display = index >= questions.length - 1 ? 'inline-block' : 'none';
+                    submitBtn.disabled = false;
+                }
+                updateProgress();
+
+                const qid = getQuestionId(q, index);
+                updateQuestionTimerDisplay(questionTimeRemaining[qid] || getBaseQuestionTimeLimit(q));
+
+                const qItem = document.querySelector('.question-item');
+                if (qItem) qItem.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+
+            // ─── RENDER FUNCTIONS ──────────────────────────────────────────
+            function renderMultipleChoiceSingle(q, index) {
+                const questionId = getQuestionId(q, index);
+                const saved = userAnswers[questionId] || '';
+                const options = q.options || [];
+                let html = `<div class="options-container">`;
+                options.forEach((opt, i) => {
+                    const letter = String.fromCharCode(65 + i);
+                    const checked = (saved === opt) ? 'checked' : '';
+                    const selectedClass = saved === opt ? 'selected' : '';
+                    html += `<label class="option-label ${selectedClass}"><input type="radio" name="q_${questionId}" value="${escapeHtml(opt)}" ${checked} onchange="window.saveAnswer(${jsonAttr(questionId)}, this.value)"><strong>${letter}.</strong> ${escapeHtml(opt)}</label>`;
+                });
+                html += `</div>`;
+                return html;
+            }
+
+            function renderMultipleChoiceMultiple(q, index) {
+                const questionId = getQuestionId(q, index);
+                const saved = userAnswers[questionId] || [];
+                const options = q.options || [];
+                let html = `<div class="options-container"><p style="font-size:13px;color:#64748b;margin-bottom:8px;">Select all that apply (2-3 correct answers)</p>`;
+                options.forEach((opt, i) => {
+                    const letter = String.fromCharCode(65 + i);
+                    const checked = saved.includes(opt) ? 'checked' : '';
+                    const selectedClass = saved.includes(opt) ? 'selected' : '';
+                    html += `<label class="option-label ${selectedClass}"><input type="checkbox" name="q_${questionId}" value="${escapeHtml(opt)}" ${checked} onchange="window.saveMultipleAnswer(${jsonAttr(questionId)}, this)"><strong>${letter}.</strong> ${escapeHtml(opt)}</label>`;
+                });
+                html += `</div>`;
+                return html;
+            }
+
+            function renderFillBlanks(q, index) {
+                const questionId = getQuestionId(q, index);
+                let text = q.text || q.passage || '';
+                const blanks = q.blanks || [];
+                let options = q.options || [];
+
+                let html = `<div style="margin:10px 0;line-height:2.8;">`;
+
+                if (text.includes('[BLANK]')) {
+                    const parts = text.split('[BLANK]');
+                    if (!Array.isArray(options) || options.length === 0) {
+                        options = blanks.map((_, i) => [`blank${i+1}`, 'alt1', 'alt2', 'alt3']);
+                    } else if (typeof options[0] === 'string') {
+                        const flat = options;
+                        options = blanks.map(() => flat);
+                    }
+                    while (options.length < blanks.length) {
+                        options.push(['option1', 'option2', 'option3', 'option4']);
+                    }
+
+                    parts.forEach((part, i) => {
+                        html += escapeHtml(part);
+                        if (i < blanks.length) {
+                            const blankId = questionId + '_' + i;
+                            const saved = userAnswers[blankId] || '';
+                            const opts = options[i] || ['(select)'];
+                            const hasVal = saved && saved !== '';
+                            html += `<span class="blank-number">${i+1}.</span>`;
+                            html += `<select class="blank-select ${hasVal ? 'has-value' : ''}" id="blank_${blankId}" onchange="window.saveBlankAnswer(${jsonAttr(blankId)}, this.value)">`;
+                            html += `<option value="">-- Select --</option>`;
+                            opts.forEach(opt => {
+                                const sel = (saved === opt) ? 'selected' : '';
+                                html += `<option value="${escapeHtml(opt)}" ${sel}>${escapeHtml(opt)}</option>`;
+                            });
+                            html += `</select>`;
+                        }
+                    });
+                } else {
+                    const inputId = `responseInput_${questionId}`;
+                    html += `<textarea class="answer-textarea" id="${inputId}" placeholder="Type your answer..." style="width:100%;padding:12px;border:2px solid #e2e8f0;border-radius:8px;min-height:100px;font-family:inherit;margin-top:6px;" oninput="window.saveAnswer(${jsonAttr(questionId)}, this.value)">${escapeHtml(userAnswers[questionId] || '')}</textarea>`;
+                }
+
+                html += `</div>`;
+                return html;
+            }
+
+            function renderReadingFillBlanks(q, index) {
+                const questionId = getQuestionId(q, index);
+                let text = q.text || q.passage || '';
+                const blanks = q.blanks || [];
+                const allOptions = q.options || [];
+
+                let usedWords = [];
+                blanks.forEach((_, bi) => {
+                    const blankId = questionId + '_' + bi;
+                    if (userAnswers[blankId]) usedWords.push(userAnswers[blankId]);
+                });
+
+                const qidEsc = escapeHtml(String(questionId));
+
+                let html = `<p style="font-size:12px;color:#64748b;margin-bottom:6px;font-style:italic;">👆 Click a word below to fill the next empty blank — click again to remove</p>`;
+
+                html += `<div class="word-box" data-qid="${qidEsc}">`;
+                allOptions.forEach((word, wi) => {
+                    const isUsed = usedWords.includes(word);
+                    html += `<span class="word-box-item ${isUsed ? 'used' : ''}" data-qid="${qidEsc}" data-word="${escapeHtml(word)}" data-widx="${wi}">${escapeHtml(word)}</span>`;
+                });
+                html += `</div>`;
+
+                html += `<div style="margin-top:12px;line-height:2.8;">`;
+                const parts = text.split('________');
+                parts.forEach((part, i) => {
+                    html += escapeHtml(part);
+                    if (i < blanks.length) {
+                        const blankId = questionId + '_' + i;
+                        const saved = userAnswers[blankId] || '';
+                        html += `<span style="font-weight:700;color:#003d6b;">${i+1}.</span>`;
+                        html += `<span class="blank-placeholder ${saved ? 'filled' : ''}" data-qid="${qidEsc}" data-bid="${escapeHtml(String(blankId))}" data-bidx="${i}" title="Click to remove this word">${escapeHtml(saved || '______')}</span>`;
+                    }
+                });
+                html += `</div>`;
+                return html;
+            }
+
+            function renderReorderParagraphs(q, index) {
+                const questionId = getQuestionId(q, index);
+                const items = q.items || q.sentences || [];
+                const savedOrder = userAnswers[questionId];
+
+                const hasUserAnswer = Array.isArray(savedOrder) && savedOrder.length === items.length && items.length > 0;
+
+                let displayOrder;
+                if (hasUserAnswer) {
+                    displayOrder = savedOrder.slice();
+                } else {
+                    displayOrder = items.map((_, i) => i);
+                }
+
+                let html = `<div class="reorder-container" data-qid="${questionId}">`;
+                html += `<p style="font-size:13px;color:#64748b;margin-bottom:10px;">Click an item to select it, then click another to swap positions.</p>`;
+                displayOrder.forEach((idx, pos) => {
+                    const item = items[idx] || '';
+                    html += `<div class="reorder-item" data-idx="${idx}" data-pos="${pos}" onclick="window.toggleReorder(this, ${jsonAttr(questionId)})"><span class="reorder-number">${pos + 1}.</span> ${escapeHtml(item)}</div>`;
+                });
+                html += `</div>`;
+                html += `<div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">`;
+                html += `<button class="btn btn-outline" onclick="window.moveReorder(${jsonAttr(questionId)}, 'up')" style="padding:4px 14px;">⬆ Move Up</button>`;
+                html += `<button class="btn btn-outline" onclick="window.moveReorder(${jsonAttr(questionId)}, 'down')" style="padding:4px 14px;">⬇ Move Down</button>`;
+                html += `<button class="btn btn-outline" onclick="window.shuffleReorder(${jsonAttr(questionId)})" style="padding:4px 14px;">🔄 Shuffle</button>`;
+                html += `</div>`;
+                return html;
+            }
+
+            // ─── ANSWER SAVING ─────────────────────────────────────────────
+            function saveAnswer(questionId, value) {
+                userAnswers[questionId] = value;
+                userTouchedQuestions.add(questionId);
+                const radios = document.querySelectorAll(`input[name="q_${questionId}"]`);
+                radios.forEach(radio => {
+                    const label = radio.closest('.option-label');
+                    if (label) {
+                        if (radio.checked) label.classList.add('selected');
+                        else label.classList.remove('selected');
+                    }
+                });
+                updateProgress();
+                saveDraft();
+            }
+
+            function saveMultipleAnswer(questionId, checkbox) {
+                if (!userAnswers[questionId]) userAnswers[questionId] = [];
+                const current = userAnswers[questionId];
+                if (checkbox.checked) {
+                    if (!current.includes(checkbox.value)) current.push(checkbox.value);
+                } else {
+                    userAnswers[questionId] = current.filter(v => v !== checkbox.value);
+                }
+                userTouchedQuestions.add(questionId);
+                const label = checkbox.closest('.option-label');
+                if (label) {
+                    if (checkbox.checked) label.classList.add('selected');
+                    else label.classList.remove('selected');
+                }
+                updateProgress();
+                saveDraft();
+            }
+
+            function saveBlankAnswer(blankId, value) {
+                const lastUnderscore = blankId.lastIndexOf('_');
+                const questionId = blankId.substring(0, lastUnderscore);
+                const blankIndex = parseInt(blankId.substring(lastUnderscore + 1));
+
+                userAnswers[blankId] = value;
+                userTouchedQuestions.add(questionId);
+
+                const select = document.getElementById('blank_' + blankId);
+                if (select) {
+                    if (value && value !== '') select.classList.add('has-value');
+                    else select.classList.remove('has-value');
+                }
+
+                if (!userAnswers[questionId]) userAnswers[questionId] = [];
+                userAnswers[questionId][blankIndex] = value;
+                updateProgress();
+                saveDraft();
+            }
+
+            function selectWord(questionId, word, element) {
+                if (autoSubmitting) return;
+
+                const qidSel = cssEscape(questionId);
+
+                if (!element) {
+                    element = document.querySelector(
+                        `.word-box-item[data-qid="${qidSel}"][data-word="${cssEscape(word)}"]`
+                    );
+                }
+                if (!element) return;
+
+                if (element.classList.contains('used')) {
+                    let foundIdx = -1;
+                    const q = questions[currentIndex];
+                    const expectedBlanks = (q && q.blanks) ? q.blanks.length : 0;
+                    const scanUpTo = expectedBlanks > 0 ? expectedBlanks : MAX_BLANKS_PER_QUESTION;
+
+                    for (let i = 0; i < scanUpTo; i++) {
+                        const blankId = `${questionId}_${i}`;
+                        if (userAnswers[blankId] === word) {
+                            foundIdx = i;
+                            break;
+                        }
+                    }
+
+                    if (foundIdx === -1) {
+                        document.querySelectorAll(`.blank-placeholder[data-qid="${qidSel}"]`).forEach((el) => {
+                            if ((el.textContent || '').trim() === word) {
+                                const bidx = parseInt(el.getAttribute('data-bidx'));
+                                if (!isNaN(bidx)) foundIdx = bidx;
+                            }
+                        });
+                    }
+
+                    if (foundIdx !== -1) {
+                        const blankId = `${questionId}_${foundIdx}`;
+
+                        userAnswers[blankId] = '';
+                        if (Array.isArray(userAnswers[questionId])) {
+                            userAnswers[questionId][foundIdx] = '';
+                        }
+
+                        const blankEl = document.querySelector(
+                            `.blank-placeholder[data-qid="${qidSel}"][data-bidx="${foundIdx}"]`
+                        );
+                        if (blankEl) {
+                            blankEl.textContent = '______';
+                            blankEl.classList.remove('filled');
+                            blankEl.classList.remove('just-filled');
+                        }
+                    }
+
+                    element.classList.remove('used');
+
+                    updateProgress();
+                    saveDraft();
+                    console.log(`[PTE-R] ❌ Removed "${word}" from blank ${foundIdx + 1}`);
+                    return;
+                }
+
+                let targetIndex = -1;
+                const q = questions[currentIndex];
+                const expectedBlanks = (q && q.blanks) ? q.blanks.length : 0;
+
+                if (expectedBlanks > 0) {
+                    for (let i = 0; i < expectedBlanks; i++) {
+                        const blankId = `${questionId}_${i}`;
+                        const current = userAnswers[blankId];
+                        if (!current || current === '') {
+                            targetIndex = i;
+                            break;
+                        }
+                    }
+                } else {
+                    for (let i = 0; i < MAX_BLANKS_PER_QUESTION; i++) {
+                        const blankEl = document.querySelector(
+                            `.blank-placeholder[data-qid="${qidSel}"][data-bidx="${i}"]`
+                        );
+                        if (!blankEl) break;
+                        const blankId = `${questionId}_${i}`;
+                        const current = userAnswers[blankId];
+                        if (!current || current === '') {
+                            targetIndex = i;
+                            break;
+                        }
+                    }
+                }
+
+                if (targetIndex === -1) {
+                    alert('All blanks are already filled! Click a filled word to remove it.');
+                    return;
+                }
+
+                const blankId = `${questionId}_${targetIndex}`;
+
+                userAnswers[blankId] = word;
+                if (!Array.isArray(userAnswers[questionId])) userAnswers[questionId] = [];
+                userAnswers[questionId][targetIndex] = word;
+                userTouchedQuestions.add(questionId);
+
+                const blankEl = document.querySelector(
+                    `.blank-placeholder[data-qid="${qidSel}"][data-bidx="${targetIndex}"]`
+                );
+                if (blankEl) {
+                    blankEl.textContent = word;
+                    blankEl.classList.add('filled');
+                    blankEl.classList.remove('just-filled');
+                    void blankEl.offsetWidth;
+                    blankEl.classList.add('just-filled');
+                }
+
+                element.classList.add('used');
+
+                updateProgress();
+                saveDraft();
+                console.log(`[PTE-R] ✅ "${word}" → blank ${targetIndex + 1}`);
+            }
+
+            function removeWord(questionId, blankId, element) {
+                if (autoSubmitting) return;
+
+                const qidSel = cssEscape(questionId);
+                const bidSel = cssEscape(blankId);
+
+                if (!element) {
+                    element = document.querySelector(
+                        `.blank-placeholder[data-qid="${qidSel}"][data-bid="${bidSel}"]`
+                    );
+                }
+                if (!element) return;
+
+                const word = (userAnswers[blankId] || '').trim();
+                if (!word) return;
+
+                element.textContent = '______';
+                element.classList.remove('filled');
+                element.classList.remove('just-filled');
+                userAnswers[blankId] = '';
+
+                const blanksArr = userAnswers[questionId];
+                if (Array.isArray(blanksArr)) {
+                    const idx = parseInt(String(blankId).split('_').pop());
+                    if (!isNaN(idx) && idx < blanksArr.length) blanksArr[idx] = '';
+                }
+
+                document.querySelectorAll(`.word-box-item[data-qid="${qidSel}"]`).forEach(item => {
+                    if (item.dataset.word === word && item.classList.contains('used')) {
+                        item.classList.remove('used');
+                    }
+                });
+
+                updateProgress();
+                saveDraft();
+                console.log(`[PTE-R] ❌ Clicked blank → removed "${word}"`);
+            }
+
+            // ─── REORDER FUNCTIONS ─────────────────────────────────────────
+            function toggleReorder(element, questionId) {
+                if (autoSubmitting) return;
+                if (selectedReorderItem === null) {
+                    selectedReorderItem = element;
+                    element.classList.add('selected');
+                    return;
+                }
+                if (selectedReorderItem === element) {
+                    element.classList.remove('selected');
+                    selectedReorderItem = null;
+                    return;
+                }
+                const container = element.closest('.reorder-container');
+                const pos1 = parseInt(selectedReorderItem.dataset.pos);
+                const pos2 = parseInt(element.dataset.pos);
+                const tempIdx = selectedReorderItem.dataset.idx;
+                selectedReorderItem.dataset.idx = element.dataset.idx;
+                element.dataset.idx = tempIdx;
+                if (pos1 < pos2) {
+                    container.insertBefore(element, selectedReorderItem);
+                } else {
+                    container.insertBefore(selectedReorderItem, element);
+                }
+                updateReorderNumbers(container, questionId);
+                selectedReorderItem.classList.remove('selected');
+                selectedReorderItem = null;
+            }
+
+            function moveReorder(questionId, direction) {
+                if (autoSubmitting) return;
+                const container = document.querySelector(`.reorder-container[data-qid="${questionId}"]`);
+                if (!container) return;
+                const items = container.querySelectorAll('.reorder-item');
+                let selectedIdx = -1;
+                items.forEach((item, idx) => {
+                    if (item.classList.contains('selected')) selectedIdx = idx;
+                });
+                if (selectedIdx === -1) {
+                    if (items.length > 0) {
+                        items[0].classList.add('selected');
+                        selectedIdx = 0;
+                    } else return;
+                }
+                const newIdx = direction === 'up' ? selectedIdx - 1 : selectedIdx + 1;
+                if (newIdx < 0 || newIdx >= items.length) return;
+                const item1 = items[selectedIdx];
+                const item2 = items[newIdx];
+                const tempIdx = item1.dataset.idx;
+                item1.dataset.idx = item2.dataset.idx;
+                item2.dataset.idx = tempIdx;
+                if (direction === 'up') {
+                    container.insertBefore(item2, item1);
+                } else {
+                    container.insertBefore(item1, item2.nextSibling);
+                }
+                updateReorderNumbers(container, questionId);
+            }
+
+            function shuffleReorder(questionId) {
+                if (autoSubmitting) return;
+                const container = document.querySelector(`.reorder-container[data-qid="${questionId}"]`);
+                if (!container) return;
+                const items = Array.from(container.querySelectorAll('.reorder-item'));
+                const indices = items.map(item => parseInt(item.dataset.idx));
+                for (let i = indices.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [indices[i], indices[j]] = [indices[j], indices[i]];
+                }
+                container.innerHTML = '';
+                indices.forEach((idx, pos) => {
+                    const original = items.find(item => parseInt(item.dataset.idx) === idx);
+                    if (original) {
+                        const clone = original.cloneNode(true);
+                        clone.dataset.pos = pos;
+                        const numSpan = clone.querySelector('.reorder-number');
+                        if (numSpan) numSpan.textContent = (pos + 1) + '.';
+                        clone.classList.remove('selected');
+                        container.appendChild(clone);
+                    }
+                });
+            }
+
+            function updateReorderNumbers(container, questionId) {
+                const items = container.querySelectorAll('.reorder-item');
+                items.forEach((item, idx) => {
+                    item.dataset.pos = idx;
+                    const numSpan = item.querySelector('.reorder-number');
+                    if (numSpan) numSpan.textContent = (idx + 1) + '.';
+                });
+                saveReorderOrder(container, questionId);
+            }
+
+            function saveReorderOrder(container, questionId) {
+                const items = container.querySelectorAll('.reorder-item');
+                const order = [];
+                items.forEach(item => order.push(parseInt(item.dataset.idx)));
+                userAnswers[questionId] = order;
+                userTouchedQuestions.add(questionId);
+                updateProgress();
+                saveDraft();
+            }
+
+            // ─── MANUAL SUBMIT ──────────────────────────────────────────────
+            async function submitTest() {
+                if (isSubmitting || autoSubmitting) return;
+                if (!testStarted) {
+                    alert('Please start the test first.');
+                    return;
+                }
+
+                cancelPendingAutoAdvance();
+
+                const unanswered = questions.filter((q, idx) => !isQuestionAnswered(q, idx)).length;
+
+                if (unanswered > 0) {
+                    if (!confirm(`⚠️ You have ${unanswered} unanswered question(s). Are you sure you want to submit?`)) {
+                        return;
+                    }
+                }
+
+                isSubmitting = true;
+                if (timerInterval) clearInterval(timerInterval);
+                stopQuestionTimer();
+
+                const answers = {};
+                questions.forEach((q, idx) => {
+                    const questionId = getQuestionId(q, idx);
+                    if (q.type === 'fill_blanks' || q.type === 'reading_fill_blanks') {
+                        const blanks = q.blanks || [];
+                        if (blanks.length > 0) {
+                            const blankAns = blanks.map((_, bi) => {
+                                const bid = questionId + '_' + bi;
+                                return userAnswers[bid] || '';
+                            });
+                            answers[questionId] = blankAns;
+                        } else {
+                            answers[questionId] = userAnswers[questionId] || '';
+                        }
+                    } else if (q.type === 'multiple_choice_multiple') {
+                        answers[questionId] = userAnswers[questionId] || [];
+                    } else if (q.type === 'reorder_paragraphs') {
+                        const items = q.items || q.sentences || [];
+                        const ans = userAnswers[questionId];
+                        answers[questionId] = (Array.isArray(ans) && items.length > 0 && ans.length === items.length)
+                            ? ans
+                            : [];
+                    } else {
+                        answers[questionId] = userAnswers[questionId] || '';
+                    }
+                });
+
+                const cleanedAnswers = {};
+                for (const qid in answers) {
+                    const v = answers[qid];
+                    if (typeof v === 'string') {
+                        if (v.trim() !== '') cleanedAnswers[qid] = v;
+                    } else if (Array.isArray(v)) {
+                        const filtered = v.filter(x => x && String(x).trim() !== '');
+                        if (filtered.length > 0) cleanedAnswers[qid] = v;
+                    } else if (v !== null && v !== undefined) {
+                        cleanedAnswers[qid] = v;
+                    }
+                }
+
+                const payload = {
+                    test_id: testId,
+                    answers: cleanedAnswers,
+                    user_id: USER_ID,
+                    time_taken: TOTAL_TIME_SECONDS - timeLeft
+                };
+
+                try {
+                    const resp = await fetch('/api/pte/submit', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (resp.status === 402) {
+                        const data = await resp.json();
+                        alert('⚠️ ' + (data.error || 'Subscription required.'));
+                        window.location.href = '/subscription?module=pte';
+                        return;
+                    }
+
+                    const data = await resp.json();
+                    if (!data.success) {
+                        throw new Error(data.error || 'Submission failed');
+                    }
+
+                    clearDraft();
+                    showResults(data, false);
+
+                } catch (e) {
+                    console.error('❌ Submit error:', e);
+                    alert('Error submitting test: ' + e.message + '\n\nPlease check your connection and click Submit again.');
+                    isSubmitting = false;
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = '✅ Submit';
+                    }
+                }
+            }
+
+            // ─── SHOW RESULTS ──────────────────────────────────────────────
+            function showResults(data, wasAuto) {
+                if (testScreen) testScreen.style.display = 'none';
+                if (resultsScreen) resultsScreen.style.display = 'block';
+
+                const overallEl = document.getElementById('overall-score');
+                const ieltsEl = document.getElementById('ielts-band');
+                const correctEl = document.getElementById('correct-count');
+                const totalEl = document.getElementById('total-count');
+                if (overallEl) overallEl.textContent = data.pte_score || data.score || 0;
+                if (ieltsEl) ieltsEl.textContent = data.ielts_equivalent || data.ielts_band || 0;
+                if (correctEl) correctEl.textContent = data.correct || 0;
+                if (totalEl) totalEl.textContent = data.total || questions.length;
+
+                const sectionDiv = document.getElementById('section-scores');
+                if (sectionDiv && data.section_scores) {
+                    let html = '<h4>📊 Section Breakdown</h4>';
+                    for (const [sec, score] of Object.entries(data.section_scores)) {
+                        let pct, corr, tot;
+                        if (typeof score === 'object') {
+                            pct = score.percentage || 0;
+                            corr = score.correct || 0;
+                            tot = score.total || 0;
+                        } else {
+                            pct = score;
+                            corr = 0;
+                            tot = 0;
+                        }
+                        html += `<div class="section-score"><span>${sec.replace(/_/g, ' ')}</span><span>${pct}% (${corr}/${tot})</span></div>`;
+                    }
+                    sectionDiv.innerHTML = html;
+                }
+
+                if (sectionDiv && userPaceHistory.length > 0) {
+                    const summary = summarizeAdaptivePace();
+                    if (summary) {
+                        sectionDiv.innerHTML += `
+                            <div style="margin-top:14px;padding:10px 14px;background:#ede9fe;border-radius:8px;font-size:13px;color:#5b21b6;">
+                                🧠 <strong>Adaptive timing:</strong> ${summary}
+                            </div>
+                        `;
+                    }
+                }
+
+                if (wasAuto) {
+                    const existing = document.getElementById('auto-submit-badge');
+                    if (existing) existing.remove();
+                    const badge = document.createElement('div');
+                    badge.id = 'auto-submit-badge';
+                    badge.style.cssText = 'background:#fef9c3;border:1px solid #facc15;border-radius:10px;padding:10px 16px;font-size:13px;color:#854d0e;margin:16px 0;text-align:left;';
+                    badge.innerHTML = '⏰ <strong>Auto-submitted:</strong> Your test was submitted automatically when the timer expired.';
+                    const resultsCard = resultsScreen.querySelector('.results-card');
+                    if (resultsCard) resultsCard.insertBefore(badge, resultsCard.children[2]);
+                }
+
+                window.detailedResults = data.detailed_results || [];
+                isSubmitting = false;
+                autoSubmitting = false;
+            }
+
+            function summarizeAdaptivePace() {
+                if (userPaceHistory.length === 0) return '';
+                const byType = {};
+                userPaceHistory.forEach(h => {
+                    if (!byType[h.type]) byType[h.type] = [];
+                    byType[h.type].push(h.timeUsed / h.limit);
+                });
+                let fastest = null, slowest = null;
+                Object.entries(byType).forEach(([type, ratios]) => {
+                    const avg = ratios.reduce((s, r) => s + r, 0) / ratios.length;
+                    if (fastest === null || avg < fastest.avg) fastest = { type, avg };
+                    if (slowest === null || avg > slowest.avg) slowest = { type, avg };
+                });
+                if (!fastest) return '';
+                const pct = (n) => Math.round(n * 100) + '%';
+                let msg = `Avg pace — fastest on <em>${fastest.type.replace(/_/g, ' ')}</em> (${pct(fastest.avg)} of base time)`;
+                if (slowest && slowest.type !== fastest.type) {
+                    msg += `, slowest on <em>${slowest.type.replace(/_/g, ' ')}</em> (${pct(slowest.avg)})`;
+                }
+                return msg + '.';
+            }
+
+            function toggleAnswers() {
+                const div = document.getElementById('detailed-answers');
+                if (div) {
+                    if (div.style.display === 'none') {
+                        div.style.display = 'block';
+                        div.innerHTML = renderDetailedAnswers();
+                    } else {
+                        div.style.display = 'none';
+                    }
+                }
+            }
+
+            function renderDetailedAnswers() {
+                let html = '<h4>📝 Detailed Answers</h4>';
+                const results = window.detailedResults || [];
+                if (results.length === 0) {
+                    html += '<p style="color:#64748b;">No detailed results available.</p>';
+                    return html;
+                }
+
+                questions.forEach((q, idx) => {
+                    const questionId = getQuestionId(q, idx);
+                    const result = results.find(r => String(r.question_id) === String(questionId)) || {};
+                    const isCorrect = result.is_correct === true;
+                    const userAns = result.user_answer !== undefined && result.user_answer !== null && result.user_answer !== ''
+                        ? result.user_answer
+                        : 'Not provided';
+                    const correctAns = result.correct_answer !== undefined && result.correct_answer !== null
+                        ? result.correct_answer
+                        : 'Not provided';
+                    const qText = q.text || q.question || 'Question ' + (idx + 1);
+                    const cls = isCorrect ? 'correct' : 'incorrect';
+
+                    html += `<div class="answer-comparison ${cls}">`;
+                    html += `<p><strong>Q${idx + 1}:</strong> ${escapeHtml(qText)}</p>`;
+                    html += `<p><span style="color:#003d6b;font-weight:600;">Your answer:</span> ${escapeHtml(String(userAns))}</p>`;
+                    html += `<p><span style="color:#28a745;font-weight:600;">Correct answer:</span> ${escapeHtml(String(correctAns))}</p>`;
+                    html += `<p><strong style="color:${isCorrect ? '#28a745' : '#dc2626'};">${isCorrect ? '✅ Correct' : '❌ Incorrect'}</strong></p>`;
+                    html += `</div>`;
+                });
+                return html;
+            }
+
+            // ─── KEYBOARD SHORTCUTS ────────────────────────────────────────
+            document.addEventListener('keydown', function(e) {
+                if (!testStarted || autoSubmitting) return;
+                if (e.target.matches('input, textarea, select')) return;
+                if (e.key === 'ArrowLeft' && prevBtn && !prevBtn.disabled) prevBtn.click();
+                else if (e.key === 'ArrowRight' && nextBtn && !nextBtn.disabled) nextBtn.click();
+            });
+
+            window.addEventListener('beforeunload', function() {
+                if (timerInterval) clearInterval(timerInterval);
+                cancelPendingAutoAdvance();
+                stopQuestionTimer();
+                if (!isSubmitting && testStarted && questions.length > 0) {
+                    saveDraft();
+                }
+            });
+
+            // ─── EVENT DELEGATION ──────────────────────────────────────────
+            questionsContainer.addEventListener('click', function(e) {
+                const target = e.target;
+
+                const wordItem = target.closest('.word-box-item');
+                if (wordItem) {
+                    const qid = wordItem.getAttribute('data-qid');
+                    const word = wordItem.getAttribute('data-word');
+                    if (qid && word) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        selectWord(qid, word, wordItem);
+                    }
+                    return;
+                }
+
+                const blankEl = target.closest('.blank-placeholder');
+                if (blankEl) {
+                    const qid = blankEl.getAttribute('data-qid');
+                    const bid = blankEl.getAttribute('data-bid');
+                    if (qid && bid) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        removeWord(qid, bid, blankEl);
+                    }
+                    return;
+                }
+            }, true);
+
+            // ─── EXPOSE GLOBALS ────────────────────────────────────────────
+            window.nextQuestion = nextQuestion;
+            window.prevQuestion = prevQuestion;
+            window.submitTest = submitTest;
+            window.saveAnswer = saveAnswer;
+            window.saveMultipleAnswer = saveMultipleAnswer;
+            window.saveBlankAnswer = saveBlankAnswer;
+            window.selectWord = selectWord;
+            window.removeWord = removeWord;
+            window.toggleReorder = toggleReorder;
+            window.moveReorder = moveReorder;
+            window.shuffleReorder = shuffleReorder;
+            window.toggleAnswers = toggleAnswers;
+            window.initiatePTEPayment = initiatePTEPayment;
+            window.startTest = startTest;
+            window.getAdaptiveQuestionTime = getAdaptiveQuestionTime;
+            window.getUserPaceHistory = () => userPaceHistory.slice();
+            window.isQuestionAnswered = isQuestionAnswered;
+
+            // ─── INIT ──────────────────────────────────────────────────────
+            async function init() {
+                loadSubscriptionStatus();
+
+                if (RESUME_ID && !retake && !forceNew) {
+                    console.log('📌 Explicit resume ID in URL:', RESUME_ID);
+                    loadResume(RESUME_ID);
+                    return;
+                }
+
+                if (forceNew || retake) {
+                    console.log('🔄 Force new / retake — generating fresh test');
+                    generateTest(0);
+                    return;
+                }
+
+                const foundSession = await checkForActiveSession();
+                if (!foundSession) generateTest(0);
+            }
+
+            init();
+
+            if (startBtn) {
+                startBtn.addEventListener('click', startTest);
+            }
+
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && startOverlay && startOverlay.classList.contains('show') && !testStarted) {
+                    startTest();
+                }
+            });
+
+        });
+    </script>
+</body>
+</html>

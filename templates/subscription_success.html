@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Subscription Result</title>
+    <style>
+        body { font-family: Arial; max-width: 600px; margin: 50px auto; text-align: center; }
+        .success { color: #28a745; }
+        .error { color: #dc3545; }
+        .btn { display: inline-block; padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 4px; margin: 10px; }
+    </style>
+</head>
+<body>
+    <h1>{% if success %}✅ Payment Successful{% else %}❌ Payment Failed{% endif %}</h1>
+    <p>Module: <strong>{{ module.upper() }}</strong></p>
+    {% if success %}
+        <p>Your subscription has been activated. You now have full access to all {{ module.upper() }} tests.</p>
+    {% else %}
+        <p>{{ error or 'Something went wrong. Please try again.' }}</p>
+    {% endif %}
+    <a href="{{ url_for('dashboard') }}" class="btn">Go to Dashboard</a>
+    <a href="{{ url_for('subscription_page') }}" class="btn">Try Again</a>
+</body>
+</html>

@@ -1,0 +1,124 @@
+# ═══════════════════════════════════════════════════════
+# Environment & Secrets
+# ═══════════════════════════════════════════════════════
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+secrets.json
+config.local.py
+
+# ═══════════════════════════════════════════════════════
+# Python
+# ═══════════════════════════════════════════════════════
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# ═══════════════════════════════════════════════════════
+# Flask / App
+# ═══════════════════════════════════════════════════════
+instance/
+flask_sessions/
+logs/
+*.log
+gunicorn_access.log
+gunicorn_error.log
+
+# ═══════════════════════════════════════════════════════
+# Database
+# ═══════════════════════════════════════════════════════
+*.db
+*.sqlite
+*.sqlite3
+local.db
+*.db-journal
+
+# ═══════════════════════════════════════════════════════
+# Uploads / Cache / Generated
+# ═══════════════════════════════════════════════════════
+protected_uploads/
+static/uploads/
+static/audio_cache/
+static/charts/
+static/ukvi/
+data/ukvi/
+cache/
+temp/
+tmp/
+
+# ═══════════════════════════════════════════════════════
+# 🚨 GENERATED TEST IMAGES (thousands of PNGs — 200+ MB)
+# ═══════════════════════════════════════════════════════
+static/images/ielts/writing/
+static/images/ielts/reading/
+static/images/ielts/listening/
+static/images/ielts/speaking/
+static/images/pte/
+static/images/generated/
+static/images/temp/
+
+# ═══════════════════════════════════════════════════════
+# 🚨 PIPER TTS VOICES (3 × 60 MB ONNX models)
+# ═══════════════════════════════════════════════════════
+piper-voices/
+*.onnx
+*.onnx.json
+
+# ═══════════════════════════════════════════════════════
+# 🚨 LARGE 3D MODELS & BINARIES
+# ═══════════════════════════════════════════════════════
+static/models/*.glb
+static/models/*.gltf
+static/models/*.fbx
+static/models/*.bin
+*.whl
+*.pt
+*.pth
+*.bin
+*.safetensors
+
+# ═══════════════════════════════════════════════════════
+# Media (allow curated, ignore generated)
+# ═══════════════════════════════════════════════════════
+*.mp3
+*.wav
+*.ogg
+
+# ═══════════════════════════════════════════════════════
+# IDE
+# ═══════════════════════════════════════════════════════
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ═══════════════════════════════════════════════════════
+# OS
+# ═══════════════════════════════════════════════════════
+.DS_Store
+Thumbs.db
+
+# ═══════════════════════════════════════════════════════
+# Backups / Misc
+# ═══════════════════════════════════════════════════════
+*.bak
+*.backup
+*.tmp
+*.orig

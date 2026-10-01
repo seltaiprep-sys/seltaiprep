@@ -1,0 +1,317 @@
+{
+  "water_cycle": {
+    "file": "water_cycle.svg",
+    "title": "The water cycle",
+    "keywords": ["water cycle", "hydrological", "rain formation", "evaporation", "precipitation", "condensation"],
+    "description": "Natural water circulation between ocean, atmosphere, and land",
+    "num_labels": 5
+  },
+  "paper_making": {
+    "file": "paper_making.svg",
+    "title": "How paper is made",
+    "keywords": ["paper", "papermaking", "pulp", "wood chips", "paper production"],
+    "description": "Industrial process of converting wood into paper",
+    "num_labels": 7
+  },
+  "chocolate_production": {
+    "file": "chocolate_production.svg",
+    "title": "How chocolate is produced",
+    "keywords": ["chocolate", "cocoa", "cacao", "cocoa beans"],
+    "description": "Farm-to-bar chocolate manufacturing",
+    "num_labels": 6
+  },
+  "photosynthesis": {
+    "file": "photosynthesis.svg",
+    "title": "The process of photosynthesis",
+    "keywords": ["photosynthesis", "plant", "chlorophyll", "sunlight", "carbon dioxide"],
+    "description": "How plants convert sunlight into energy",
+    "num_labels": 5
+  },
+  "coffee_processing": {
+    "file": "coffee_processing.svg",
+    "title": "How coffee is processed",
+    "keywords": ["coffee", "coffee beans", "roasting", "coffee production"],
+    "description": "Coffee bean processing from harvest to cup",
+    "num_labels": 6
+  },
+  "glass_recycling": {
+    "file": "glass_recycling.svg",
+    "title": "The glass recycling process",
+    "keywords": ["glass", "recycling", "glass bottle", "recycled glass"],
+    "description": "How used glass is recycled into new bottles",
+    "num_labels": 6
+  },
+  "tea_production": {
+    "file": "tea_production.svg",
+    "title": "How tea is produced",
+    "keywords": ["tea", "tea leaves", "tea production", "tea processing"],
+    "description": "Tea manufacturing from plantation to packaging",
+    "num_labels": 6
+  },
+  "cement_manufacturing": {
+    "file": "cement_manufacturing.svg",
+    "title": "How cement is manufactured",
+    "keywords": ["cement", "concrete", "kiln", "clinker"],
+    "description": "Industrial cement production process",
+    "num_labels": 6
+  },
+  "wastewater_treatment": {
+    "file": "wastewater_treatment.svg",
+    "title": "Wastewater treatment process",
+    "keywords": ["wastewater", "sewage", "water treatment", "treatment plant"],
+    "description": "How wastewater is cleaned and returned to nature",
+    "num_labels": 7
+  },
+  "bee_life_cycle": {
+    "file": "bee_life_cycle.svg",
+    "title": "The life cycle of a honey bee",
+    "keywords": ["bee", "honey bee", "bee life cycle", "bee stages"],
+    "description": "Four stages of a honey bee's development",
+    "num_labels": 4
+  },
+  "honey_making": {
+    "file": "honey_making.svg",
+    "title": "How honey is made",
+    "keywords": ["honey", "honey production", "beekeeping"],
+    "description": "Natural honey production by bees",
+    "num_labels": 5
+  },
+  "silk_production": {
+    "file": "silk_production.svg",
+    "title": "How silk is produced",
+    "keywords": ["silk", "silkworm", "silk production", "sericulture"],
+    "description": "Silk manufacturing from silkworm cocoons",
+    "num_labels": 6
+  },
+  "bread_making": {
+    "file": "bread_making.svg",
+    "title": "How bread is made",
+    "keywords": ["bread", "breadmaking", "baking", "dough"],
+    "description": "Commercial bread production process",
+    "num_labels": 6
+  },
+  "cheese_making": {
+    "file": "cheese_making.svg",
+    "title": "How cheese is made",
+    "keywords": ["cheese", "cheese production", "dairy"],
+    "description": "Traditional cheese manufacturing",
+    "num_labels": 6
+  },
+  "beer_brewing": {
+    "file": "beer_brewing.svg",
+    "title": "The beer brewing process",
+    "keywords": ["beer", "brewing", "brewery", "fermentation"],
+    "description": "Industrial beer production",
+    "num_labels": 6
+  },
+  "wool_processing": {
+    "file": "wool_processing.svg",
+    "title": "How wool is processed",
+    "keywords": ["wool", "sheep", "wool processing", "textile"],
+    "description": "From sheep to wool fabric",
+    "num_labels": 6
+  },
+  "leather_tanning": {
+    "file": "leather_tanning.svg",
+    "title": "The leather tanning process",
+    "keywords": ["leather", "tanning", "hide"],
+    "description": "How animal hides are turned into leather",
+    "num_labels": 6
+  },
+  "brick_manufacturing": {
+    "file": "brick_manufacturing.svg",
+    "title": "How bricks are manufactured",
+    "keywords": ["brick", "brickmaking", "kiln"],
+    "description": "Industrial brick production",
+    "num_labels": 5
+  },
+  "steel_production": {
+    "file": "steel_production.svg",
+    "title": "How steel is produced",
+    "keywords": ["steel", "steelmaking", "blast furnace", "iron ore"],
+    "description": "From iron ore to finished steel",
+    "num_labels": 6
+  },
+  "oil_refining": {
+    "file": "oil_refining.svg",
+    "title": "The oil refining process",
+    "keywords": ["oil", "refinery", "petroleum", "crude oil"],
+    "description": "How crude oil is refined into fuels",
+    "num_labels": 6
+  },
+  "electricity_generation": {
+    "file": "electricity_generation.svg",
+    "title": "How electricity is generated",
+    "keywords": ["electricity", "power generation", "power plant"],
+    "description": "Coal-fired power station process",
+    "num_labels": 6
+  },
+  "solar_power": {
+    "file": "solar_power.svg",
+    "title": "How solar power works",
+    "keywords": ["solar", "solar panel", "solar power", "photovoltaic"],
+    "description": "Solar energy conversion to electricity",
+    "num_labels": 5
+  },
+  "wind_turbine": {
+    "file": "wind_turbine.svg",
+    "title": "How a wind turbine works",
+    "keywords": ["wind", "wind turbine", "wind power"],
+    "description": "Wind energy conversion process",
+    "num_labels": 5
+  },
+  "hydroelectric": {
+    "file": "hydroelectric.svg",
+    "title": "How a hydroelectric dam works",
+    "keywords": ["hydroelectric", "dam", "water power", "hydropower"],
+    "description": "Water-powered electricity generation",
+    "num_labels": 6
+  },
+  "natural_gas": {
+    "file": "natural_gas.svg",
+    "title": "The natural gas extraction process",
+    "keywords": ["natural gas", "gas extraction", "drilling"],
+    "description": "From gas field to consumer",
+    "num_labels": 5
+  },
+  "nuclear_power": {
+    "file": "nuclear_power.svg",
+    "title": "How nuclear power plants work",
+    "keywords": ["nuclear", "nuclear power", "reactor", "uranium"],
+    "description": "Nuclear fission electricity generation",
+    "num_labels": 6
+  },
+  "rock_cycle": {
+    "file": "rock_cycle.svg",
+    "title": "The rock cycle",
+    "keywords": ["rock cycle", "igneous", "sedimentary", "metamorphic"],
+    "description": "How rocks transform over time",
+    "num_labels": 6
+  },
+  "carbon_cycle": {
+    "file": "carbon_cycle.svg",
+    "title": "The carbon cycle",
+    "keywords": ["carbon cycle", "carbon", "carbon dioxide cycle"],
+    "description": "Carbon circulation through Earth systems",
+    "num_labels": 6
+  },
+  "nitrogen_cycle": {
+    "file": "nitrogen_cycle.svg",
+    "title": "The nitrogen cycle",
+    "keywords": ["nitrogen cycle", "nitrogen", "nitrification"],
+    "description": "Nitrogen circulation through ecosystems",
+    "num_labels": 6
+  },
+  "recycling_process": {
+    "file": "recycling_process.svg",
+    "title": "The recycling process",
+    "keywords": ["recycling", "recycle", "waste sorting"],
+    "description": "General municipal recycling flow",
+    "num_labels": 6
+  },
+  "plastic_recycling": {
+    "file": "plastic_recycling.svg",
+    "title": "The plastic recycling process",
+    "keywords": ["plastic recycling", "plastic", "polymer"],
+    "description": "How plastic waste is recycled",
+    "num_labels": 6
+  },
+  "aluminium_recycling": {
+    "file": "aluminium_recycling.svg",
+    "title": "The aluminium recycling process",
+    "keywords": ["aluminium", "aluminum recycling", "metal recycling"],
+    "description": "How aluminium cans are recycled",
+    "num_labels": 5
+  },
+  "rice_production": {
+    "file": "rice_production.svg",
+    "title": "How rice is produced",
+    "keywords": ["rice", "rice production", "paddy"],
+    "description": "Rice farming and processing",
+    "num_labels": 6
+  },
+  "cotton_production": {
+    "file": "cotton_production.svg",
+    "title": "How cotton is produced",
+    "keywords": ["cotton", "cotton production", "cotton textile"],
+    "description": "From cotton plant to fabric",
+    "num_labels": 6
+  },
+  "salt_production": {
+    "file": "salt_production.svg",
+    "title": "How salt is produced",
+    "keywords": ["salt", "salt production", "salt mining"],
+    "description": "From sea water to table salt",
+    "num_labels": 5
+  },
+  "sugar_production": {
+    "file": "sugar_production.svg",
+    "title": "How sugar is produced",
+    "keywords": ["sugar", "sugar production", "sugar cane", "sugar beet"],
+    "description": "From cane or beet to refined sugar",
+    "num_labels": 6
+  },
+  "olive_oil_production": {
+    "file": "olive_oil_production.svg",
+    "title": "How olive oil is produced",
+    "keywords": ["olive oil", "olives", "olive oil production"],
+    "description": "Olive harvesting and oil extraction",
+    "num_labels": 5
+  },
+  "wine_making": {
+    "file": "wine_making.svg",
+    "title": "How wine is made",
+    "keywords": ["wine", "winemaking", "vineyard", "grapes"],
+    "description": "From grapes to bottled wine",
+    "num_labels": 6
+  },
+  "yoghurt_production": {
+    "file": "yoghurt_production.svg",
+    "title": "How yoghurt is produced",
+    "keywords": ["yoghurt", "yogurt", "yoghurt production"],
+    "description": "Commercial yoghurt manufacturing",
+    "num_labels": 5
+  },
+  "instant_noodles": {
+    "file": "instant_noodles.svg",
+    "title": "How instant noodles are made",
+    "keywords": ["instant noodles", "noodles", "ramen"],
+    "description": "Industrial instant noodle production",
+    "num_labels": 6
+  },
+  "fish_canning": {
+    "file": "fish_canning.svg",
+    "title": "How fish is canned",
+    "keywords": ["fish canning", "canned fish", "canning"],
+    "description": "Commercial fish canning process",
+    "num_labels": 6
+  },
+  "milk_processing": {
+    "file": "milk_processing.svg",
+    "title": "How milk is processed",
+    "keywords": ["milk", "dairy", "pasteurisation", "milk processing"],
+    "description": "From cow to supermarket milk",
+    "num_labels": 6
+  },
+  "lemonade_production": {
+    "file": "lemonade_production.svg",
+    "title": "How lemonade is made",
+    "keywords": ["lemonade", "soft drink", "beverage production"],
+    "description": "Industrial lemonade manufacturing",
+    "num_labels": 5
+  },
+  "toothpaste_production": {
+    "file": "toothpaste_production.svg",
+    "title": "How toothpaste is made",
+    "keywords": ["toothpaste", "toothpaste production"],
+    "description": "Industrial toothpaste manufacturing",
+    "num_labels": 5
+  },
+  "soap_production": {
+    "file": "soap_production.svg",
+    "title": "How soap is made",
+    "keywords": ["soap", "soap production", "saponification"],
+    "description": "Industrial soap manufacturing",
+    "num_labels": 5
+  }
+}

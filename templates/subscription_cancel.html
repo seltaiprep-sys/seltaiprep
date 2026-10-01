@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Payment Cancelled</title>
+    <style>
+        body { font-family: Arial; max-width: 600px; margin: 50px auto; text-align: center; }
+        .btn { display: inline-block; padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 4px; margin: 10px; }
+    </style>
+</head>
+<body>
+    <h1>⚠️ Payment Cancelled</h1>
+    <p>You cancelled the payment for <strong>{{ module.upper() }}</strong> subscription.</p>
+    <a href="{{ url_for('subscription_page') }}" class="btn">Back to Subscription</a>
+    <a href="{{ url_for('dashboard') }}" class="btn">Dashboard</a>
+</body>
+</html>

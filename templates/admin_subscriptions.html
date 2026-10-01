@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subscriptions</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #f0f2f5;
+            margin: 0;
+            padding: 20px;
+        }
+        .admin-header {
+            background: #1a2b4a;
+            color: white;
+            padding: 14px 24px;
+            border-radius: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .admin-header a { color: #ddd; text-decoration: none; }
+        .admin-header a:hover { color: white; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+        }
+        th {
+            background: #f8f9fc;
+            color: #1a2b4a;
+            font-weight: 600;
+            padding: 12px 14px;
+            text-align: left;
+            border-bottom: 2px solid #eef2f7;
+        }
+        td {
+            padding: 10px 14px;
+            border-bottom: 1px solid #eef2f7;
+        }
+        tr:hover td { background: #fafbfc; }
+        .badge-active { background: #28a745; color: white; padding: 2px 10px; border-radius: 12px; font-size: 12px; }
+        .badge-inactive { background: #e74c3c; color: white; padding: 2px 10px; border-radius: 12px; font-size: 12px; }
+        .badge-free { background: #ffc107; color: #333; padding: 2px 10px; border-radius: 12px; font-size: 12px; }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 15px;
+            color: #667eea;
+            text-decoration: none;
+        }
+        .back-link:hover { text-decoration: underline; }
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #6c757d;
+            background: white;
+            border-radius: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-header">
+        <span>📋 Subscriptions</span>
+        <a href="{{ url_for('admin_dashboard') }}">← Back to Dashboard</a>
+    </div>
+
+    <a href="{{ url_for('admin_dashboard') }}" class="back-link">← Back to Dashboard</a>
+
+    {% if subs %}
+        <table>
+            <thead>
+                <tr>
+                    <th>User</th>
+                    <th>IELTS Plan</th>
+                    <th>Status</th>
+                    <th>Tests Left</th>
+                    <th>Expires</th>
+                    <th>PTE Plan</th>
+                    <th>UKVI Plan</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in subs %}
+                <tr>
+                    <td><strong>{{ s.user.username }}</strong></td>
+                    <td>{{ s.plan or 'free' }}</td>
+                    <td>
+                        {% if s.is_active() %}
+                            <span class="badge-active">Active</span>
+                        {% else %}
+                            <span class="badge-inactive">Inactive</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ s.tests_remaining }}</td>
+                    <td>{{ s.subscription_end.strftime('%Y-%m-%d') if s.subscription_end else 'N/A' }}</td>
+                    <td>{{ s.pte_plan or 'Free' }}</td>
+                    <td>{{ s.ukvi_plan or 'Free' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <div class="empty-state"><h2>No subscriptions found</h2></div>
+    {% endif %}
+</body>
+</html>

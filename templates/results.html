@@ -1,0 +1,29 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Result</title>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box;}
+        body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f2f5;}
+        .header{background:#003d6b;color:white;padding:15px 30px;}
+        .header-content{display:flex;justify-content:space-between;align-items:center;max-width:1200px;margin:0 auto;}
+        .logo h1{font-size:20px;}.logo p{font-size:11px;opacity:0.8;}
+        .nav-links a{color:white;text-decoration:none;margin-left:25px;}
+        .container{max-width:700px;margin:30px auto;padding:0 20px;}
+        .card{background:white;border-radius:16px;padding:30px;text-align:center;box-shadow:0 4px 15px rgba(0,0,0,0.1);}
+        .band-circle{width:150px;height:150px;border-radius:50%;background:linear-gradient(135deg,#003d6b 0%,#28a745 100%);display:flex;align-items:center;justify-content:center;margin:20px auto;}
+        .band-score{font-size:42px;font-weight:bold;color:white;}
+        h2{color:#003d6b;}
+        .info{margin:15px 0;color:#666;}
+        .type{text-transform:capitalize;font-weight:600;color:#003d6b;}
+        .btn{padding:10px 20px;background:#003d6b;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:600;text-decoration:none;display:inline-block;margin:5px;}
+        @media(max-width:768px){.card{padding:20px;}.band-circle{width:100px;height:100px;}.band-score{font-size:28px;}}
+    </style>
+</head>
+<body>
+    <div class="header"><div class="header-content"><div class="logo"><h1>IELTS Practice Platform</h1><p>Test Result</p></div><div class="nav-links"><a href="/dashboard">Dashboard</a><a href="/logout">Logout</a></div></div></div>
+    <div class="container"><div class="card"><h2>Test Result</h2><div class="band-circle"><div class="band-score">{{ result.band_score }}</div></div><p class="type">{{ result.test_type }}</p><p class="info">Score: {{ result.score|round(1) }}%</p><p class="info">{{ result.feedback or '' }}</p><p class="info">{{ result.created_at.strftime('%Y-%m-%d %H:%M') }}</p><a href="/dashboard" class="btn">Dashboard</a><a href="/results" class="btn">All Results</a></div></div>
+</body>
+</html>

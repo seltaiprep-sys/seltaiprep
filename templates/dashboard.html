@@ -1,0 +1,1328 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="csrf-token" content="{{ csrf_token }}" />
+    <title>{{ selected_module|upper }} Master – Dashboard</title>
+    <style>
+        /* ─── RESET & BASE ─── */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: #f4f6fb;
+            min-height: 100vh;
+            color: #1e293b;
+        }
+
+        /* ─── HEADER ─── */
+        .header {
+            background: #ffffff;
+            padding: 14px 32px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .logo h1 {
+            font-size: 22px;
+            font-weight: 700;
+            color: #3b3f5c;
+        }
+        .logo h1 span {
+            color: #6c63ff;
+        }
+        .logo p {
+            font-size: 12px;
+            color: #94a3b8;
+            font-weight: 500;
+            letter-spacing: 0.3px;
+        }
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        .user-name {
+            font-weight: 600;
+            color: #1e293b;
+            font-size: 15px;
+        }
+        .module-badge {
+            background: #6c63ff;
+            color: #fff;
+            padding: 4px 16px;
+            border-radius: 30px;
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            text-transform: uppercase;
+        }
+        .switch-link {
+            color: #6c63ff;
+            font-weight: 600;
+            text-decoration: none;
+            padding: 6px 14px;
+            border: 2px solid #6c63ff;
+            border-radius: 30px;
+            font-size: 13px;
+            transition: 0.2s;
+        }
+        .switch-link:hover {
+            background: #6c63ff;
+            color: #fff;
+        }
+        .logout-btn {
+            background: #ef4444;
+            color: #fff;
+            padding: 8px 22px;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: background 0.2s;
+        }
+        .logout-btn:hover {
+            background: #dc2626;
+        }
+
+        /* ─── CONTAINER ─── */
+        .container {
+            max-width: 1240px;
+            margin: 0 auto;
+            padding: 28px 24px 60px;
+        }
+
+        /* ─── WELCOME BANNER ─── */
+        .welcome-banner {
+            background: linear-gradient(135deg, #6c63ff 0%, #4f46e5 100%);
+            border-radius: 20px;
+            padding: 24px 32px;
+            color: #fff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+            margin-bottom: 28px;
+            box-shadow: 0 8px 30px rgba(108, 99, 255, 0.25);
+        }
+        .welcome-banner h2 {
+            font-size: 22px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .welcome-banner .sub {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-top: 4px;
+        }
+        .welcome-stats {
+            display: flex;
+            gap: 28px;
+            flex-wrap: wrap;
+        }
+        .welcome-stats .stat {
+            text-align: center;
+        }
+        .welcome-stats .stat .number {
+            font-size: 28px;
+            font-weight: 700;
+            display: block;
+            line-height: 1.2;
+        }
+        .welcome-stats .stat .label {
+            font-size: 12px;
+            opacity: 0.8;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* ─── SUBSCRIPTION WIDGET ─── */
+        .subscription-widget {
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 18px 24px;
+            margin-bottom: 28px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            border-left: 6px solid #6c63ff;
+        }
+        .subscription-widget .left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        .subscription-widget .badge {
+            padding: 4px 14px;
+            border-radius: 30px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        .badge-active {
+            background: #dcfce7;
+            color: #16a34a;
+        }
+        .badge-free {
+            background: #fef3c7;
+            color: #d97706;
+        }
+        .badge-expired {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+        .sub-details {
+            font-size: 14px;
+            color: #475569;
+        }
+        .sub-details strong {
+            color: #1e293b;
+        }
+        .btn-subscribe {
+            background: linear-gradient(135deg, #6c63ff, #4f46e5);
+            color: #fff;
+            border: none;
+            padding: 10px 28px;
+            border-radius: 30px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 14px rgba(108, 99, 255, 0.3);
+        }
+        .btn-subscribe:hover {
+            transform: scale(1.03);
+            box-shadow: 0 6px 20px rgba(108, 99, 255, 0.4);
+        }
+        .btn-subscribe-outline {
+            background: transparent;
+            color: #6c63ff;
+            border: 2px solid #6c63ff;
+            box-shadow: none;
+        }
+        .btn-subscribe-outline:hover {
+            background: #6c63ff;
+            color: #fff;
+            box-shadow: 0 4px 14px rgba(108, 99, 255, 0.3);
+        }
+        .module-breakdown {
+            font-size: 14px;
+            color: #475569;
+            margin-top: 4px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px 16px;
+        }
+        .module-breakdown .mod-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .module-breakdown .mod-item .mod-label {
+            font-weight: 600;
+            color: #1e293b;
+        }
+        .module-breakdown .mod-item .mod-count {
+            font-weight: 700;
+            color: #6c63ff;
+        }
+        .module-breakdown .mod-item .mod-limit {
+            color: #94a3b8;
+        }
+
+        /* ─── QUICK ACTIONS ─── */
+        .quick-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+        .skill-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+        }
+        .skill-card {
+            background: #fff;
+            border-radius: 16px;
+            padding: 20px 16px;
+            text-align: center;
+            cursor: pointer;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+            transition: transform 0.2s, box-shadow 0.2s;
+            border-top: 4px solid #6c63ff;
+            text-decoration: none;
+            color: inherit;
+        }
+        .skill-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.10);
+        }
+        .skill-card .icon {
+            font-size: 40px;
+            margin-bottom: 8px;
+            display: block;
+        }
+        .skill-card h4 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 4px;
+        }
+        .skill-card p {
+            font-size: 12px;
+            color: #94a3b8;
+        }
+        .skill-card .tag {
+            display: inline-block;
+            margin-top: 8px;
+            padding: 2px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            background: #f1f5f9;
+            color: #475569;
+        }
+        .skill-card.listening {
+            border-top-color: #3b82f6;
+        }
+        .skill-card.reading {
+            border-top-color: #22c55e;
+        }
+        .skill-card.writing {
+            border-top-color: #f59e0b;
+        }
+        .skill-card.speaking {
+            border-top-color: #ef4444;
+        }
+        .skill-card.pte-speaking {
+            border-top-color: #8b5cf6;
+        }
+
+        /* ─── FULL TEST CARD ─── */
+        .full-test-card {
+            background: #fff;
+            border-radius: 16px;
+            padding: 24px 28px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: flex-start;
+            border: 2px dashed #d1d5db;
+            transition: border-color 0.2s;
+            position: relative;
+        }
+        .full-test-card:hover {
+            border-color: #6c63ff;
+        }
+        .full-test-card h4 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1e293b;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .full-test-card p {
+            font-size: 14px;
+            color: #64748b;
+            margin: 4px 0 12px;
+        }
+        .full-test-btn-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .btn-full-test {
+            background: #1e293b;
+            color: #fff;
+            border: none;
+            padding: 10px 28px;
+            border-radius: 30px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: background 0.2s, opacity 0.2s;
+        }
+        .btn-full-test:hover {
+            background: #0f172a;
+        }
+        .btn-full-test.locked {
+            opacity: 0.5;
+            pointer-events: none;
+            cursor: not-allowed;
+            background: #94a3b8;
+        }
+        .lock-icon {
+            font-size: 22px;
+            color: #ef4444;
+            display: none;
+        }
+        .lock-icon.visible {
+            display: inline-block;
+        }
+        .subscription-warning {
+            color: #dc2626;
+            font-size: 13px;
+            margin-top: 6px;
+            display: none;
+        }
+        .subscription-warning.visible {
+            display: block;
+        }
+        .subscription-warning a {
+            color: #6c63ff;
+            font-weight: 600;
+            text-decoration: none;
+        }
+        .subscription-warning a:hover {
+            text-decoration: underline;
+        }
+
+        /* ─── ACTIVE SESSIONS ─── */
+        .sessions-section {
+            background: #fff;
+            border-radius: 16px;
+            padding: 20px 24px;
+            margin-bottom: 28px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+        }
+        .sessions-section h3 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1e293b;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+        .sessions-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .session-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: #f8fafc;
+            border-radius: 12px;
+            border-left: 4px solid #6c63ff;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .session-info {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
+        }
+        .session-module {
+            font-weight: 600;
+            font-size: 12px;
+            color: #6c63ff;
+            background: #ede9fe;
+            padding: 2px 12px;
+            border-radius: 20px;
+        }
+        .session-type {
+            font-weight: 600;
+            color: #1e293b;
+            font-size: 14px;
+        }
+        .session-meta {
+            color: #94a3b8;
+            font-size: 13px;
+        }
+        .session-progress {
+            background: #22c55e;
+            color: #fff;
+            padding: 2px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .btn-resume {
+            background: #6c63ff;
+            color: #fff;
+            border: none;
+            padding: 6px 20px;
+            border-radius: 30px;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            text-decoration: none;
+            transition: background 0.2s;
+        }
+        .btn-resume:hover {
+            background: #5b52d9;
+        }
+        .no-sessions {
+            color: #94a3b8;
+            font-size: 14px;
+            padding: 8px 0;
+        }
+
+        /* ─── RESULTS ─── */
+        .results-section {
+            background: #fff;
+            border-radius: 16px;
+            padding: 20px 24px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+        }
+        .results-section h3 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1e293b;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+        .results-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: #f8fafc;
+            transition: background 0.15s;
+        }
+        .result-item:hover {
+            background: #f1f5f9;
+        }
+        .result-item .left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        .result-item .test-name {
+            font-weight: 600;
+            font-size: 14px;
+            color: #1e293b;
+        }
+        .result-item .test-date {
+            font-size: 12px;
+            color: #94a3b8;
+        }
+        .result-item .score {
+            font-weight: 700;
+            font-size: 16px;
+            color: #6c63ff;
+        }
+        .result-item .band {
+            background: #6c63ff;
+            color: #fff;
+            padding: 2px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        /* ═══════════════════════════════════════════════════════════
+           ✅ FULL TEST RESULT CARD (highlighted golden)
+           ═══════════════════════════════════════════════════════════ */
+        .full-result-card {
+            display: block;
+            padding: 16px 20px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, #fffbea 0%, #fff5cc 100%);
+            border: 2px solid #ffc107;
+            border-left: 6px solid #f59e0b;
+            box-shadow: 0 4px 18px rgba(245, 158, 11, 0.18);
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+        .full-result-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 26px rgba(245, 158, 11, 0.28);
+            background: linear-gradient(135deg, #fffbea 0%, #ffefb3 100%);
+        }
+        .full-result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+        .full-result-header .title-block {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .full-result-header .test-name {
+            font-weight: 800;
+            font-size: 16px;
+            color: #92400e;
+            letter-spacing: 0.3px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .full-result-header .test-date {
+            font-size: 12.5px;
+            color: #b45309;
+            font-weight: 500;
+        }
+        .full-result-header .overall-band {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .full-result-header .overall-band .band-label {
+            font-size: 12px;
+            color: #92400e;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 700;
+        }
+        .full-result-header .overall-band .band-value {
+            font-size: 26px;
+            font-weight: 900;
+            color: #b45309;
+            line-height: 1;
+        }
+
+        /* Section breakdown chips */
+        .section-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        .section-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: rgba(255, 255, 255, 0.75);
+            border-radius: 20px;
+            font-size: 12.5px;
+            font-weight: 600;
+            color: #78350f;
+            border: 1px solid rgba(245, 158, 11, 0.35);
+            white-space: nowrap;
+        }
+        .section-chip .icon {
+            font-size: 14px;
+        }
+        .section-chip .chip-label {
+            color: #92400e;
+            font-weight: 700;
+        }
+        .section-chip .chip-band {
+            color: #b45309;
+            font-weight: 900;
+            font-size: 14px;
+        }
+        .section-chip.zero {
+            background: rgba(254, 226, 226, 0.75);
+            border-color: rgba(239, 68, 68, 0.35);
+            color: #7f1d1d;
+        }
+        .section-chip.zero .chip-label { color: #7f1d1d; }
+        .section-chip.zero .chip-band { color: #991b1b; }
+
+        .empty-results {
+            text-align: center;
+            color: #94a3b8;
+            padding: 24px 0;
+            font-size: 14px;
+        }
+
+        /* ─── RESPONSIVE ─── */
+        @media (max-width: 1024px) {
+            .quick-actions {
+                grid-template-columns: 1fr;
+            }
+            .skill-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 12px;
+                padding: 14px 18px;
+            }
+            .user-info {
+                justify-content: space-between;
+                gap: 8px;
+            }
+            .welcome-banner {
+                flex-direction: column;
+                text-align: center;
+                padding: 20px;
+            }
+            .welcome-stats {
+                justify-content: center;
+                gap: 16px;
+            }
+            .welcome-stats .stat .number {
+                font-size: 22px;
+            }
+            .skill-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .subscription-widget {
+                flex-direction: column;
+                align-items: stretch;
+                text-align: center;
+            }
+            .subscription-widget .left {
+                justify-content: center;
+            }
+            .full-test-card {
+                align-items: center;
+                text-align: center;
+            }
+            .full-test-btn-wrapper {
+                justify-content: center;
+            }
+            .session-item {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .session-info {
+                justify-content: center;
+            }
+            .result-item {
+                flex-wrap: wrap;
+                gap: 8px;
+                justify-content: center;
+            }
+            .module-breakdown {
+                justify-content: center;
+            }
+            .full-result-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+        @media (max-width: 480px) {
+            .skill-grid {
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+            }
+            .skill-card {
+                padding: 14px 10px;
+            }
+            .skill-card .icon {
+                font-size: 30px;
+            }
+            .container {
+                padding: 16px 12px 40px;
+            }
+            .welcome-stats .stat .number {
+                font-size: 18px;
+            }
+            .section-chips {
+                flex-direction: column;
+            }
+        }
+    </style>
+
+    {# ─── SAFE DAYS REMAINING FILTER ─── #}
+    {% macro days_remaining(sub) %}
+        {% if sub and sub.days_remaining %}
+            {{ sub.days_remaining() }}
+        {% else %}
+            ∞
+        {% endif %}
+    {% endmacro %}
+</head>
+<body>
+
+    <!-- ─── HEADER ─── -->
+    <header class="header">
+        <div class="logo">
+            <div>
+                <h1>🎓 {{ selected_module|capitalize }} <span>Master</span></h1>
+                <p>{{ selected_module|upper }} Practice Platform</p>
+            </div>
+        </div>
+        <div class="user-info">
+            <span class="user-name">👋 {{ user.username }}</span>
+            <span class="module-badge">{{ selected_module.upper() }}</span>
+            <a href="{{ url_for('select_module') }}" class="switch-link">Switch</a>
+            <a href="/logout" class="logout-btn">Logout</a>
+        </div>
+    </header>
+
+    <!-- ─── MAIN ─── -->
+    <div class="container">
+
+        <!-- ===== WELCOME BANNER ===== -->
+        <div class="welcome-banner">
+            <div>
+                <h2>📌 Ready to practice {{ selected_module|upper }}?</h2>
+                <div class="sub">Choose a skill below or jump straight into a full test.</div>
+            </div>
+            <div class="welcome-stats">
+                <div class="stat">
+                    <span class="number">{{ results|length }}</span>
+                    <span class="label">Tests taken</span>
+                </div>
+                {% if results and results[0] %}
+                <div class="stat">
+                    <span class="number">{{ results[0].band_score|round(1) }}</span>
+                    <span class="label">Latest band</span>
+                </div>
+                {% endif %}
+                <div class="stat">
+                    <span class="number">
+                        {% if selected_module == 'ielts' %}
+                            {% if module_status.has_subscription %}
+                                {{ module_status.tests_remaining }}
+                            {% else %}
+                                {% set free_remaining = 0 %}
+                                {% for mod, data in module_status.modules.items() %}
+                                    {% set remaining = data.free_limit - data.free_used %}
+                                    {% set free_remaining = free_remaining + remaining %}
+                                {% endfor %}
+                                {{ free_remaining }}
+                            {% endif %}
+                        {% elif selected_module == 'pte' %}
+                            {% if module_status.has_subscription %}
+                                {{ module_status.tests_remaining }}
+                            {% else %}
+                                {{ module_status.free_tests_remaining or 0 }}
+                            {% endif %}
+                        {% else %}
+                            {% if module_status.has_subscription %}
+                                {{ module_status.tests_remaining }}
+                            {% else %}
+                                {{ module_status.free_tests_remaining or 0 }}
+                            {% endif %}
+                        {% endif %}
+                    </span>
+                    <span class="label">Tests left</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== SUBSCRIPTION WIDGET ===== -->
+        <div class="subscription-widget" id="subscription-widget">
+            <div id="subscription-widget-content">
+                {% if selected_module == 'ielts' %}
+                    {% set has_sub = module_status.has_subscription %}
+                    <div class="left">
+                        {% if has_sub %}
+                            <span class="badge badge-active">✅ Active</span>
+                            <span class="sub-details">
+                                <strong>{{ module_status.plan or 'Premium' }}</strong>
+                            </span>
+                        {% else %}
+                            <span class="badge badge-free">⚡ Free</span>
+                        {% endif %}
+                        <div class="module-breakdown">
+                            {% for mod, data in module_status.modules.items() %}
+                                {% set used = data.free_used or 0 %}
+                                {% set limit = data.free_limit or 2 %}
+                                {% set remaining = limit - used %}
+                                <span class="mod-item">
+                                    <span class="mod-label">{{ mod|capitalize }}:</span>
+                                    <span class="mod-count">{{ remaining }}</span>
+                                    <span class="mod-limit">of {{ limit }}</span>
+                                </span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div>
+                        {% if has_sub %}
+                            <a href="{{ url_for('subscription_page', module=selected_module) }}" class="btn-subscribe btn-subscribe-outline" style="font-size:13px;">Manage Plan</a>
+                        {% else %}
+                            <a href="{{ url_for('subscription_page', module=selected_module) }}" class="btn-subscribe">🚀 Subscribe Now</a>
+                        {% endif %}
+                    </div>
+                {% else %}
+                    <span class="sub-details">⏳ Loading subscription status...</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- ===== QUICK ACTIONS ===== -->
+        <div class="quick-actions">
+            <!-- Skill Cards -->
+            <div class="skill-grid">
+                {% if selected_module == 'ielts' %}
+                    <a href="/listening" class="skill-card listening">
+                        <span class="icon">🎧</span>
+                        <h4>Listening</h4>
+                        <p>4 sections · 40 questions</p>
+                        <span class="tag">Practice</span>
+                    </a>
+                    <a href="/reading" class="skill-card reading">
+                        <span class="icon">📖</span>
+                        <h4>Reading</h4>
+                        <p>3 passages · 40 questions</p>
+                        <span class="tag">Practice</span>
+                    </a>
+                    <a href="/writing" class="skill-card writing">
+                        <span class="icon">✍️</span>
+                        <h4>Writing</h4>
+                        <p>2 tasks · 60 min</p>
+                        <span class="tag">Practice</span>
+                    </a>
+                    <a href="/speaking" class="skill-card speaking">
+                        <span class="icon">🗣️</span>
+                        <h4>Speaking</h4>
+                        <p>3 parts · 11–14 min</p>
+                        <span class="tag">Practice</span>
+                    </a>
+                {% elif selected_module == 'pte' %}
+                    <a href="/pte/listening" class="skill-card listening">
+                        <span class="icon">🎧</span>
+                        <h4>Listening</h4>
+                        <p>12–14 questions</p>
+                        <span class="tag">Practice</span>
+                    </a>
+                    <a href="/pte/reading" class="skill-card reading">
+                        <span class="icon">📖</span>
+                        <h4>Reading</h4>
+                        <p>12–13 questions</p>
+                        <span class="tag">Practice</span>
+                    </a>
+                    <a href="/pte/speaking-writing" class="skill-card pte-speaking">
+                        <span class="icon">🎤✍️</span>
+                        <h4>Speaking &amp; Writing</h4>
+                        <p>5–7 tasks</p>
+                        <span class="tag">Practice</span>
+                    </a>
+                    <div class="skill-card" style="opacity:0.4; pointer-events:none; border-top-color:#cbd5e1;">
+                        <span class="icon">📊</span>
+                        <h4>More coming</h4>
+                        <p>Stay tuned</p>
+                    </div>
+                {% elif selected_module == 'ukvi' %}
+                    <a href="/ukvi" class="skill-card speaking" style="grid-column: span 2;">
+                        <span class="icon">🎙️</span>
+                        <h4>UKVI Interview</h4>
+                        <p>Realistic visa interview practice</p>
+                        <span class="tag">Start Interview</span>
+                    </a>
+                    <div class="skill-card" style="opacity:0.3; pointer-events:none; border-top-color:#cbd5e1; grid-column: span 2;">
+                        <span class="icon">📌</span>
+                        <h4>More UKVI content</h4>
+                        <p>Coming soon</p>
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Full Test Card (hidden for UKVI) -->
+            {% if selected_module != 'ukvi' %}
+            <div class="full-test-card" id="full-test-card">
+                <h4>📝 Full {{ selected_module.upper() }} Test</h4>
+                <p>Complete all sections in one sitting · Get a full band score</p>
+                <div class="full-test-btn-wrapper">
+                    {% if selected_module == 'ielts' %}
+                        {% set has_sub = module_status.has_subscription %}
+                        {% set free_remaining = 0 %}
+                        {% for mod, data in module_status.modules.items() %}
+                            {% set free_remaining = free_remaining + (data.free_limit - data.free_used) %}
+                        {% endfor %}
+                        {% set locked = not has_sub and free_remaining <= 0 %}
+                        <a href="/ielts-full-test" class="btn-full-test {% if locked %}locked{% endif %}" id="full-test-btn">Start Full Test →</a>
+                        <span class="lock-icon {% if locked %}visible{% endif %}" id="lock-icon">🔒</span>
+                        <div class="subscription-warning {% if locked %}visible{% endif %}" id="subscription-warning">
+                            ⚠️ Free tests exhausted. <a href="{{ url_for('subscription_page', module=selected_module) }}">Subscribe</a> to unlock.
+                        </div>
+                    {% elif selected_module == 'pte' %}
+                        {% set pte_locked = (not module_status.has_subscription) and (module_status.free_tests_remaining <= 0) %}
+                        <a href="/pte/real-test" class="btn-full-test {% if pte_locked %}locked{% endif %}" id="full-test-btn">Start Full Test →</a>
+                        <span class="lock-icon {% if pte_locked %}visible{% endif %}" id="lock-icon">🔒</span>
+                        <div class="subscription-warning {% if pte_locked %}visible{% endif %}" id="subscription-warning">
+                            ⚠️ Free tests exhausted. <a href="{{ url_for('subscription_page', module=selected_module) }}">Subscribe</a> to unlock.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- ===== ACTIVE SESSIONS ===== -->
+        <div class="sessions-section" id="active-sessions">
+            <h3>🔄 In‑Progress Tests</h3>
+            <div class="sessions-list">
+                {% set has_sessions = false %}
+                {% for session in active_sessions %}
+                    {% if session.module == selected_module %}
+                        {% set has_sessions = true %}
+
+                        {% if selected_module == 'ielts' %}
+                            {% if session.test_type in ['listening', 'listening_progressive'] %}
+                                {% set resume_url = '/listening?resume=' + session.id|string %}
+                            {% elif session.test_type == 'reading' %}
+                                {% set resume_url = '/reading?resume=' + session.id|string %}
+                            {% elif session.test_type == 'writing' %}
+                                {% set resume_url = '/writing?resume=' + session.id|string %}
+                            {% elif session.test_type in ['speaking', 'speaking_full'] %}
+                                {% set resume_url = '/speaking?resume=' + session.id|string %}
+                            {% elif session.test_type == 'full' %}
+                                {% set resume_url = '/ielts-full-test?resume=' + session.id|string %}
+                            {% else %}
+                                {% set resume_url = '/dashboard' %}
+                            {% endif %}
+                        {% elif selected_module == 'pte' %}
+                            {% if session.test_type in ['listening', 'pte_listening'] %}
+                                {% set resume_url = '/pte/listening?resume=' + session.id|string %}
+                            {% elif session.test_type in ['reading', 'pte_reading'] %}
+                                {% set resume_url = '/pte/reading?resume=' + session.id|string %}
+                            {% elif session.test_type in ['speaking_writing', 'pte_speaking_writing', 'speaking', 'writing'] %}
+                                {% set resume_url = '/pte/speaking-writing?resume=' + session.id|string %}
+                            {% elif session.test_type in ['real_test', 'pte_full', 'full'] %}
+                                {% set resume_url = '/pte/real-test?resume=' + session.id|string %}
+                            {% else %}
+                                {% set resume_url = '/dashboard' %}
+                            {% endif %}
+                        {% elif selected_module == 'ukvi' %}
+                            {% if session.test_type in ['interview', 'ukvi_interview'] %}
+                                {% set resume_url = '/ukvi?resume=' + session.id|string %}
+                            {% else %}
+                                {% set resume_url = '/dashboard' %}
+                            {% endif %}
+                        {% else %}
+                            {% set resume_url = '/dashboard' %}
+                        {% endif %}
+
+                        <div class="session-item">
+                            <div class="session-info">
+                                <span class="session-module">{{ session.module.upper() }}</span>
+                                <span class="session-type">{{ session.test_type|replace('_',' ')|title }}</span>
+                                <span class="session-meta">Started: {{ session.start_time.strftime('%b %d, %Y %I:%M %p') }}</span>
+                                <span class="session-progress">Q{{ session.current_question_index }}</span>
+                            </div>
+                            <a href="{{ resume_url }}" class="btn-resume">▶ Resume</a>
+                        </div>
+                    {% endif %}
+                {% endfor %}
+                {% if not has_sessions %}
+                    <div class="no-sessions">📭 No tests in progress. Start a new test above!</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- ============================================================
+             RESULTS SECTION — ✅ FIXED: no answers() call
+             ============================================================ -->
+        <div class="results-section">
+            <h3>📊 Recent {{ selected_module.upper() }} Results</h3>
+            <div class="results-list">
+                {% set found = false %}
+                {% for result in results %}
+
+                    {# ══════════════════════════════════════════════════════
+                       ✅ FIX: Full IELTS test result (test_type='full_ielts')
+                       No answers() call — safe attribute access only
+                       ══════════════════════════════════════════════════════ #}
+                    {% if selected_module == 'ielts' and result.test_type in ['full_ielts', 'ielts_full', 'full'] %}
+                        {% set found = true %}
+
+                        {# ✅ Safe phase_scores extraction #}
+                        {% set phase_scores = {} %}
+                        {% if result.answers is defined and result.answers %}
+                            {% set answers_raw = result.answers %}
+                            {% if answers_raw is mapping %}
+                                {% set phase_scores = answers_raw.get('phase_scores', {}) or {} %}
+                            {% elif answers_raw is string %}
+                                {% set answers_parsed = answers_raw | fromjson %}
+                                {% if answers_parsed is mapping %}
+                                    {% set phase_scores = answers_parsed.get('phase_scores', {}) or {} %}
+                                {% endif %}
+                            {% endif %}
+                        {% endif %}
+
+                        <div class="full-result-card">
+                            <div class="full-result-header">
+                                <div class="title-block">
+                                    <span class="test-name">📝 FULL IELTS TEST</span>
+                                    <span class="test-date">{{ result.created_at.strftime('%b %d, %Y · %I:%M %p') }}</span>
+                                </div>
+                                <div class="overall-band">
+                                    <span class="band-label">Overall</span>
+                                    <span class="band-value">{{ "%.1f"|format(result.band_score or 0) }}</span>
+                                </div>
+                            </div>
+
+                            {# ─── Section-wise band chips ─── #}
+                            {% if phase_scores %}
+                            <div class="section-chips">
+                                {% set l_band = (phase_scores.get('listening', {}) or {}).get('band_score', 0) or 0 %}
+                                {% set r_band = (phase_scores.get('reading', {}) or {}).get('band_score', 0) or 0 %}
+                                {% set w_band = (phase_scores.get('writing', {}) or {}).get('band_score', 0) or 0 %}
+                                {% set s_band = (phase_scores.get('speaking', {}) or {}).get('band_score', 0) or 0 %}
+
+                                <span class="section-chip {% if l_band == 0 %}zero{% endif %}">
+                                    <span class="icon">🎧</span>
+                                    <span class="chip-label">Listening</span>
+                                    <span class="chip-band">{{ "%.1f"|format(l_band) }}</span>
+                                </span>
+                                <span class="section-chip {% if r_band == 0 %}zero{% endif %}">
+                                    <span class="icon">📖</span>
+                                    <span class="chip-label">Reading</span>
+                                    <span class="chip-band">{{ "%.1f"|format(r_band) }}</span>
+                                </span>
+                                <span class="section-chip {% if w_band == 0 %}zero{% endif %}">
+                                    <span class="icon">✍️</span>
+                                    <span class="chip-label">Writing</span>
+                                    <span class="chip-band">{{ "%.1f"|format(w_band) }}</span>
+                                </span>
+                                <span class="section-chip {% if s_band == 0 %}zero{% endif %}">
+                                    <span class="icon">🎤</span>
+                                    <span class="chip-label">Speaking</span>
+                                    <span class="chip-band">{{ "%.1f"|format(s_band) }}</span>
+                                </span>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                    {# ══════════════════════════════════════════════════════
+                       Individual skill results
+                       ══════════════════════════════════════════════════════ #}
+                    {% elif selected_module == 'ielts' and result.test_type in ['reading','listening','writing','speaking'] %}
+                        {% set found = true %}
+                        <div class="result-item">
+                            <div class="left">
+                                <span class="test-name">
+                                    {% if result.test_type == 'listening' %}🎧
+                                    {% elif result.test_type == 'reading' %}📖
+                                    {% elif result.test_type == 'writing' %}✍️
+                                    {% elif result.test_type == 'speaking' %}🎤
+                                    {% endif %}
+                                    {{ result.test_type|upper }}
+                                </span>
+                                <span class="test-date">{{ result.created_at.strftime('%b %d, %Y') }}</span>
+                            </div>
+                            <div>
+                                <span class="score">{{ "%.1f"|format(result.score or 0) }}%</span>
+                                <span class="band">Band {{ "%.1f"|format(result.band_score or 0) }}</span>
+                            </div>
+                        </div>
+
+                    {% elif selected_module == 'pte' and (result.test_type.startswith('pte') or result.test_type in ['pte_full','real_test','full']) %}
+                        {% set found = true %}
+                        <div class="result-item">
+                            <div class="left">
+                                <span class="test-name">{{ result.test_type|upper }}</span>
+                                <span class="test-date">{{ result.created_at.strftime('%b %d, %Y') }}</span>
+                            </div>
+                            <div>
+                                <span class="score">{{ "%.1f"|format(result.score or 0) }}%</span>
+                                <span class="band">Band {{ "%.1f"|format(result.band_score or 0) }}</span>
+                            </div>
+                        </div>
+
+                    {% elif selected_module == 'ukvi' and result.test_type == 'ukvi' %}
+                        {% set found = true %}
+                        <div class="result-item">
+                            <div class="left">
+                                <span class="test-name">UKVI</span>
+                                <span class="test-date">{{ result.created_at.strftime('%b %d, %Y') }}</span>
+                            </div>
+                            <div>
+                                <span class="score">{{ "%.1f"|format(result.score or 0) }}%</span>
+                                <span class="band">Band {{ "%.1f"|format(result.band_score or 0) }}</span>
+                            </div>
+                        </div>
+                    {% endif %}
+
+                {% endfor %}
+                {% if not found %}
+                    <div class="empty-results">📭 No {{ selected_module.upper() }} results yet. Take a test to see your score here!</div>
+                {% endif %}
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // ─── CSRF Token Helper ──────────────────────────────────────────
+        function getCsrfToken() {
+            const meta = document.querySelector('meta[name="csrf-token"]');
+            return meta ? meta.getAttribute('content') : '';
+        }
+
+        // ─── Get subscription endpoint based on module ──────────────────
+        function getSubscriptionEndpoint(module) {
+            const endpoints = {
+                'pte': '/api/pte/subscription/status',
+                'ukvi': '/ukvi/subscription/status'
+            };
+            return endpoints[module] || null;
+        }
+
+        // ─── Helper: compute remaining free tests ───────────────────────
+        function getFreeRemaining(data) {
+            if (data.remaining_free !== undefined) return data.remaining_free;
+            if (data.free_tests_remaining !== undefined) return data.free_tests_remaining;
+            if (data.free_limit !== undefined && data.free_tests_used !== undefined) {
+                return Math.max(0, data.free_limit - data.free_tests_used);
+            }
+            if (data.free_limit !== undefined && data.free_used !== undefined) {
+                return Math.max(0, data.free_limit - data.free_used);
+            }
+            return 0;
+        }
+
+        function getFreeLimit(data) {
+            if (data.free_limit !== undefined) return data.free_limit;
+            if (data.free_tests_limit !== undefined) return data.free_tests_limit;
+            return 2;
+        }
+
+        // ─── Render subscription widget for PTE/UKVI ──────────────────
+        function renderSubscriptionWidget(module, data) {
+            const container = document.getElementById('subscription-widget-content');
+            if (!container) return;
+
+            const isActive = data.has_subscription;
+            const freeRemaining = getFreeRemaining(data);
+            const freeLimit = getFreeLimit(data);
+
+            if (isActive) {
+                container.innerHTML = `
+                    <div class="left">
+                        <span class="badge badge-active">✅ Active</span>
+                        <span class="sub-details">
+                            <strong>${escapeHtml(data.plan || 'Premium')}</strong>
+                        </span>
+                    </div>
+                    <div>
+                        <a href="/subscription?module=${module}" class="btn-subscribe btn-subscribe-outline" style="font-size:13px;">Manage Plan</a>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = `<div class="left">`;
+            if (module === 'pte') {
+                const modules = [
+                    { key: 'pte_listening', label: 'Listening' },
+                    { key: 'pte_reading', label: 'Reading' },
+                    { key: 'pte_speaking_writing', label: 'Speaking & Writing' }
+                ];
+                html += `<span class="badge badge-free">⚡ Free</span>`;
+                html += `<div class="module-breakdown">`;
+                modules.forEach(mod => {
+                    const m = data[mod.key] || { free_used: 0, free_limit: 2 };
+                    const used = m.free_used || 0;
+                    const limit = m.free_limit || 2;
+                    const remaining = Math.max(0, limit - used);
+                    html += `<span class="mod-item">
+                                <span class="mod-label">${mod.label}:</span>
+                                <span class="mod-count">${remaining}</span>
+                                <span class="mod-limit">of ${limit}</span>
+                            </span>`;
+                });
+                html += `</div>`;
+            } else {
+                html += `<span class="badge badge-free">⚡ Free</span>`;
+                html += `<span class="sub-details"><strong>${freeRemaining}</strong> of ${freeLimit} free tests left</span>`;
+            }
+            html += `</div>`;
+            html += `<div>
+                        <a href="/subscription?module=${module}" class="btn-subscribe">🚀 Subscribe Now</a>
+                    </div>`;
+            container.innerHTML = html;
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // ─── Update full test lock for PTE ────
+        function updateFullTestLock(data) {
+            const btn = document.getElementById('full-test-btn');
+            const lockIcon = document.getElementById('lock-icon');
+            const warning = document.getElementById('subscription-warning');
+            if (!btn) return;
+
+            const freeRemaining = getFreeRemaining(data);
+            const isLocked = !data.has_subscription && freeRemaining <= 0;
+
+            btn.classList.toggle('locked', isLocked);
+            if (lockIcon) lockIcon.classList.toggle('visible', isLocked);
+            if (warning) warning.classList.toggle('visible', isLocked);
+        }
+
+        // ─── Fetch and update (PTE/UKVI only) ─────────────────────────
+        function fetchAndUpdateSubscription() {
+            const module = '{{ selected_module }}';
+            const endpoint = getSubscriptionEndpoint(module);
+            if (!endpoint) return;
+
+            fetch(endpoint, {
+                headers: { 'X-CSRF-Token': getCsrfToken() }
+            })
+            .then(res => {
+                if (!res.ok) throw new Error('API response not OK');
+                return res.json();
+            })
+            .then(data => {
+                renderSubscriptionWidget(module, data);
+                updateFullTestLock(data);
+            })
+            .catch(err => {
+                console.warn('Subscription fetch failed:', err);
+                const container = document.getElementById('subscription-widget-content');
+                if (container) {
+                    container.innerHTML = `<span class="sub-details" style="color:#dc2626;">⚠️ Could not load subscription status</span>`;
+                }
+            });
+        }
+
+        // ─── DOMContentLoaded ──────────────────────────────────────────
+        document.addEventListener('DOMContentLoaded', function() {
+            const module = '{{ selected_module }}';
+            if (module !== 'ielts') {
+                fetchAndUpdateSubscription();
+            }
+        });
+    </script>
+
+</body>
+</html>

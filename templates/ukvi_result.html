@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UKVI Interview Result</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; }
+        .header { background: #003d6b; color: white; padding: 15px 30px; }
+        .header-content { display: flex; justify-content: space-between; align-items: center; }
+        .logo h1 { font-size: 20px; } .logo p { font-size: 11px; opacity: 0.8; }
+        .nav-links a { color: white; text-decoration: none; margin-left: 25px; }
+        .container { max-width: 750px; margin: 40px auto; padding: 0 20px; }
+        .result-card { background: white; border-radius: 12px; padding: 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
+        .result-card h2 { color: #002b5c; margin-bottom: 10px; text-align: center; }
+        .result-summary { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin: 25px 0; }
+        .summary-item { text-align: center; padding: 20px; border-radius: 10px; background: #f8f9fa; }
+        .summary-item .value { font-size: 32px; font-weight: bold; color: #002b5c; }
+        .summary-item .label { font-size: 14px; color: #666; }
+        .result-details { margin: 20px 0; }
+        .detail-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; }
+        .detail-row .detail-label { font-weight: 600; color: #333; }
+        .detail-row .detail-value { color: #555; }
+        .red-flags { background: #fff3e0; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #c62828; }
+        .red-flags h4 { color: #c62828; margin-bottom: 8px; }
+        .recommendations { background: #e8f5e9; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #2e7d32; }
+        .recommendations h4 { color: #2e7d32; margin-bottom: 8px; }
+        .recommendations ul { padding-left: 20px; }
+        .recommendations li { margin-bottom: 6px; color: #555; }
+        .btn { display: inline-block; padding: 12px 30px; border-radius: 8px; border: none; cursor: pointer; font-size: 16px; font-weight: 600; text-decoration: none; transition: all 0.3s; margin: 5px; }
+        .btn-primary { background: #002b5c; color: white; }
+        .btn-primary:hover { opacity: 0.85; transform: translateY(-1px); }
+        .btn-outline { background: white; color: #002b5c; border: 2px solid #002b5c; }
+        .btn-outline:hover { background: #f0f2f5; }
+        .actions { margin-top: 25px; display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; }
+        .prediction-badge { display: inline-block; padding: 6px 20px; border-radius: 30px; font-weight: 700; margin: 10px 0; }
+        .prediction-pass { background: #2e7d32; color: white; }
+        .prediction-possible { background: #f9a825; color: white; }
+        .prediction-borderline { background: #ff6f00; color: white; }
+        .prediction-refusal { background: #c62828; color: white; }
+        .score-value { font-size: 36px; font-weight: bold; color: #002b5c; }
+        @media (max-width: 600px) { .result-summary { grid-template-columns: 1fr; } .btn { width: 100%; } .actions { flex-direction: column; } }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <div class="logo">
+                <h1>IELTS Official Practice</h1>
+                <p>UKVI Interview - Result</p>
+            </div>
+            <div class="nav-links">
+                <a href="/dashboard">Dashboard</a>
+                <a href="/logout">Logout</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="result-card">
+            <h2>📊 UKVI Credibility Interview Result</h2>
+            <p style="text-align:center; color:#888; margin-top:5px;">Your interview has been evaluated</p>
+
+            <!-- Prediction Badge -->
+            <div style="text-align:center; margin: 15px 0;">
+                <span class="prediction-badge
+                    {% if evaluation.prediction == 'LIKELY PASS' %}prediction-pass
+                    {% elif evaluation.prediction == 'POSSIBLE PASS' %}prediction-possible
+                    {% elif evaluation.prediction == 'BORDERLINE' %}prediction-borderline
+                    {% else %}prediction-refusal{% endif %}
+                ">{{ evaluation.prediction }}</span>
+            </div>
+
+            <!-- Summary Grid -->
+            <div class="result-summary">
+                <div class="summary-item">
+                    <div class="value">{{ evaluation.overall_score or 0 }}</div>
+                    <div class="label">Overall Score</div>
+                </div>
+                <div class="summary-item">
+                    <div class="value">{{ evaluation.credibility_avg or 0 }}</div>
+                    <div class="label">Credibility</div>
+                </div>
+                <div class="summary-item">
+                    <div class="value">{{ evaluation.english_avg or 0 }}</div>
+                    <div class="label">English Level</div>
+                </div>
+            </div>
+
+            <!-- Detailed Scores -->
+            <div class="result-details">
+                <div class="detail-row">
+                    <span class="detail-label">Clarity Average</span>
+                    <span class="detail-value">{{ evaluation.clarity_avg or 0 }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Total Red Flags</span>
+                    <span class="detail-value">{{ evaluation.total_red_flags or 0 }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Confidence</span>
+                    <span class="detail-value">{{ evaluation.confidence or 'N/A' }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Total Responses</span>
+                    <span class="detail-value">{{ evaluation.total_responses or 0 }}</span>
+                </div>
+            </div>
+
+            <!-- Category Scores -->
+            {% if evaluation.category_scores %}
+            <div style="margin: 15px 0;">
+                <h4>📂 Category Breakdown</h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                    {% for cat, score in evaluation.category_scores.items() %}
+                    <div style="background: #f8f9fa; padding: 6px 12px; border-radius: 6px; display: flex; justify-content: space-between;">
+                        <span>{{ cat.replace('_', ' ').title() }}</span>
+                        <span><strong>{{ score }}</strong></span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Weakest Areas -->
+            {% if evaluation.weakest_areas %}
+            <div style="margin: 15px 0;">
+                <h4>⚠️ Areas for Improvement</h4>
+                <ul style="padding-left: 20px; color: #555;">
+                    {% for cat, score in evaluation.weakest_areas %}
+                    <li>{{ cat.replace('_', ' ').title() }} (score: {{ score }})</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            <!-- Red Flags -->
+            {% if evaluation.red_flags %}
+            <div class="red-flags">
+                <h4>🚩 Red Flags Detected</h4>
+                <ul style="padding-left: 20px; color: #c62828;">
+                    {% for flag in evaluation.red_flags %}
+                    <li>{{ flag }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            <!-- Profile Check -->
+            {% if evaluation.profile_check %}
+            <div style="margin: 15px 0; background: #e3f2fd; padding: 15px; border-radius: 8px; border-left: 4px solid #0d47a1;">
+                <h4>📋 Profile Verification</h4>
+                <ul style="padding-left: 20px; color: #0d47a1;">
+                    <li>University mentioned: {{ '✅' if evaluation.profile_check.university_mentioned else '❌' }}</li>
+                    <li>Course mentioned: {{ '✅' if evaluation.profile_check.course_mentioned else '❌' }}</li>
+                    {% if evaluation.profile_check.warning %}
+                    <li style="color: #c62828;">⚠️ {{ evaluation.profile_check.warning }}</li>
+                    {% endif %}
+                </ul>
+            </div>
+            {% endif %}
+
+            <!-- Recommendations -->
+            {% if evaluation.recommendations %}
+            <div class="recommendations">
+                <h4>💡 Recommendations</h4>
+                <ul>
+                    {% for rec in evaluation.recommendations %}
+                    <li>{{ rec }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            <!-- Actions -->
+            <div class="actions">
+                <a href="{{ url_for('ukvi') }}" class="btn btn-primary">🔄 Take Another Interview</a>
+                <a href="{{ url_for('dashboard') }}" class="btn btn-outline">📜 Dashboard</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

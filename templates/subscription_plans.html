@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subscription Plans</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; border-radius: 20px; padding: 40px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
+        .header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; margin-bottom: 30px; }
+        .header h1 { color: #333; }
+        .header .back-link { color: #667eea; text-decoration: none; font-weight: 600; }
+        .plans-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 25px; }
+        .plan-card { background: #f8f9fc; border-radius: 16px; padding: 25px; border: 2px solid transparent; transition: all 0.3s; text-align: center; display: flex; flex-direction: column; justify-content: space-between; }
+        .plan-card:hover { border-color: #667eea; transform: translateY(-5px); box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
+        .plan-card.best { border-color: #ffc107; background: #fff9e6; }
+        .plan-card .plan-name { font-size: 20px; font-weight: bold; color: #333; margin-bottom: 8px; }
+        .plan-card .plan-price { font-size: 28px; font-weight: 800; color: #667eea; margin: 10px 0; }
+        .plan-card .plan-price small { font-size: 14px; font-weight: normal; color: #666; }
+        .plan-card .plan-features { list-style: none; padding: 0; margin: 15px 0; text-align: left; flex-grow: 1; }
+        .plan-card .plan-features li { padding: 6px 0; border-bottom: 1px solid #eee; font-size: 14px; color: #555; }
+        .plan-card .plan-features li:last-child { border-bottom: none; }
+        .plan-card .btn-subscribe { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; border-radius: 30px; font-weight: 600; cursor: pointer; transition: transform 0.2s; width: 100%; text-decoration: none; display: inline-block; text-align: center; }
+        .plan-card .btn-subscribe:hover { transform: scale(1.02); }
+        .plan-card .btn-subscribe:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .module-badge { background: #667eea; color: white; padding: 4px 16px; border-radius: 20px; font-size: 14px; font-weight: 600; display: inline-block; margin-bottom: 20px; }
+        .subscription-status { background: #e8f0fe; padding: 15px 20px; border-radius: 12px; margin-bottom: 30px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+        .subscription-status .active { color: #28a745; font-weight: bold; }
+        .subscription-status .expired { color: #dc3545; font-weight: bold; }
+        @media (max-width: 768px) { .container { padding: 20px; } .plans-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1>📚 Subscription Plans</h1>
+                <span class="module-badge">{{ module.upper() }}</span>
+            </div>
+            <a href="{{ url_for('dashboard') }}" class="back-link">← Back to Dashboard</a>
+        </div>
+
+        <!-- Current Subscription Status -->
+        <div class="subscription-status">
+            {% if subscription_active %}
+                <span>✅ <span class="active">Active Plan:</span> <strong>{{ plan_name }}</strong></span>
+                <span>Tests remaining: <strong>{{ tests_remaining }}</strong></span>
+                <span>Expires: <strong>{{ expiry_date }}</strong></span>
+            {% else %}
+                <span>⚠️ No active subscription. Choose a plan below.</span>
+            {% endif %}
+        </div>
+
+        <div class="plans-grid">
+            {% for key, plan in plans.items() %}
+            <div class="plan-card {% if key == '30days' %}best{% endif %}">
+                <div>
+                    <div class="plan-name">{{ plan.label }}</div>
+                    <div class="plan-price">NPR {{ prices[key] }} <small>/ {{ plan.days }} days</small></div>
+                    <ul class="plan-features">
+                        <li>✅ Unlimited skill practice (Listening, Reading, Writing, Speaking)</li>
+                        <li>✅ <strong>{{ plan.tests }}</strong> full mock tests</li>
+                        <li>✅ Full mock exams with all sections</li>
+                        <li>✅ AI evaluation for Writing & Speaking</li>
+                        <li>✅ Access for {{ plan.days }} days</li>
+                        <li>{% if plan.tests >= 999 %}♾️ Unlimited full tests{% else %}🔢 {{ plan.tests }} full tests{% endif %}</li>
+                    </ul>
+                </div>
+                <div style="margin-top: 15px;">
+                    {% if subscription_active and key == current_plan %}
+                        <button class="btn-subscribe" disabled>✅ Active</button>
+                    {% else %}
+                        <a href="{{ url_for('manual_payment', module=module) }}?plan={{ key }}" class="btn-subscribe">Subscribe Now</a>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</body>
+</html>

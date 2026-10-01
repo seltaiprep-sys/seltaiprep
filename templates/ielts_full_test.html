@@ -1,0 +1,1240 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="csrf-token" content="{{ csrf_token }}">
+<title>IELTS Full Mock Test</title>
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; color: #1a1a1a; }
+    .header { background: #003d6b; color: white; padding: 15px 30px; }
+    .header-content { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; max-width: 1200px; margin: 0 auto; }
+    .header h1 { font-size: 20px; }
+    .header a { color: white; text-decoration: none; margin-left: 20px; }
+    .header a:hover { text-decoration: underline; }
+    .container { max-width: 980px; margin: 30px auto; padding: 0 20px; }
+    .card { background: white; border-radius: 16px; padding: 32px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); margin-bottom: 22px; }
+    .btn { padding: 12px 30px; border: none; border-radius: 25px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+    .btn-primary { background: #003d6b; color: white; }
+    .btn-primary:hover { background: #002a4a; transform: translateY(-1px); }
+    .btn-success { background: #28a745; color: white; }
+    .btn-success:hover { background: #1e7e34; }
+    .btn-outline { background: transparent; color: #003d6b; border: 2px solid #003d6b; }
+    .btn-outline:hover { background: #003d6b; color: white; }
+    .btn-danger { background: #dc3545; color: white; }
+    .btn-danger:hover { background: #c82333; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .hero { text-align: center; }
+    .hero h1 { font-size: 32px; color: #003d6b; margin-bottom: 12px; }
+    .hero p { font-size: 16px; color: #555; margin-bottom: 30px; line-height: 1.6; }
+    .phases-preview { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; margin: 28px 0; }
+    .phases-preview .chip { background: #e8f0fe; color: #003d6b; padding: 12px 24px; border-radius: 30px; font-weight: 600; font-size: 14px; }
+    .options-row { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; margin: 24px 0; }
+    .options-row label { display: flex; align-items: center; gap: 8px; font-weight: 600; color: #333; }
+    .options-row select { padding: 8px 14px; border: 2px solid #ddd; border-radius: 20px; font-weight: 600; cursor: pointer; }
+    .phase-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin: 24px 0; }
+    @media (max-width: 900px) { .phase-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 520px) { .phase-grid { grid-template-columns: 1fr; } }
+    .phase-card { background: #f8f9fc; border-radius: 14px; padding: 18px; border: 2px solid #e0e0e0; position: relative; transition: all 0.3s; }
+    .phase-card.pending { opacity: 0.55; }
+    .phase-card.active { border-color: #ffc107; background: #fffbea; box-shadow: 0 4px 16px rgba(255,193,7,0.25); }
+    .phase-card.completed { border-color: #28a745; background: #f0fdf4; }
+    .phase-card .num { width: 30px; height: 30px; border-radius: 50%; background: #003d6b; color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; margin-bottom: 10px; font-size: 14px; }
+    .phase-card.completed .num { background: #28a745; }
+    .phase-card.active .num { background: #ffc107; color: #333; }
+    .phase-card h3 { font-size: 16px; color: #003d6b; margin-bottom: 4px; }
+    .phase-card .meta { font-size: 12px; color: #666; margin-bottom: 10px; }
+    .phase-card .score-big { font-size: 28px; font-weight: 700; color: #28a745; margin: 6px 0; }
+    .phase-card .score-label { font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; }
+    .phase-card .action-btn { margin-top: 10px; width: 100%; padding: 8px 14px; font-size: 13px; }
+    .progress-bar { height: 8px; background: #e0e0e0; border-radius: 4px; overflow: hidden; margin: 20px 0; }
+    .progress-bar-fill { height: 100%; background: linear-gradient(90deg, #003d6b, #28a745); width: 0%; transition: width 0.5s; }
+    .results-hero { text-align: center; padding: 32px 20px; }
+    .overall-band { font-size: 72px; font-weight: 700; color: #003d6b; line-height: 1; margin: 16px 0; }
+    .overall-label { font-size: 14px; color: #666; text-transform: uppercase; letter-spacing: 2px; }
+    .band-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 28px; }
+    .band-card { background: #e8f0fe; padding: 16px 22px; border-radius: 14px; min-width: 130px; text-align: center; }
+    .band-card .lbl { font-size: 12px; color: #555; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+    .band-card .val { font-size: 30px; font-weight: 700; color: #003d6b; }
+    .band-card .extra { font-size: 12px; color: #666; margin-top: 4px; }
+    .status-banner { padding: 14px 20px; border-radius: 10px; margin: 16px 0; font-weight: 500; display: none; }
+    .status-banner.error { display: block; background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    .status-banner.success { display: block; background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    .status-banner.info { display: block; background: #cce5ff; color: #004085; border: 1px solid #b8daff; }
+    .status-banner.warning { display: block; background: #fff3cd; color: #856404; border: 1px solid #ffc107; }
+    .spinner { border: 3px solid #f3f3f3; border-top: 3px solid #003d6b; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 20px auto; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .hidden { display: none !important; }
+
+    /* PREPARING CARD */
+    .prep-card { text-align: center; padding: 44px 32px; }
+    .prep-card .prep-icon { font-size: 64px; margin-bottom: 18px; animation: pulse-icon 2s ease-in-out infinite; }
+    @keyframes pulse-icon { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.08); opacity: 0.85; } }
+    .prep-card h2 { color: #003d6b; font-size: 24px; margin-bottom: 10px; }
+    .prep-card .prep-msg { color: #555; font-size: 15px; line-height: 1.65; margin-bottom: 26px; max-width: 500px; margin-left: auto; margin-right: auto; }
+    .prep-progress { max-width: 420px; margin: 26px auto 10px; }
+    .prep-progress .bar-track { height: 10px; background: #e0e0e0; border-radius: 6px; overflow: hidden; position: relative; }
+    .prep-progress .bar-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #003d6b, #28a745); border-radius: 6px; transition: width 0.8s ease-out; }
+    .prep-progress .bar-fill.indeterminate { width: 30%; animation: indeterminate-slide 1.8s ease-in-out infinite; }
+    @keyframes indeterminate-slide { 0% { margin-left: -30%; } 100% { margin-left: 100%; } }
+    .prep-meta { display: flex; justify-content: space-between; font-size: 12px; color: #666; margin-top: 10px; font-weight: 600; max-width: 420px; margin-left: auto; margin-right: auto; }
+    .prep-attempt { display: inline-block; background: #e8f0fe; color: #003d6b; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; margin-top: 16px; }
+    .prep-hint { font-size: 13px; color: #888; margin-top: 22px; line-height: 1.6; max-width: 500px; margin-left: auto; margin-right: auto; }
+    .prep-cancel { margin-top: 22px; padding: 10px 24px; background: transparent; border: 2px solid #d0d7e2; color: #666; border-radius: 20px; font-weight: 600; font-size: 13px; cursor: pointer; transition: all 0.2s; }
+    .prep-cancel:hover { border-color: #dc3545; color: #dc3545; }
+
+    /* SPEAKING BOOKING CARD */
+    .speaking-card { border: 2px solid #ffc107; background: linear-gradient(135deg, #fffbea 0%, #ffffff 100%); padding: 28px 30px; border-radius: 16px; margin-top: 20px; box-shadow: 0 6px 24px rgba(255,193,7,0.15); }
+    .speaking-card h3 { color: #003d6b; font-size: 22px; margin-bottom: 8px; display: flex; align-items: center; gap: 10px; }
+    .speaking-card .sub { color: #555; font-size: 14px; margin-bottom: 22px; line-height: 1.6; }
+    .time-picker { display: flex; gap: 20px; justify-content: center; align-items: flex-end; flex-wrap: wrap; margin: 20px 0; }
+    .time-picker .picker-col { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+    .time-picker .picker-col label { font-size: 12px; font-weight: 700; color: #666; text-transform: uppercase; letter-spacing: 1px; }
+    .time-picker select { padding: 12px 24px 12px 18px; border: 2px solid #d0d7e2; border-radius: 12px; font-size: 22px; font-weight: 700; color: #003d6b; background: #fff; cursor: pointer; min-width: 110px; text-align: center; font-variant-numeric: tabular-nums; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23003d6b' d='M6 8L0 0h12z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 38px; }
+    .time-picker select:focus { outline: none; border-color: #003d6b; box-shadow: 0 0 0 4px rgba(0,61,107,0.12); }
+    .time-picker .colon { font-size: 40px; font-weight: 700; color: #003d6b; line-height: 1; margin-bottom: 12px; }
+    .time-picker .meridiem { display: flex; flex-direction: column; gap: 4px; margin-bottom: 4px; }
+    .time-picker .meridiem button { padding: 6px 12px; border: 2px solid #d0d7e2; background: #fff; color: #666; border-radius: 8px; font-weight: 700; font-size: 12px; cursor: pointer; transition: all 0.15s; min-width: 48px; }
+    .time-picker .meridiem button.active { background: #003d6b; color: #fff; border-color: #003d6b; }
+    .booking-preview { text-align: center; background: #fff; border: 2px dashed #ffc107; border-radius: 12px; padding: 14px 20px; margin: 18px 0; font-size: 15px; font-weight: 700; color: #003d6b; }
+    .booking-preview .day-toggle { display: inline-flex; gap: 6px; margin-bottom: 8px; }
+    .booking-preview .day-toggle button { padding: 5px 16px; border: 2px solid #d0d7e2; background: #f8f9fc; color: #555; border-radius: 20px; font-weight: 700; font-size: 12px; cursor: pointer; transition: all 0.15s; }
+    .booking-preview .day-toggle button.active { background: #003d6b; color: #fff; border-color: #003d6b; }
+    .booking-preview .preview-time { font-size: 26px; margin-top: 6px; font-variant-numeric: tabular-nums; }
+    .booking-preview .preview-date { font-size: 13px; color: #666; margin-top: 4px; font-weight: 500; }
+    .quick-picks { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin: 18px 0; }
+    .quick-picks button { padding: 8px 16px; border: 2px solid #d0d7e2; background: #fff; color: #003d6b; border-radius: 20px; font-weight: 600; font-size: 13px; cursor: pointer; transition: all 0.15s; }
+    .quick-picks button:hover { background: #e8f0fe; border-color: #003d6b; transform: translateY(-1px); }
+    .booking-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 22px; }
+    .booking-actions .btn-book { padding: 14px 42px; background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%); color: #fff; border: none; border-radius: 40px; font-weight: 700; font-size: 16px; cursor: pointer; box-shadow: 0 6px 20px rgba(40,167,69,0.35); transition: all 0.2s; }
+    .booking-actions .btn-book:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(40,167,69,0.45); }
+    .countdown-block { text-align: center; padding: 32px 20px; background: linear-gradient(135deg, #f8f9fc, #fff); border-radius: 16px; margin: 18px 0; border: 2px solid #e0e0e0; }
+    .countdown-label { font-size: 13px; color: #666; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 700; }
+    .countdown-value { font-size: 64px; font-weight: 800; color: #003d6b; line-height: 1.05; margin: 12px 0; font-variant-numeric: tabular-nums; }
+    .countdown-value.in-window { color: #28a745; animation: pulse-soft 1.5s infinite; }
+    .countdown-value.warning { color: #ff9800; }
+    .countdown-value.expired { color: #dc3545; }
+    @keyframes pulse-soft { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.03); } }
+    .countdown-time { font-size: 15px; color: #333; margin-top: 8px; font-weight: 600; }
+    .booking-detail { display: inline-flex; align-items: center; gap: 8px; background: #e8f0fe; color: #003d6b; padding: 6px 16px; border-radius: 30px; font-size: 13px; font-weight: 700; margin-top: 10px; }
+    .notify-banner { background: #e3f2fd; color: #0a2b4a; padding: 12px 20px; border-radius: 12px; font-size: 13.5px; margin: 18px 0 0; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; border-left: 4px solid #003d6b; }
+    .notify-banner button { padding: 7px 18px; border: 2px solid #003d6b; background: #fff; color: #003d6b; border-radius: 20px; font-weight: 700; font-size: 12px; cursor: pointer; transition: all 0.15s; }
+    .notify-banner button:hover:not(:disabled) { background: #003d6b; color: #fff; }
+    .notify-banner button:disabled { opacity: 0.6; cursor: default; }
+    .speaking-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 22px; }
+    .speaking-actions button { padding: 14px 32px; border: none; border-radius: 40px; font-size: 15px; font-weight: 700; cursor: pointer; transition: all 0.2s; }
+    .speaking-actions .btn-start-speak { background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%); color: #fff; box-shadow: 0 6px 20px rgba(40,167,69,0.35); }
+    .speaking-actions .btn-start-speak:disabled { background: #94a3b8; box-shadow: none; cursor: not-allowed; opacity: 0.7; }
+    .speaking-actions .btn-start-speak:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(40,167,69,0.45); }
+    .speaking-actions .btn-reschedule { background: #fff; color: #003d6b; border: 2px solid #003d6b; }
+    .speaking-actions .btn-reschedule:hover { background: #003d6b; color: #fff; }
+    .window-hint { font-size: 13px; color: #666; text-align: center; margin-top: 14px; line-height: 1.5; }
+    .window-hint strong { color: #003d6b; }
+</style>
+</head>
+<body>
+<div class="header">
+    <div class="header-content">
+        <div><h1>IELTS Official Practice</h1><div style="font-size:12px; opacity:0.85;">Full Mock Test</div></div>
+        <div>
+            <a href="/dashboard">Dashboard</a>
+            <a href="/logout">Logout</a>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <div id="status-banner" class="status-banner"></div>
+
+    <!-- LOADING -->
+    <div id="loading-card" class="card hidden">
+        <div class="spinner"></div>
+        <p style="text-align:center; color:#666;">Loading your test...</p>
+    </div>
+
+    <!-- PREPARING -->
+    <div id="preparing-card" class="card prep-card hidden">
+        <div class="prep-icon">🧠</div>
+        <h2 id="prep-title">Preparing your full IELTS test</h2>
+        <p class="prep-msg" id="prep-message">
+            We're generating a fresh set of Listening, Reading, Writing and Speaking
+            materials for you. This usually takes 2–3 minutes.
+        </p>
+        <div class="prep-progress">
+            <div class="bar-track">
+                <div class="bar-fill indeterminate" id="prep-bar"></div>
+            </div>
+            <div class="prep-meta">
+                <span id="prep-elapsed">Elapsed: 0s</span>
+                <span id="prep-eta">Next check in <strong id="prep-next">15</strong>s</span>
+            </div>
+        </div>
+        <div class="prep-attempt" id="prep-attempt">Attempt 1</div>
+        <p class="prep-hint">
+            ✅ Please keep this tab open. We'll automatically continue as soon as
+            your test is ready — you don't need to do anything.
+        </p>
+        <button class="prep-cancel" onclick="cancelPreparing()">Cancel &amp; go back</button>
+    </div>
+
+    <!-- START SCREEN -->
+    <div id="start-card" class="card hidden">
+        <div class="hero">
+            <h1>🎓 Full IELTS Mock Test</h1>
+            <p>
+                Complete Listening, Reading, and Writing in one sitting.<br>
+                <strong>Speaking is scheduled separately</strong> — you'll pick a time after Writing.
+            </p>
+            <div class="phases-preview">
+                <span class="chip">🎧 Listening · 40 min</span>
+                <span class="chip">📖 Reading · 60 min</span>
+                <span class="chip">✍️ Writing · 60 min</span>
+                <span class="chip">🎤 Speaking · 11–14 min</span>
+            </div>
+            <div class="options-row">
+                <label>Difficulty:
+                    <select id="difficulty">
+                        <option value="easy">Easy</option>
+                        <option value="medium" selected>Medium</option>
+                        <option value="hard">Hard</option>
+                    </select>
+                </label>
+                <label>Accent:
+                    <select id="accent">
+                        <option value="british" selected>British 🇬🇧</option>
+                        <option value="american">American 🇺🇸</option>
+                        <option value="australian">Australian 🇦🇺</option>
+                        <option value="canadian">Canadian 🇨🇦</option>
+                        <option value="indian">Indian 🇮🇳</option>
+                    </select>
+                </label>
+            </div>
+            <button class="btn btn-success" style="font-size:18px; padding:16px 48px;" onclick="startFullTest()">
+                ▶ Start Full Test
+            </button>
+        </div>
+    </div>
+
+    <!-- PROGRESS DASHBOARD -->
+    <div id="progress-card" class="card hidden">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:8px;">
+            <h2 style="color:#003d6b;">📊 Full Test in Progress</h2>
+            <button class="btn btn-danger" style="padding:8px 18px; font-size:13px;" onclick="abandonTest()">Abandon Test</button>
+        </div>
+        <p id="progress-meta" style="color:#666; font-size:14px;"></p>
+        <div class="progress-bar"><div class="progress-bar-fill" id="progress-fill"></div></div>
+
+        <div class="phase-grid" id="phase-grid"></div>
+
+        <!-- SPEAKING BOOKING BLOCK -->
+        <div id="speaking-block" class="hidden"></div>
+
+        <div style="text-align:center; margin-top:24px;">
+            <button id="continue-btn" class="btn btn-primary hidden" onclick="continueNextPhase()">
+                Continue →
+            </button>
+            <button id="finish-btn" class="btn btn-success hidden" onclick="aggregateResults()">
+                🎯 Calculate Final Band
+            </button>
+        </div>
+    </div>
+
+    <!-- RESULTS -->
+    <div id="results-card" class="card hidden">
+        <div class="results-hero">
+            <div class="overall-label">Overall Band</div>
+            <div class="overall-band" id="overall-band">—</div>
+            <p style="color:#666;">Full IELTS Mock Test</p>
+            <div class="band-row" id="band-row"></div>
+        </div>
+        <div style="text-align:center; margin-top:32px; display:flex; gap:14px; justify-content:center; flex-wrap:wrap;">
+            <button class="btn btn-primary" onclick="location.href='/dashboard'">📊 Back to Dashboard</button>
+            <button class="btn btn-outline" onclick="location.href='/ielts-full-test?new=true'">🔄 Take Another Full Test</button>
+        </div>
+    </div>
+</div>
+
+<script>
+const CSRF = document.querySelector('meta[name="csrf-token"]').content;
+
+const PHASES = [
+    { key: 'listening', label: 'Listening', icon: '🎧', minutes: 40, q: 40 },
+    { key: 'reading',   label: 'Reading',   icon: '📖', minutes: 60, q: 40 },
+    { key: 'writing',   label: 'Writing',   icon: '✍️', minutes: 60, q: '2 Tasks' },
+    { key: 'speaking',  label: 'Speaking',  icon: '🎤', minutes: 14, q: '3 Parts' },
+];
+
+const urlParams = new URLSearchParams(location.search);
+const COMPLETED = urlParams.get('completed');
+
+let speakingCountdownTimer = null;
+let speakingSyncTimer = null;
+let lastNotifiedScheduledAt = null;
+let notificationPerm = ('Notification' in window) ? Notification.permission : 'unsupported';
+
+const AUTO_GEN = {
+    active: false,
+    attempt: 0,
+    maxAttempts: 30,
+    startedAt: 0,
+    elapsedTimer: null,
+    nextTimer: null,
+    difficulty: 'medium',
+    accent: 'british',
+};
+
+function banner(msg, type='info') {
+    const el = document.getElementById('status-banner');
+    el.textContent = msg;
+    el.className = 'status-banner ' + type;
+    setTimeout(() => { el.className = 'status-banner'; }, 7000);
+}
+
+function show(id) {
+    ['loading-card', 'preparing-card', 'start-card', 'progress-card', 'results-card'].forEach(x => {
+        document.getElementById(x).classList.toggle('hidden', x !== id);
+    });
+}
+
+async function api(url, opts = {}) {
+    const res = await fetch(url, {
+        credentials: 'same-origin',
+        ...opts,
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': CSRF,
+            'X-Requested-With': 'XMLHttpRequest',
+            ...(opts.headers || {}),
+        },
+    });
+    return res;
+}
+
+/* ════════════════════════════════════════════════════════════
+   START FULL TEST
+   ════════════════════════════════════════════════════════════ */
+async function startFullTest() {
+    const difficulty = document.getElementById('difficulty').value;
+    const accent = document.getElementById('accent').value;
+
+    AUTO_GEN.active = true;
+    AUTO_GEN.attempt = 0;
+    AUTO_GEN.startedAt = Date.now();
+    AUTO_GEN.difficulty = difficulty;
+    AUTO_GEN.accent = accent;
+
+    show('preparing-card');
+    updatePreparingUI('Generating a fresh IELTS test for you...', true);
+
+    if (AUTO_GEN.elapsedTimer) clearInterval(AUTO_GEN.elapsedTimer);
+    AUTO_GEN.elapsedTimer = setInterval(() => {
+        const s = Math.floor((Date.now() - AUTO_GEN.startedAt) / 1000);
+        const el = document.getElementById('prep-elapsed');
+        if (el) {
+            const m = Math.floor(s / 60);
+            const sec = s % 60;
+            el.textContent = `Elapsed: ${m > 0 ? m + 'm ' : ''}${sec}s`;
+        }
+    }, 1000);
+
+    await attemptStartFullTest();
+}
+
+async function attemptStartFullTest() {
+    if (!AUTO_GEN.active) return;
+    AUTO_GEN.attempt++;
+
+    try {
+        const res = await api('/ielts-full-test/start', {
+            method: 'POST',
+            body: JSON.stringify({
+                difficulty: AUTO_GEN.difficulty,
+                accent: AUTO_GEN.accent,
+                force: true,
+            }),
+        });
+
+        if (res.status === 401) {
+            cancelPreparing();
+            banner('Please log in to start a full test. Redirecting...', 'warning');
+            const next = encodeURIComponent('/ielts-full-test?new=true');
+            setTimeout(() => { window.location.href = '/login?next=' + next; }, 1200);
+            return;
+        }
+
+        if (res.status === 402) {
+            const d = await res.json();
+            cancelPreparing();
+            banner(d.error || 'Subscription required.', 'error');
+            setTimeout(() => location.href = d.redirect_to || '/subscription?module=ielts', 1500);
+            return;
+        }
+
+        if (res.status === 409) {
+            const d = await res.json();
+            if (d.active && d.next_phase) {
+                cancelPreparing();
+                location.href = '/ielts-full-test';
+                return;
+            }
+        }
+
+        const data = await res.json();
+
+        if (data.success && data.redirect) {
+            cancelPreparing();
+            banner('✅ Your test is ready! Starting...', 'success');
+            setTimeout(() => location.href = data.redirect, 400);
+            return;
+        }
+
+        if (data.generating) {
+            const retryAfter = data.retry_after || 15;
+            updatePreparingUI(data.message, true);
+            scheduleRetry(retryAfter);
+            return;
+        }
+
+        cancelPreparing();
+        banner(data.error || 'Failed to start full test.', 'error');
+        show('start-card');
+    } catch (e) {
+        if (AUTO_GEN.attempt < AUTO_GEN.maxAttempts) {
+            updatePreparingUI('Network hiccup — retrying shortly...', true);
+            scheduleRetry(8);
+            return;
+        }
+        cancelPreparing();
+        banner('Network error: ' + e.message, 'error');
+        show('start-card');
+    }
+}
+
+function scheduleRetry(seconds) {
+    if (!AUTO_GEN.active) return;
+    if (AUTO_GEN.attempt >= AUTO_GEN.maxAttempts) {
+        cancelPreparing();
+        banner('⏱️ Generation is taking longer than expected. Please try again in a minute.', 'warning');
+        show('start-card');
+        return;
+    }
+
+    const nextEl = document.getElementById('prep-next');
+    let remaining = seconds;
+
+    if (AUTO_GEN.nextTimer) clearInterval(AUTO_GEN.nextTimer);
+    if (nextEl) nextEl.textContent = remaining;
+
+    AUTO_GEN.nextTimer = setInterval(() => {
+        remaining--;
+        if (nextEl) nextEl.textContent = Math.max(0, remaining);
+        if (remaining <= 0) {
+            clearInterval(AUTO_GEN.nextTimer);
+            AUTO_GEN.nextTimer = null;
+            attemptStartFullTest();
+        }
+    }, 1000);
+}
+
+function updatePreparingUI(message, showAttempt) {
+    const msgEl = document.getElementById('prep-message');
+    if (msgEl && message) msgEl.textContent = message;
+
+    const attemptEl = document.getElementById('prep-attempt');
+    if (attemptEl) {
+        if (showAttempt && AUTO_GEN.attempt > 1) {
+            attemptEl.style.display = 'inline-block';
+            attemptEl.textContent = `Attempt ${AUTO_GEN.attempt} of ${AUTO_GEN.maxAttempts}`;
+        } else {
+            attemptEl.style.display = 'none';
+        }
+    }
+}
+
+function cancelPreparing() {
+    AUTO_GEN.active = false;
+    if (AUTO_GEN.elapsedTimer) {
+        clearInterval(AUTO_GEN.elapsedTimer);
+        AUTO_GEN.elapsedTimer = null;
+    }
+    if (AUTO_GEN.nextTimer) {
+        clearInterval(AUTO_GEN.nextTimer);
+        AUTO_GEN.nextTimer = null;
+    }
+}
+
+/* ════════════════════════════════════════════════════════════
+   STATUS LOADING
+   ════════════════════════════════════════════════════════════ */
+async function loadStatus() {
+    try {
+        const res = await api('/ielts-full-test/status');
+        const data = await res.json();
+
+        if (!data.active) {
+            show('start-card');
+            stopSpeakingTimers();
+            return;
+        }
+
+        renderProgress(data);
+        show('progress-card');
+
+        if (COMPLETED) {
+            const label = COMPLETED.charAt(0).toUpperCase() + COMPLETED.slice(1);
+            banner(`✅ ${label} section complete!`, 'success');
+            history.replaceState({}, '', '/ielts-full-test');
+        }
+    } catch (e) {
+        banner('Could not load status: ' + e.message, 'error');
+        show('start-card');
+        stopSpeakingTimers();
+    }
+}
+
+function renderProgress(state) {
+    const done = state.completed || {};
+    const scores = state.scores || {};
+    const next = state.next_phase;
+
+    const completed_count = PHASES.filter(p => done[p.key]).length;
+    const pct = (completed_count / PHASES.length) * 100;
+    document.getElementById('progress-fill').style.width = pct + '%';
+    document.getElementById('progress-meta').textContent =
+        `${completed_count} of ${PHASES.length} sections complete` +
+        (state.current_band_preview ? ` · Running band: ${state.current_band_preview}` : '');
+
+    const grid = document.getElementById('phase-grid');
+    grid.innerHTML = PHASES.map((p, idx) => {
+        const isDone = !!done[p.key];
+        const isActive = next === p.key && p.key !== 'speaking';
+        let cls = 'phase-card ';
+        if (isDone) cls += 'completed';
+        else if (isActive) cls += 'active';
+        else cls += 'pending';
+
+        let scoreBlock = '';
+        if (isDone && scores[p.key]) {
+            const s = scores[p.key];
+            scoreBlock = `
+                <div class="score-label">Band Score</div>
+                <div class="score-big">${s.band_score ?? '—'}</div>
+                ${s.correct !== undefined && s.correct !== null ? `<div class="extra">${s.correct}/${s.total} correct</div>` : ''}
+                ${s.task1_band !== undefined ? `<div class="extra">T1: ${s.task1_band} · T2: ${s.task2_band}</div>` : ''}
+            `;
+        } else if (p.key === 'speaking' && next === 'speaking' && !isDone) {
+            scoreBlock = `<div class="meta" style="margin-bottom:0;">⏳ Book your time below ↓</div>`;
+        } else if (isActive) {
+            scoreBlock = `
+                <div class="meta" style="margin-bottom:0;">⏳ Ready to begin</div>
+                <button class="btn btn-primary action-btn" onclick="enterPhase('${p.key}')">Start ${p.label} →</button>
+            `;
+        } else {
+            scoreBlock = `<div class="meta" style="margin-bottom:0;">Waiting for previous section...</div>`;
+        }
+
+        return `
+            <div class="${cls}">
+                <div class="num">${isDone ? '✓' : idx + 1}</div>
+                <h3>${p.icon} ${p.label}</h3>
+                <div class="meta">${p.minutes} min · ${p.q}</div>
+                ${scoreBlock}
+            </div>
+        `;
+    }).join('');
+
+    const allDone = state.all_completed;
+    document.getElementById('continue-btn').classList.toggle('hidden', allDone || !next || next === 'speaking');
+    document.getElementById('finish-btn').classList.toggle('hidden', !allDone);
+
+    const spkBlock = document.getElementById('speaking-block');
+    if (next === 'speaking' && !allDone) {
+        renderSpeakingBlock(state.speaking || {});
+        spkBlock.classList.remove('hidden');
+    } else {
+        spkBlock.classList.add('hidden');
+        stopSpeakingTimers();
+    }
+}
+
+/* ════════════════════════════════════════════════════════════
+   SPEAKING BOOKING
+   ════════════════════════════════════════════════════════════ */
+const bookingState = {
+    hour: null,
+    minute: null,
+    isTomorrow: false,
+};
+
+function getDefaultBookingTime() {
+    const d = new Date(Date.now() + 10 * 60 * 1000);
+    d.setSeconds(0, 0);
+    d.setMinutes(Math.ceil(d.getMinutes() / 5) * 5);
+    if (d.getMinutes() === 60) {
+        d.setMinutes(0);
+        d.setHours(d.getHours() + 1);
+    }
+    return d;
+}
+
+function syncBookingStateFromDate(d) {
+    bookingState.hour = d.getHours();
+    bookingState.minute = d.getMinutes() - (d.getMinutes() % 5);
+    const today = new Date();
+    bookingState.isTomorrow = !(
+        d.getFullYear() === today.getFullYear() &&
+        d.getMonth() === today.getMonth() &&
+        d.getDate() === today.getDate()
+    );
+}
+
+function hourTo12(h) {
+    if (h === 0) return { h: 12, meridiem: 'AM' };
+    if (h < 12) return { h, meridiem: 'AM' };
+    if (h === 12) return { h: 12, meridiem: 'PM' };
+    return { h: h - 12, meridiem: 'PM' };
+}
+
+function h12To24(h12, meridiem) {
+    let h = Number(h12);
+    if (meridiem === 'AM') {
+        if (h === 12) h = 0;
+    } else {
+        if (h !== 12) h += 12;
+    }
+    return h;
+}
+
+function buildBookingDate() {
+    const now = new Date();
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate(),
+                       bookingState.hour, bookingState.minute, 0, 0);
+    if (bookingState.isTomorrow) d.setDate(d.getDate() + 1);
+    return d;
+}
+
+/* ════════════════════════════════════════════════════════════
+   ✅ FIXED: renderSpeakingBlock — handles stuck/expired states
+   ════════════════════════════════════════════════════════════ */
+function renderSpeakingBlock(speaking) {
+    const block = document.getElementById('speaking-block');
+
+    // CASE 1: Not scheduled — show booking form
+    if (!speaking.scheduled) {
+        const defaultDate = getDefaultBookingTime();
+        syncBookingStateFromDate(defaultDate);
+        block.innerHTML = buildBookingHTML();
+        wireBookingEvents();
+        return;
+    }
+
+    // CASE 2: Stuck or expired — show prominent reset option
+    const isStuck = speaking.is_stuck === true;
+    const isExpired = speaking.reason === 'expired';
+
+    if (isStuck || isExpired) {
+        const scheduledDate = new Date(speaking.scheduled_at);
+        const dayLabel = isToday(scheduledDate) ? 'Today'
+                        : isTomorrow(scheduledDate) ? 'Tomorrow'
+                        : scheduledDate.toDateString();
+        const h12 = hourTo12(scheduledDate.getHours());
+        const timeLabel = `${h12.h}:${String(scheduledDate.getMinutes()).padStart(2, '0')} ${h12.meridiem}`;
+
+        const reasonTitle = isStuck
+            ? '⚠️ Speaking session interrupted'
+            : '⏰ Speaking window has expired';
+
+        const reasonDesc = isStuck
+            ? 'Your previous speaking session was interrupted or timed out. Please reset to book a new time.'
+            : 'The scheduled speaking time has passed. Please reset to book a new time.';
+
+        block.innerHTML = `
+            <div class="speaking-card" style="border-color:#dc3545;background:linear-gradient(135deg,#fff5f5,#ffffff);">
+                <h3 style="color:#c62828;">${reasonTitle}</h3>
+                <p class="sub" style="color:#721c24;">${reasonDesc}</p>
+
+                <div class="booking-detail" style="background:#ffebee;color:#c62828;">
+                    <span>📅</span>
+                    <span>Previous: ${dayLabel} · ${timeLabel}</span>
+                </div>
+
+                <div class="speaking-actions" style="margin-top:22px;">
+                    <button class="btn-start-speak" style="background:linear-gradient(135deg,#dc3545 0%,#c82333 100%);box-shadow:0 6px 20px rgba(220,53,69,0.35);" onclick="resetSpeakingPhase()">
+                        🔄 Reset &amp; Book New Time
+                    </button>
+                </div>
+                <p class="window-hint" style="color:#c62828;">
+                    Click the button above to clear this session and start fresh.
+                </p>
+            </div>
+        `;
+        return;
+    }
+
+    // CASE 3: Normal (scheduled, countdown active)
+    const scheduledDate = new Date(speaking.scheduled_at);
+    const startBtnDisabled = !speaking.can_start;
+    const reasonHint = windowHintText(speaking);
+
+    const dayLabel = isToday(scheduledDate) ? 'Today'
+                    : isTomorrow(scheduledDate) ? 'Tomorrow'
+                    : scheduledDate.toDateString();
+    const h12 = hourTo12(scheduledDate.getHours());
+    const timeLabel = `${h12.h}:${String(scheduledDate.getMinutes()).padStart(2, '0')} ${h12.meridiem}`;
+
+    block.innerHTML = `
+        <div class="speaking-card">
+            <h3>🎤 Speaking Test Booked</h3>
+            <p class="sub">Your speaking session is confirmed. You can start up to 15 min early.</p>
+
+            <div class="countdown-block">
+                <div class="countdown-label" id="spk-countdown-label">Speaking test starts in</div>
+                <div class="countdown-value" id="spk-countdown-value">--:--:--</div>
+                <div class="countdown-time" id="spk-countdown-time"></div>
+                <div class="booking-detail">
+                    <span>📅</span>
+                    <span>${dayLabel} · ${timeLabel}</span>
+                </div>
+            </div>
+
+            <div class="notify-banner" id="spk-notify-banner">
+                <span>🔔 Get a browser reminder 5 minutes before your speaking time.</span>
+                <button id="spk-notify-btn" onclick="enableSpeakingNotifications()">Enable Notifications</button>
+            </div>
+
+            <div class="speaking-actions">
+                <button class="btn-start-speak" id="spk-start-btn"
+                        ${startBtnDisabled ? 'disabled' : ''}
+                        onclick="startSpeaking()">
+                    🎤 Start Speaking Test
+                </button>
+                <button class="btn-reschedule" onclick="resetSpeakingPhase()">
+                    📅 Change Time
+                </button>
+            </div>
+            <p class="window-hint" id="spk-window-hint">${reasonHint}</p>
+        </div>
+    `;
+
+    const notifyBtn = document.getElementById('spk-notify-btn');
+    if (notifyBtn) {
+        if (notificationPerm === 'granted') {
+            notifyBtn.textContent = '✅ Notifications On';
+            notifyBtn.disabled = true;
+        } else if (notificationPerm === 'denied' || notificationPerm === 'unsupported') {
+            notifyBtn.textContent = notificationPerm === 'denied' ? '🔕 Denied' : '🔕 Not supported';
+            notifyBtn.disabled = true;
+        }
+    }
+
+    startSpeakingTimers();
+}
+
+function buildBookingHTML() {
+    let hourOpts = '';
+    for (let i = 1; i <= 12; i++) {
+        hourOpts += `<option value="${i}">${String(i).padStart(2, '0')}</option>`;
+    }
+    let minOpts = '';
+    for (let i = 0; i < 60; i += 5) {
+        minOpts += `<option value="${i}">${String(i).padStart(2, '0')}</option>`;
+    }
+    const h12 = hourTo12(bookingState.hour);
+    const isTodayBooking = !bookingState.isTomorrow;
+
+    return `
+        <div class="speaking-card">
+            <h3>🎤 Book Your Speaking Session</h3>
+            <p class="sub">
+                Pick a time that works for you. You can start <strong>up to 15 minutes early</strong>
+                or <strong>15 minutes late</strong> — perfect for busy schedules.
+            </p>
+
+            <div class="time-picker">
+                <div class="picker-col">
+                    <label>Hour</label>
+                    <select id="spk-hour-select">${hourOpts}</select>
+                </div>
+                <div class="colon">:</div>
+                <div class="picker-col">
+                    <label>Minute</label>
+                    <select id="spk-minute-select">${minOpts}</select>
+                </div>
+                <div class="meridiem">
+                    <button type="button" data-mer="AM" class="${h12.meridiem === 'AM' ? 'active' : ''}">AM</button>
+                    <button type="button" data-mer="PM" class="${h12.meridiem === 'PM' ? 'active' : ''}">PM</button>
+                </div>
+            </div>
+
+            <div class="booking-preview">
+                <div class="day-toggle">
+                    <button type="button" id="spk-day-today" class="${isTodayBooking ? 'active' : ''}">Today</button>
+                    <button type="button" id="spk-day-tomorrow" class="${!isTodayBooking ? 'active' : ''}">Tomorrow</button>
+                </div>
+                <div class="preview-time" id="spk-preview-time">--:-- --</div>
+                <div class="preview-date" id="spk-preview-date"></div>
+            </div>
+
+            <div class="quick-picks">
+                <button type="button" onclick="setSpeakingTime(5)">+5 min</button>
+                <button type="button" onclick="setSpeakingTime(15)">+15 min</button>
+                <button type="button" onclick="setSpeakingTime(30)">+30 min</button>
+                <button type="button" onclick="setSpeakingTime(60)">+1 hr</button>
+                <button type="button" onclick="setSpeakingTime(120)">+2 hr</button>
+            </div>
+
+            <div class="booking-actions">
+                <button class="btn-book" onclick="saveSpeakingSchedule()">
+                    📅 Confirm Booking
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+function wireBookingEvents() {
+    const hourSel = document.getElementById('spk-hour-select');
+    const minSel = document.getElementById('spk-minute-select');
+    const todayBtn = document.getElementById('spk-day-today');
+    const tomorrowBtn = document.getElementById('spk-day-tomorrow');
+    if (!hourSel || !minSel) return;
+
+    const h12 = hourTo12(bookingState.hour);
+    hourSel.value = h12.h;
+    bookingState.minute = bookingState.minute - (bookingState.minute % 5);
+    minSel.value = bookingState.minute;
+
+    hourSel.addEventListener('change', () => {
+        const ampm = document.querySelector('.meridiem button.active').dataset.mer;
+        bookingState.hour = h12To24(hourSel.value, ampm);
+        updateBookingPreview();
+    });
+
+    minSel.addEventListener('change', () => {
+        bookingState.minute = Number(minSel.value);
+        updateBookingPreview();
+    });
+
+    document.querySelectorAll('.meridiem button').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.meridiem button').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            bookingState.hour = h12To24(hourSel.value, btn.dataset.mer);
+            updateBookingPreview();
+        });
+    });
+
+    if (todayBtn) todayBtn.addEventListener('click', () => {
+        bookingState.isTomorrow = false;
+        todayBtn.classList.add('active');
+        tomorrowBtn.classList.remove('active');
+        updateBookingPreview();
+    });
+    if (tomorrowBtn) tomorrowBtn.addEventListener('click', () => {
+        bookingState.isTomorrow = true;
+        tomorrowBtn.classList.add('active');
+        todayBtn.classList.remove('active');
+        updateBookingPreview();
+    });
+
+    updateBookingPreview();
+}
+
+function updateBookingPreview() {
+    const h12 = hourTo12(bookingState.hour);
+    const timeStr = `${h12.h}:${String(bookingState.minute).padStart(2, '0')} ${h12.meridiem}`;
+    const timeEl = document.getElementById('spk-preview-time');
+    const dateEl = document.getElementById('spk-preview-date');
+    if (timeEl) timeEl.textContent = timeStr;
+
+    const d = buildBookingDate();
+    const today = new Date();
+    const tmr = new Date(); tmr.setDate(tmr.getDate() + 1);
+    const sameDay = (a, b) =>
+        a.getFullYear() === b.getFullYear() &&
+        a.getMonth() === b.getMonth() &&
+        a.getDate() === b.getDate();
+
+    let dayLabel;
+    if (sameDay(d, today)) dayLabel = 'Today';
+    else if (sameDay(d, tmr)) dayLabel = 'Tomorrow';
+    else dayLabel = d.toDateString();
+
+    if (dateEl) {
+        const diffMs = d.getTime() - Date.now();
+        if (diffMs < 0) {
+            dateEl.innerHTML = `${dayLabel} · <span style="color:#dc3545;">⚠️ in the past</span>`;
+        } else {
+            const mins = Math.round(diffMs / 60000);
+            const hrs = Math.floor(mins / 60);
+            const rem = mins % 60;
+            const rel = hrs > 0 ? `in ${hrs}h ${rem}m` : `in ${rem} min`;
+            dateEl.textContent = `${dayLabel} · ${rel}`;
+        }
+    }
+}
+
+function setSpeakingTime(minutesFromNow) {
+    const d = new Date(Date.now() + minutesFromNow * 60 * 1000);
+    d.setSeconds(0, 0);
+    d.setMinutes(Math.ceil(d.getMinutes() / 5) * 5);
+    if (d.getMinutes() === 60) {
+        d.setMinutes(0);
+        d.setHours(d.getHours() + 1);
+    }
+    syncBookingStateFromDate(d);
+    wireBookingEvents();
+}
+
+async function saveSpeakingSchedule() {
+    const d = buildBookingDate();
+    const diffMs = d.getTime() - Date.now();
+    if (diffMs < -15 * 60 * 1000) {
+        banner('⚠️ That time is more than 15 minutes in the past. Please pick a later time.', 'warning');
+        return;
+    }
+
+    const iso = d.toISOString();
+    try {
+        const res = await api('/ielts-full-test/speaking-schedule', {
+            method: 'POST',
+            body: JSON.stringify({ scheduled_at: iso }),
+        });
+        const data = await res.json();
+        if (!data.success) {
+            banner(data.error || 'Failed to save.', 'error');
+            return;
+        }
+        banner('✅ Speaking session booked!', 'success');
+        loadStatus();
+    } catch (e) {
+        banner('Network error: ' + e.message, 'error');
+    }
+}
+
+/* ════════════════════════════════════════════════════════════
+   ✅ FIXED: resetSpeakingPhase — calls backend reset endpoint
+   ════════════════════════════════════════════════════════════ */
+async function resetSpeakingPhase() {
+    if (!confirm('Reset your speaking session?\n\nThis will clear the current schedule so you can book a new time.')) {
+        return;
+    }
+    try {
+        const res = await api('/ielts-full-test/reset-speaking', { method: 'POST' });
+        const data = await res.json();
+        if (!data.success) {
+            banner(data.error || 'Failed to reset.', 'error');
+            return;
+        }
+        banner('✅ Speaking reset. Please book a new time.', 'success');
+        loadStatus();
+    } catch (e) {
+        banner('Network error: ' + e.message, 'error');
+    }
+}
+
+// Backward compatibility alias
+function rescheduleSpeaking() {
+    return resetSpeakingPhase();
+}
+
+/* ════════════════════════════════════════════════════════════
+   ✅ FIXED: startSpeaking — better error handling + reset prompt
+   ════════════════════════════════════════════════════════════ */
+async function startSpeaking() {
+    try {
+        const res = await api('/ielts-full-test/start-speaking', { method: 'POST' });
+        const data = await res.json();
+
+        // Stuck or expired → offer reset
+        if (!data.success && (data.expired || data.can_reset)) {
+            if (confirm((data.error || 'Speaking cannot start now.') + '\n\nReset and book a new time?')) {
+                await resetSpeakingPhase();
+            }
+            return;
+        }
+
+        // Needs booking
+        if (!data.success && data.needs_booking) {
+            banner('Please book a speaking time first.', 'warning');
+            loadStatus();
+            return;
+        }
+
+        // Other errors
+        if (!data.success) {
+            banner(data.error || 'Cannot start speaking yet.', 'warning');
+            loadStatus();
+            return;
+        }
+
+        // Success → redirect
+        location.href = data.redirect;
+    } catch (e) {
+        banner('Network error: ' + e.message, 'error');
+    }
+}
+
+/* ════════════════════════════════════════════════════════════
+   ✅ FIXED: windowHintText — includes stuck state
+   ════════════════════════════════════════════════════════════ */
+function windowHintText(speaking) {
+    const r = speaking.reason;
+    if (r === 'ready')       return '✅ You are inside the window — you can start now.';
+    if (r === 'too_early')   return '⏳ You can start up to 15 minutes before the scheduled time.';
+    if (r === 'expired')     return '⚠️ The window has expired. Click "Change Time" to reschedule.';
+    if (r === 'started')     return '⏳ Speaking test is already in progress...';
+    if (r === 'stuck')       return '⚠️ Session stuck. Click "Change Time" to reset.';
+    if (r === 'completed')   return '✅ Speaking test completed.';
+    return '';
+}
+
+function isToday(d) {
+    const n = new Date();
+    return d.getFullYear() === n.getFullYear() &&
+           d.getMonth() === n.getMonth() &&
+           d.getDate() === n.getDate();
+}
+function isTomorrow(d) {
+    const t = new Date();
+    t.setDate(t.getDate() + 1);
+    return d.getFullYear() === t.getFullYear() &&
+           d.getMonth() === t.getMonth() &&
+           d.getDate() === t.getDate();
+}
+
+/* ════════════════════════════════════════════════════════════
+   SPEAKING TIMERS
+   ════════════════════════════════════════════════════════════ */
+function startSpeakingTimers() {
+    const valueEl = document.getElementById('spk-countdown-value');
+    if (!valueEl) return;
+    if (speakingCountdownTimer || speakingSyncTimer) return;
+
+    stopSpeakingTimers();
+
+    speakingCountdownTimer = setInterval(renderCountdownTick, 1000);
+    speakingSyncTimer = setInterval(syncSpeakingStatus, 30000);
+    syncSpeakingStatus();
+}
+
+function stopSpeakingTimers() {
+    if (speakingCountdownTimer) {
+        clearInterval(speakingCountdownTimer);
+        speakingCountdownTimer = null;
+    }
+    if (speakingSyncTimer) {
+        clearInterval(speakingSyncTimer);
+        speakingSyncTimer = null;
+    }
+}
+
+let cachedScheduledAt = null;
+let cachedEarlyWindow = 15 * 60;
+let cachedLateWindow = 15 * 60;
+let cachedNotifyBefore = 5 * 60;
+
+async function syncSpeakingStatus() {
+    if (document.hidden) return;
+    if (!document.getElementById('spk-countdown-value')) {
+        stopSpeakingTimers();
+        return;
+    }
+
+    try {
+        const res = await api('/ielts-full-test/speaking-status');
+        const data = await res.json();
+
+        if (!data.active || !data.speaking || !data.speaking.scheduled) {
+            stopSpeakingTimers();
+            return;
+        }
+
+        cachedScheduledAt  = new Date(data.speaking.scheduled_at).getTime();
+        cachedEarlyWindow  = data.speaking.early_window_seconds  ?? 900;
+        cachedLateWindow   = data.speaking.late_window_seconds   ?? 900;
+        cachedNotifyBefore = data.speaking.notify_before_seconds ?? 300;
+
+        const btn  = document.getElementById('spk-start-btn');
+        const hint = document.getElementById('spk-window-hint');
+        if (btn)  btn.disabled = !data.speaking.can_start;
+        if (hint) hint.textContent = windowHintText(data.speaking);
+
+        renderCountdownTick();
+    } catch (e) {
+        // Silent fail
+    }
+}
+
+function renderCountdownTick() {
+    if (!cachedScheduledAt) return;
+    const now = Date.now();
+    const diff = Math.floor((cachedScheduledAt - now) / 1000);
+
+    const valueEl = document.getElementById('spk-countdown-value');
+    const labelEl = document.getElementById('spk-countdown-label');
+    const timeEl  = document.getElementById('spk-countdown-time');
+    if (!valueEl) {
+        stopSpeakingTimers();
+        return;
+    }
+
+    const abs = Math.abs(diff);
+    const h = Math.floor(abs / 3600);
+    const m = Math.floor((abs % 3600) / 60);
+    const s = abs % 60;
+    const fmt = h > 0
+        ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+        : `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+
+    if (diff > 0) {
+        valueEl.textContent = fmt;
+        labelEl.textContent = 'Speaking test starts in';
+    } else {
+        valueEl.textContent = '-' + fmt;
+        labelEl.textContent = 'Speaking test window is open';
+    }
+
+    valueEl.classList.remove('in-window', 'warning', 'expired');
+    if (diff > cachedEarlyWindow) {
+        valueEl.classList.add('warning');
+    } else if (diff >= -cachedLateWindow) {
+        valueEl.classList.add('in-window');
+    } else {
+        valueEl.classList.add('expired');
+    }
+
+    const dt = new Date(cachedScheduledAt);
+    if (timeEl) {
+        timeEl.textContent = 'Scheduled: ' + dt.toLocaleString();
+    }
+
+    if (
+        diff > 0 && diff <= cachedNotifyBefore
+        && notificationPerm === 'granted'
+        && lastNotifiedScheduledAt !== cachedScheduledAt
+    ) {
+        try {
+            new Notification('🎤 IELTS Speaking starts soon', {
+                body: `Your speaking test starts in about ${Math.ceil(diff / 60)} minute(s).`,
+                tag: 'ielts-speaking-' + cachedScheduledAt,
+            });
+            lastNotifiedScheduledAt = cachedScheduledAt;
+        } catch (e) { /* ignore */ }
+    }
+}
+
+function enableSpeakingNotifications() {
+    if (!('Notification' in window)) {
+        banner('Browser notifications are not supported.', 'warning');
+        return;
+    }
+    Notification.requestPermission().then(perm => {
+        notificationPerm = perm;
+        const btn = document.getElementById('spk-notify-btn');
+        if (perm === 'granted') {
+            if (btn) { btn.textContent = '✅ Notifications On'; btn.disabled = true; }
+            banner('🔔 Notifications enabled!', 'success');
+            try {
+                new Notification('Notifications enabled', {
+                    body: "We'll remind you before your speaking test."
+                });
+            } catch (e) { /* ignore */ }
+        } else {
+            if (btn) { btn.textContent = '🔕 Denied'; btn.disabled = true; }
+            banner('Notifications blocked. Enable them in browser settings.', 'warning');
+        }
+    });
+}
+
+/* ════════════════════════════════════════════════════════════
+   PHASE NAVIGATION
+   ════════════════════════════════════════════════════════════ */
+function enterPhase(phase) {
+    location.href = `/ielts-full-test/enter-phase/${phase}`;
+}
+
+async function continueNextPhase() {
+    const res = await api('/ielts-full-test/status');
+    const data = await res.json();
+    const next = data.next_phase;
+    if (next && next !== 'done' && next !== 'speaking') {
+        location.href = `/ielts-full-test/enter-phase/${next}`;
+    }
+}
+
+async function aggregateResults() {
+    show('loading-card');
+    try {
+        const res = await api('/ielts-full-test/aggregate', { method: 'POST' });
+        const data = await res.json();
+        if (!data.success) {
+            banner(data.error || 'Aggregation failed.', 'error');
+            loadStatus();
+            return;
+        }
+        renderResults(data);
+        show('results-card');
+    } catch (e) {
+        banner('Network error: ' + e.message, 'error');
+        loadStatus();
+    }
+}
+
+function renderResults(data) {
+    document.getElementById('overall-band').textContent = (data.overall_band ?? 0).toFixed(1);
+
+    const row = document.getElementById('band-row');
+    const phases = [
+        { label: '🎧 Listening', band: data.listening_band, s: data.sections?.listening },
+        { label: '📖 Reading',   band: data.reading_band,   s: data.sections?.reading   },
+        { label: '✍️ Writing',   band: data.writing_band,   s: data.sections?.writing   },
+        { label: '🎤 Speaking',  band: data.speaking_band,  s: data.sections?.speaking  },
+    ];
+    row.innerHTML = phases.map(p => `
+        <div class="band-card">
+            <div class="lbl">${p.label}</div>
+            <div class="val">${(p.band ?? 0).toFixed(1)}</div>
+            ${p.s?.correct !== undefined && p.s?.correct !== null ? `<div class="extra">${p.s.correct}/${p.s.total}</div>` : ''}
+            ${p.s?.task1_band !== undefined ? `<div class="extra">T1: ${p.s.task1_band} · T2: ${p.s.task2_band}</div>` : ''}
+        </div>
+    `).join('');
+}
+
+async function abandonTest() {
+    if (!confirm('Abandon this full test? All progress will be lost.')) return;
+    try {
+        await api('/ielts-full-test/abandon', { method: 'POST' });
+        location.href = '/ielts-full-test?new=true';
+    } catch (e) {
+        banner('Failed to abandon: ' + e.message, 'error');
+    }
+}
+
+/* ════════════════════════════════════════════════════════════
+   INIT
+   ════════════════════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', loadStatus);
+
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        if (speakingSyncTimer) {
+            clearInterval(speakingSyncTimer);
+            speakingSyncTimer = null;
+        }
+    } else {
+        if (document.getElementById('spk-countdown-value')) {
+            startSpeakingTimers();
+            syncSpeakingStatus();
+        }
+    }
+});
+
+window.addEventListener('beforeunload', () => {
+    stopSpeakingTimers();
+    cancelPreparing();
+});
+</script>
+</body>
+</html>

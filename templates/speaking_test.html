@@ -1,0 +1,3201 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="csrf-token" content="{{ csrf_token }}">
+<title>IELTS Speaking – Real Conversation</title>
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+        --bg: #0d1117;
+        --panel: rgba(0,0,0,0.72);
+        --border: rgba(255,255,255,0.08);
+        --accent: #6c63ff;
+        --accent-2: #ffb020;
+        --success: #22c55e;
+        --danger: #ef4444;
+        --text: #ffffff;
+        --text-dim: #b0b0b0;
+        --text-muted: #6b7280;
+    }
+    html, body { height: 100%; }
+    body {
+        font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Arial, sans-serif;
+        background: radial-gradient(circle at 50% 25%, #16203a 0%, #0d1117 55%, #05070b 100%);
+        color: var(--text);
+        overflow: hidden;
+        height: 100vh;
+        -webkit-font-smoothing: antialiased;
+    }
+
+    /* ══════════════════ START OVERLAY ══════════════════ */
+    .start-overlay {
+        position: fixed; inset: 0; z-index: 200;
+        background: rgba(5,8,14,0.94); backdrop-filter: blur(18px);
+        display: flex; align-items: center; justify-content: center;
+        flex-direction: column; gap: 18px; padding: 24px;
+        text-align: center; transition: opacity .35s ease;
+    }
+    .start-overlay.hidden { opacity: 0; pointer-events: none; }
+    .start-overlay .icon { font-size: 68px; animation: pulse-dot 2s infinite; margin-bottom: 4px; }
+    .start-overlay h2 { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; }
+    .start-overlay p { font-size: 13.5px; color: var(--text-dim); max-width: 500px; line-height: 1.65; }
+    .start-overlay .rules {
+        background: rgba(108,99,255,0.1);
+        border: 1px solid rgba(108,99,255,0.3);
+        border-radius: 12px;
+        padding: 14px 22px;
+        max-width: 480px;
+        text-align: left;
+        font-size: 12.5px;
+        line-height: 1.7;
+        color: var(--text-dim);
+    }
+    .start-overlay .rules strong { color: var(--accent-2); }
+    .start-overlay .btn-start {
+        margin-top: 8px; padding: 14px 48px;
+        background: linear-gradient(135deg, var(--accent), #5b52d9);
+        border: none; border-radius: 100px; color: #fff;
+        font-size: 15px; font-weight: 800; cursor: pointer;
+        box-shadow: 0 8px 30px rgba(108,99,255,0.5);
+        transition: all .2s; font-family: inherit; letter-spacing: .3px;
+    }
+    .start-overlay .btn-start:hover { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(108,99,255,0.7); }
+    .start-overlay .hint { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+    .start-overlay .prep-status {
+        display: none;
+        margin-top: 10px;
+        padding: 8px 16px;
+        background: rgba(108,99,255,0.14);
+        border: 1px solid rgba(108,99,255,0.35);
+        border-radius: 100px;
+        font-size: 12px;
+        color: #b3adff;
+        font-weight: 600;
+    }
+    .start-overlay .prep-status.show { display: block; }
+
+    /* 🆕 Mic test indicator */
+    .mic-test {
+        display: flex; align-items: center; gap: 8px;
+        font-size: 12px; color: var(--text-muted);
+        padding: 6px 14px;
+        border-radius: 100px;
+        background: rgba(255,255,255,0.04);
+        border: 1px solid var(--border);
+    }
+    .mic-test .dot {
+        width: 8px; height: 8px; border-radius: 50%;
+        background: #6b7280; transition: background .3s;
+    }
+    .mic-test.ok .dot { background: var(--success); box-shadow: 0 0 8px rgba(34,197,94,0.6); }
+    .mic-test.fail .dot { background: var(--danger); }
+
+    /* ══════════════════ TOP BANNERS ══════════════════ */
+    .ft-banner, .retake-banner {
+        display: none; position: fixed; top: 0; left: 0; right: 0; z-index: 150;
+        color: white; padding: 10px 22px;
+        font-weight: 600; font-size: 13.5px;
+        align-items: center; justify-content: space-between;
+        gap: 12px; flex-wrap: wrap;
+        box-shadow: 0 4px 18px rgba(0,0,0,0.4);
+    }
+    .ft-banner { background: linear-gradient(135deg, #0d2137 0%, #1a3a5c 100%); }
+    .retake-banner { background: linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%); z-index: 149; }
+    .ft-banner.show, .retake-banner.show { display: flex; }
+    .ft-banner .ft-left, .retake-banner .retake-left { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .ft-banner .phase-pill, .retake-banner .retake-pill {
+        background: #ffc107; color: #333;
+        padding: 4px 12px; border-radius: 20px;
+        font-size: 11px; font-weight: 800;
+        text-transform: uppercase; letter-spacing: .5px;
+    }
+    .ft-banner a {
+        color: #ffc107; text-decoration: none;
+        font-weight: 700; font-size: 12px;
+        padding: 5px 14px; border: 2px solid #ffc107;
+        border-radius: 20px; transition: all .2s;
+    }
+    .ft-banner a:hover { background: #ffc107; color: #333; }
+
+    /* 🆕 Pause banner */
+    .pause-overlay {
+        display: none;
+        position: fixed; inset: 0; z-index: 1900;
+        background: rgba(5,8,14,0.85); backdrop-filter: blur(10px);
+        align-items: center; justify-content: center;
+        flex-direction: column; gap: 20px;
+    }
+    .pause-overlay.show { display: flex; }
+    .pause-overlay .icon { font-size: 64px; animation: pulse-dot 1.5s infinite; }
+    .pause-overlay h2 { font-size: 24px; font-weight: 800; }
+    .pause-overlay p { font-size: 13px; color: var(--text-dim); }
+    .pause-overlay .btn-resume {
+        padding: 12px 36px;
+        background: linear-gradient(135deg, var(--success), #16a34a);
+        border: none; border-radius: 100px; color: #fff;
+        font-size: 14px; font-weight: 800; cursor: pointer;
+        font-family: inherit;
+        box-shadow: 0 8px 30px rgba(34,197,94,0.5);
+        transition: all .2s;
+    }
+    .pause-overlay .btn-resume:hover { transform: translateY(-2px); }
+
+    /* ══════════════════ 3D CANVAS ══════════════════ */
+    #three-container { position: fixed; inset: 0; z-index: 0; }
+    #three-container canvas { display: block; outline: none; }
+
+    .avatar-loading {
+        position: fixed; inset: 0; z-index: 4;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        gap: 14px;
+        background: radial-gradient(circle at 50% 25%, #16203a 0%, #0d1117 60%, #05070b 100%);
+        transition: opacity .6s ease;
+    }
+    .avatar-loading.hidden { opacity: 0; pointer-events: none; }
+    .avatar-loading .spinner {
+        width: 44px; height: 44px;
+        border: 3px solid rgba(255,255,255,0.1);
+        border-top-color: var(--accent);
+        border-radius: 50%; animation: spin .9s linear infinite;
+    }
+    .avatar-loading p { font-size: 12px; color: var(--text-muted); letter-spacing: .5px; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes pulse-dot { 0%,100% { opacity:1; transform:scale(1);} 50% { opacity:.55; transform:scale(.94);} }
+    @keyframes blink { 0% { opacity:1;} 50% { opacity:.4;} 100% { opacity:1;} }
+    @keyframes fadeUp { from { opacity:0; transform: translateY(12px);} to { opacity:1; transform: translateY(0);} }
+
+    /* ══════════════════ UI OVERLAY ══════════════════ */
+    #ui-overlay {
+        position: fixed; inset: 0; z-index: 10;
+        pointer-events: none; display: flex; flex-direction: column;
+        padding: 16px 24px 24px;
+    }
+    #ui-overlay > * { pointer-events: auto; }
+
+    .header {
+        display: flex; justify-content: space-between; align-items: center;
+        background: rgba(0,0,0,0.5); padding: 8px 20px;
+        border-radius: 14px; backdrop-filter: blur(10px);
+        border: 1px solid var(--border);
+        max-width: 820px; margin: 0 auto; width: 100%; flex-shrink: 0;
+    }
+    .logo h1 { font-size: 17px; font-weight: 700; letter-spacing: .2px; }
+    .logo h1 span { color: var(--accent); }
+    .logo p { font-size: 11px; opacity: .55; margin-top: 1px; }
+    .nav-links { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+    .nav-links a { color: var(--text-dim); text-decoration: none; font-size: 13px; transition: .2s; }
+    .nav-links a:hover { color: #fff; }
+    .nav-links .pill {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 5px 13px; border-radius: 100px;
+        background: rgba(108,99,255,0.16);
+        border: 1px solid rgba(108,99,255,0.4);
+        color: #b3adff; font-size: 11.5px; font-weight: 700; white-space: nowrap;
+    }
+    .nav-links .pill.amber {
+        background: rgba(255,176,32,0.14);
+        border-color: rgba(255,176,32,0.38);
+        color: var(--accent-2);
+    }
+    .nav-links .pill.amber.warning {
+        background: rgba(239,68,68,0.18);
+        border-color: rgba(239,68,68,0.45);
+        color: #ff8a8a;
+        animation: pulse-dot 1s infinite;
+    }
+    .nav-links .pill.amber.grace {
+        background: rgba(34,197,94,0.18);
+        border-color: rgba(34,197,94,0.45);
+        color: #7ee89f;
+    }
+    .nav-links .pill.paused {
+        background: rgba(255,176,32,0.2);
+        border-color: rgba(255,176,32,0.5);
+        color: var(--accent-2);
+        animation: pulse-dot 1.5s infinite;
+    }
+    /* 🆕 Connection status */
+    .conn-status {
+        display: inline-flex; align-items: center; gap: 5px;
+        font-size: 11px; color: var(--text-muted);
+    }
+    .conn-status .dot {
+        width: 7px; height: 7px; border-radius: 50%;
+        background: var(--success); box-shadow: 0 0 6px rgba(34,197,94,0.6);
+        transition: background .3s;
+    }
+    .conn-status.offline .dot { background: var(--danger); box-shadow: 0 0 6px rgba(239,68,68,0.6); }
+    .conn-status.offline { color: #ff8a8a; }
+
+    .sub-banner {
+        display: none; max-width: 820px; margin: 10px auto 0;
+        padding: 11px 18px; border-radius: 12px;
+        font-size: 13px; font-weight: 600;
+        align-items: center; justify-content: space-between;
+        gap: 12px; flex-wrap: wrap; animation: fadeUp .4s ease;
+    }
+    .sub-banner.show { display: flex; }
+    .sub-banner.warn { background: rgba(255,176,32,0.14); border: 1px solid rgba(255,176,32,0.4); color: #ffd68a; }
+    .sub-banner.err { background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.4); color: #ff9a9a; }
+    .sub-banner.success { background: rgba(34,197,94,0.14); border: 1px solid rgba(34,197,94,0.4); color: #7ee89f; }
+    .sub-banner.info { background: rgba(108,99,255,0.14); border: 1px solid rgba(108,99,255,0.4); color: #b3adff; }
+    .sub-banner .sub-banner-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .sub-banner button, .sub-banner a {
+        padding: 5px 14px; border: none; border-radius: 30px;
+        font-size: 11.5px; font-weight: 700; cursor: pointer;
+        text-decoration: none; transition: .15s; font-family: inherit;
+    }
+    .sub-banner .btn-subscribe { background: linear-gradient(135deg, #f093fb, #f5576c); color: #fff; }
+    .sub-banner .btn-dismiss { background: rgba(255,255,255,0.1); color: var(--text-dim); }
+    .sub-banner .btn-retry { background: var(--accent); color: #fff; }
+
+    /* ══════════════════ PANEL ══════════════════ */
+    .panel {
+        position: fixed; bottom: 24px; left: 24px;
+        width: 390px; max-width: calc(100vw - 48px);
+        background: var(--panel); backdrop-filter: blur(16px);
+        border-radius: 20px; padding: 16px 18px 18px;
+        border: 1px solid var(--border);
+        box-shadow: 0 24px 70px rgba(0,0,0,0.7);
+        max-height: calc(100vh - 120px);
+        overflow-y: auto; z-index: 20; animation: fadeUp .5s ease;
+    }
+    .panel::-webkit-scrollbar { width: 5px; }
+    .panel::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 10px; }
+    .panel::-webkit-scrollbar-track { background: transparent; }
+
+    .sub-status {
+        display: flex; justify-content: space-between; align-items: center; gap: 8px;
+        background: rgba(255,255,255,0.05);
+        border-radius: 10px; padding: 7px 12px; margin-bottom: 10px;
+        font-size: 12px; border-left: 3px solid var(--accent); flex-wrap: wrap;
+    }
+    .badge { padding: 2px 10px; border-radius: 30px; font-weight: 700; font-size: 10.5px; letter-spacing: .3px; }
+    .badge-part { background: rgba(108,99,255,0.2); color: #b3adff; }
+    .badge-live { background: rgba(34,197,94,0.16); color: #7ee89f; }
+    .badge-pool { background: rgba(34,197,94,0.16); color: #7ee89f; }
+    .badge-fresh { background: rgba(108,99,255,0.2); color: #b3adff; }
+
+    .progress-track { height: 5px; background: rgba(255,255,255,0.07); border-radius: 100px; overflow: hidden; margin-bottom: 12px; }
+    .progress-fill {
+        height: 100%; width: 0%;
+        background: linear-gradient(90deg, var(--accent), #9b8cff);
+        border-radius: 100px; transition: width .6s ease;
+        box-shadow: 0 0 10px rgba(108,99,255,.6);
+    }
+
+    .options { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+    .opt-chip {
+        display: inline-flex; align-items: center; gap: 5px;
+        padding: 4px 10px; background: rgba(255,255,255,0.04);
+        border: 1px solid var(--border); border-radius: 100px;
+        font-size: 10.5px; color: var(--text-dim); cursor: pointer; user-select: none; transition: .15s;
+    }
+    .opt-chip:hover { background: rgba(255,255,255,0.08); color: #fff; }
+    .opt-chip input { width: 11px; height: 11px; accent-color: var(--accent); }
+
+    .question-box {
+        background: rgba(255,255,255,0.035); border: 1px solid var(--border);
+        border-radius: 12px; padding: 11px 13px; margin-bottom: 10px;
+    }
+    .question-category {
+        font-size: 10.5px; text-transform: uppercase; letter-spacing: .8px;
+        color: var(--accent); font-weight: 700; margin-bottom: 4px;
+    }
+    .question-text { font-size: 13.5px; line-height: 1.55; color: #e9edf5; min-height: 38px; }
+
+    .live-transcript {
+        display: none;
+        background: rgba(108,99,255,0.09);
+        border: 1px solid rgba(108,99,255,0.28);
+        border-radius: 10px; padding: 9px 12px; margin-bottom: 10px;
+        font-size: 12.5px; line-height: 1.5; color: #b3adff;
+    }
+    .live-transcript.show { display: block; }
+    .lt-head {
+        display: flex; align-items: center; gap: 6px;
+        font-size: 9.5px; font-weight: 800; letter-spacing: .8px;
+        text-transform: uppercase; color: var(--accent); margin-bottom: 4px;
+    }
+    .lt-head .dot {
+        width: 6px; height: 6px; border-radius: 50%;
+        background: var(--accent); animation: pulse-dot 1.2s infinite;
+    }
+
+    .silence-tracker {
+        display: none;
+        background: linear-gradient(135deg, rgba(108,99,255,0.15), rgba(108,99,255,0.05));
+        border: 1px solid rgba(108,99,255,0.35);
+        border-radius: 10px; padding: 9px 14px; margin-bottom: 10px;
+        font-size: 12.5px; line-height: 1.5; color: #b3adff;
+        align-items: center; gap: 10px;
+    }
+    .silence-tracker.show { display: flex; }
+    .silence-tracker.warning {
+        background: linear-gradient(135deg, rgba(245,158,11,0.18), rgba(245,158,11,0.05));
+        border-color: rgba(245,158,11,0.5);
+        color: #ffd68a;
+        animation: pulse-soft 1s infinite;
+    }
+    .silence-tracker.critical {
+        background: linear-gradient(135deg, rgba(239,68,68,0.18), rgba(239,68,68,0.05));
+        border-color: rgba(239,68,68,0.5);
+        color: #ff9a9a;
+        animation: pulse-soft 0.7s infinite;
+    }
+    @keyframes pulse-soft { 0%, 100% { opacity: 1; } 50% { opacity: 0.75; } }
+    .silence-tracker .st-icon { font-size: 18px; flex-shrink: 0; }
+    .silence-tracker .st-text { flex: 1; font-weight: 600; }
+    .silence-tracker .st-countdown {
+        font-size: 20px; font-weight: 900; color: currentColor;
+        font-variant-numeric: tabular-nums; min-width: 36px; text-align: right;
+    }
+
+    .typing-mode-banner {
+        display: none;
+        background: linear-gradient(135deg, #f59e0b, #d97706);
+        color: #fff;
+        padding: 12px 16px;
+        border-radius: 12px;
+        margin-bottom: 10px;
+        font-weight: 700;
+        font-size: 13px;
+        line-height: 1.5;
+        box-shadow: 0 4px 16px rgba(245,158,11,0.4);
+        border-left: 4px solid #fff;
+        animation: fadeUp .3s ease;
+    }
+    .typing-mode-banner.show { display: block; }
+
+    .answer-area { margin-bottom: 10px; position: relative; }
+    .answer-area textarea {
+        width: 100%; padding: 10px 12px; border-radius: 12px;
+        border: 1px solid var(--border); background: rgba(255,255,255,0.045);
+        color: #fff; font-family: inherit; font-size: 13px; resize: none;
+        min-height: 46px; max-height: 120px; transition: .2s;
+    }
+    .answer-area textarea:focus {
+        outline: none; border-color: var(--accent);
+        background: rgba(255,255,255,0.075);
+        box-shadow: 0 0 0 3px rgba(108,99,255,0.15);
+    }
+    .answer-area textarea::placeholder { color: rgba(255,255,255,0.25); }
+    /* 🆕 Live word counter */
+    .word-counter {
+        position: absolute; right: 12px; bottom: 8px;
+        font-size: 10.5px; color: var(--text-muted);
+        background: rgba(0,0,0,0.5);
+        padding: 2px 8px; border-radius: 100px;
+        pointer-events: none;
+        font-variant-numeric: tabular-nums;
+    }
+    .word-counter.good { color: var(--success); }
+    .word-counter.low { color: var(--accent-2); }
+
+    .answer-area.typing-mode textarea {
+        border: 3px solid #f59e0b !important;
+        background: rgba(245,158,11,0.08) !important;
+        box-shadow: 0 0 0 4px rgba(245,158,11,0.15) !important;
+        min-height: 80px !important;
+        font-size: 15px !important;
+    }
+    .answer-area.typing-mode textarea:focus {
+        border-color: #d97706 !important;
+        box-shadow: 0 0 0 5px rgba(245,158,11,0.25) !important;
+    }
+
+    .controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .btn {
+        padding: 7px 15px; border: none; border-radius: 30px;
+        font-weight: 700; font-size: 12px; cursor: pointer;
+        transition: .2s; display: inline-flex; align-items: center; gap: 5px;
+        font-family: inherit;
+    }
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: #5b52d9; transform: translateY(-1px); }
+    .btn-success { background: #2e7d32; color: #fff; }
+    .btn-success:hover:not(:disabled) { background: #1b5e20; }
+    .btn-outline { background: transparent; border: 1.5px solid rgba(255,255,255,0.18); color: var(--text-dim); }
+    .btn-outline:hover:not(:disabled) { background: rgba(255,255,255,0.08); color: #fff; }
+    .btn-lg { padding: 11px 26px; font-size: 13.5px; }
+    /* 🆕 Pause button */
+    .btn-pause {
+        background: rgba(255,176,32,0.16);
+        color: var(--accent-2);
+        border: 1px solid rgba(255,176,32,0.4);
+    }
+    .btn-pause:hover:not(:disabled) { background: rgba(255,176,32,0.28); }
+
+    .answer-area.typing-mode + .controls #manual-submit {
+        background: linear-gradient(135deg, #22c55e, #16a34a) !important;
+        padding: 10px 24px !important;
+        font-size: 14px !important;
+        font-weight: 800 !important;
+        box-shadow: 0 4px 18px rgba(34,197,94,0.5) !important;
+        animation: pulse-send 1.8s infinite;
+    }
+    @keyframes pulse-send { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+
+    .btn-mic {
+        width: 46px; height: 46px; padding: 0; border-radius: 50%;
+        background: linear-gradient(135deg, #dc2626, #ef4444);
+        box-shadow: 0 4px 16px rgba(239,68,68,.35);
+        justify-content: center; font-size: 17px;
+    }
+    .btn-mic:hover:not(:disabled) { transform: translateY(-2px); }
+    .btn-mic.recording {
+        background: linear-gradient(135deg, #22c55e, #16a34a);
+        box-shadow: 0 0 0 0 rgba(34,197,94,.7);
+        animation: pulse-ring 1.3s infinite;
+    }
+    @keyframes pulse-ring {
+        0% { box-shadow: 0 0 0 0 rgba(34,197,94,.65); }
+        70% { box-shadow: 0 0 0 16px rgba(34,197,94,0); }
+        100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
+    }
+
+    .btn-skip-rec {
+        background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+        color: #fff !important;
+        padding: 10px 22px !important;
+        font-size: 13px !important;
+        font-weight: 800 !important;
+        box-shadow: 0 4px 16px rgba(245,158,11,0.4) !important;
+    }
+    .btn-skip-rec:hover { background: linear-gradient(135deg, #d97706, #b45309) !important; transform: translateY(-2px); }
+
+    .status-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; min-height: 20px; }
+    .status-text { font-size: 11.5px; color: var(--text-muted); flex: 1; line-height: 1.4; }
+    .status-text.live { color: #7ee89f; }
+    .status-text.warn { color: #ffb74d; }
+    .status-text.err { color: #ff8a8a; }
+
+    .mic-bars { display: none; gap: 2px; align-items: flex-end; height: 16px; }
+    .mic-bars.show { display: flex; }
+    .mic-bars span {
+        display: block; width: 3px; height: 4px;
+        background: var(--success); border-radius: 2px; transition: height .08s;
+    }
+
+    /* ══════════════════ QUESTION OVERLAY ══════════════════ */
+    .question-overlay {
+        position: fixed; top: 46%; left: 50%;
+        transform: translate(-50%, -50%) scale(.96);
+        z-index: 15; background: rgba(0,0,0,0.76);
+        backdrop-filter: blur(14px);
+        padding: 24px 40px; border-radius: 22px;
+        max-width: 660px; width: 88%; text-align: center;
+        border: 1px solid rgba(255,255,255,0.1);
+        box-shadow: 0 24px 70px rgba(0,0,0,0.8);
+        opacity: 0; transition: opacity .4s ease, transform .4s ease;
+        pointer-events: none;
+    }
+    .question-overlay.visible {
+        opacity: 1; transform: translate(-50%, -50%) scale(1); pointer-events: auto;
+    }
+    .question-overlay .category {
+        font-size: 12px; text-transform: uppercase; letter-spacing: 1.4px;
+        font-weight: 800; color: var(--accent); margin-bottom: 10px;
+    }
+    .question-overlay .text {
+        font-size: 23px; font-weight: 500; line-height: 1.5;
+        color: #fff; min-height: 2.2em;
+    }
+    .question-overlay .attempt-badge { margin-top: 14px; font-size: 13px; font-weight: 700; color: var(--accent-2); }
+    .question-overlay .overlay-timer {
+        margin-top: 16px; font-size: 62px; font-weight: 800; line-height: 1;
+        color: var(--accent-2); font-variant-numeric: tabular-nums; letter-spacing: -2px;
+    }
+    .question-overlay .overlay-timer.warning { color: #ff5c5c; animation: blink .9s infinite; }
+    .question-overlay .overlay-hint { margin-top: 12px; font-size: 15px; font-weight: 700; color: #7ee89f; }
+
+    .cue-card {
+        background: linear-gradient(135deg, #fff8e6 0%, #ffeec7 100%);
+        border: 2px solid var(--accent-2);
+        border-radius: 16px; padding: 18px 22px; margin-top: 6px;
+        text-align: left; color: #1a2a3a;
+        box-shadow: 0 10px 34px rgba(255,176,32,.2);
+    }
+    .cue-card h4 { color: #6d4c00; font-size: 15px; font-weight: 800; margin-bottom: 8px; text-align: center; }
+    .cue-card p { font-size: 13.5px; color: #3d2f00; margin-bottom: 6px; }
+    .cue-card ul { margin: 6px 0 0 20px; font-size: 13.5px; line-height: 1.7; }
+    .cue-card ul li { margin: 3px 0; }
+    .cue-card .footer {
+        margin-top: 12px; padding-top: 10px;
+        border-top: 1px dashed rgba(109,76,0,.35);
+        font-size: 11.5px; color: #6d4c00; font-weight: 700;
+    }
+
+    /* ══════════════════ RESULTS ══════════════════ */
+    .results {
+        position: fixed; inset: 0;
+        background: rgba(5,8,14,0.94); backdrop-filter: blur(14px);
+        display: none; align-items: center; justify-content: center;
+        z-index: 2000; padding: 20px; overflow-y: auto;
+    }
+    .results.show { display: flex; }
+    .results-card {
+        background: linear-gradient(180deg, #131a24, #0b1017);
+        border: 1px solid var(--border); border-radius: 24px;
+        padding: 38px 34px; max-width: 600px; width: 100%;
+        text-align: center; box-shadow: 0 30px 90px rgba(0,0,0,.75);
+        animation: fadeUp .5s ease;
+    }
+    .results-card h2 { font-size: 20px; margin-bottom: 22px; }
+    .result-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 18px; }
+    .result-item {
+        background: rgba(255,255,255,0.04);
+        border: 1px solid var(--border);
+        padding: 16px 10px; border-radius: 14px;
+    }
+    .result-item .value { font-size: 26px; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; }
+    .result-item .label {
+        font-size: 10.5px; text-transform: uppercase; letter-spacing: .8px;
+        opacity: .55; margin-top: 5px; font-weight: 700;
+    }
+    .feedback {
+        text-align: left; background: rgba(255,255,255,0.035);
+        border: 1px solid var(--border); border-left: 4px solid var(--accent);
+        border-radius: 12px; padding: 16px 18px;
+        font-size: 12.5px; line-height: 1.8; color: var(--text-dim);
+        max-height: 240px; overflow-y: auto;
+    }
+    .results-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 22px; }
+
+    .btn-retake {
+        background: linear-gradient(135deg, #22c55e, #16a34a);
+        color: #fff;
+    }
+    .btn-retake:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(34,197,94,0.4); }
+    .btn-new-test {
+        background: var(--accent);
+        color: #fff;
+    }
+    .btn-new-test:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(108,99,255,0.4); }
+    /* 🆕 Export button */
+    .btn-export {
+        background: linear-gradient(135deg, #0ea5e9, #0284c7);
+        color: #fff;
+    }
+    .btn-export:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(14,165,233,0.4); }
+
+    /* ══════════════════ REDIRECT OVERLAY ══════════════════ */
+    .redirect-overlay {
+        position: fixed; inset: 0; z-index: 3000;
+        background: rgba(5,8,14,0.96); backdrop-filter: blur(18px);
+        display: none; align-items: center; justify-content: center;
+        flex-direction: column; gap: 20px; padding: 24px;
+        text-align: center; animation: fadeUp .4s ease;
+    }
+    .redirect-overlay.show { display: flex; }
+    .redirect-overlay .icon { font-size: 64px; animation: pulse-dot 1.5s infinite; }
+    .redirect-overlay h2 { font-size: 22px; font-weight: 800; }
+    .redirect-overlay p { font-size: 14px; color: var(--text-dim); max-width: 420px; line-height: 1.6; }
+    .redirect-overlay .countdown {
+        font-size: 60px; font-weight: 900;
+        color: var(--accent); line-height: 1;
+        font-variant-numeric: tabular-nums;
+        animation: pulse-dot 1s infinite;
+    }
+    .redirect-overlay .btn-goto {
+        margin-top: 10px; padding: 12px 40px;
+        background: linear-gradient(135deg, #f093fb, #f5576c);
+        border: none; border-radius: 100px; color: #fff;
+        font-size: 14px; font-weight: 800; cursor: pointer;
+        font-family: inherit;
+        box-shadow: 0 8px 30px rgba(240,147,251,0.5);
+        transition: all .2s;
+    }
+    .redirect-overlay .btn-goto:hover { transform: translateY(-2px); }
+
+    /* ══════════════════ 🆕 REVIEW MODAL ══════════════════ */
+    .review-modal {
+        position: fixed; inset: 0; z-index: 2500;
+        background: rgba(5,8,14,0.94); backdrop-filter: blur(14px);
+        display: none; align-items: flex-start; justify-content: center;
+        padding: 40px 20px; overflow-y: auto;
+    }
+    .review-modal.show { display: flex; }
+    .review-card {
+        background: linear-gradient(180deg, #131a24, #0b1017);
+        border: 1px solid var(--border); border-radius: 20px;
+        padding: 28px 26px; max-width: 720px; width: 100%;
+        box-shadow: 0 30px 90px rgba(0,0,0,.75);
+        animation: fadeUp .4s ease;
+    }
+    .review-card h3 { font-size: 18px; margin-bottom: 6px; }
+    .review-card .subtitle { font-size: 12px; color: var(--text-muted); margin-bottom: 20px; }
+    .review-item {
+        background: rgba(255,255,255,0.035);
+        border: 1px solid var(--border);
+        border-radius: 12px; padding: 14px 16px; margin-bottom: 12px;
+        text-align: left;
+    }
+    .review-item .rq-part {
+        font-size: 10.5px; text-transform: uppercase; letter-spacing: .8px;
+        font-weight: 800; color: var(--accent); margin-bottom: 6px;
+    }
+    .review-item .rq-q {
+        font-size: 12.5px; color: #e9edf5; margin-bottom: 8px;
+        line-height: 1.5;
+    }
+    .review-item .rq-a {
+        font-size: 12.5px; color: #b3adff;
+        background: rgba(108,99,255,0.08);
+        border-left: 3px solid var(--accent);
+        padding: 8px 12px; border-radius: 8px;
+        line-height: 1.6;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+    }
+    .review-item .rq-a.empty { color: #ff9a9a; border-left-color: var(--danger); background: rgba(239,68,68,0.08); }
+    .review-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; }
+
+    /* ══════════════════ 🆕 KEYBOARD SHORTCUTS HINT ══════════════════ */
+    .kbd-hint {
+        position: fixed; bottom: 8px; right: 20px;
+        font-size: 10px; color: var(--text-muted);
+        z-index: 20; opacity: .6;
+        display: flex; gap: 10px; flex-wrap: wrap;
+        max-width: 400px;
+    }
+    .kbd-hint kbd {
+        display: inline-block;
+        padding: 1px 5px; border-radius: 4px;
+        background: rgba(255,255,255,0.08);
+        border: 1px solid rgba(255,255,255,0.15);
+        font-family: monospace; font-size: 9.5px;
+    }
+
+    @media (max-width: 900px) {
+        .panel { width: calc(100vw - 32px); left: 16px; bottom: 16px; max-height: 52vh; }
+        .question-overlay { top: 26%; max-width: 92%; padding: 18px 22px; }
+        .question-overlay .text { font-size: 18px; }
+        .question-overlay .overlay-timer { font-size: 46px; }
+        .kbd-hint { display: none; }
+    }
+    @media (max-width: 560px) {
+        #ui-overlay { padding: 10px 12px 12px; }
+        .logo p { display: none; }
+        .nav-links a { font-size: 11.5px; }
+        .nav-links { gap: 8px; }
+        .result-grid { grid-template-columns: 1fr; }
+        .panel { padding: 13px 14px 15px; }
+        .start-overlay h2 { font-size: 20px; }
+        .start-overlay p { font-size: 12.5px; }
+        .redirect-overlay h2 { font-size: 18px; }
+        .redirect-overlay .countdown { font-size: 48px; }
+    }
+</style>
+</head>
+<body>
+
+<!-- ===== FULL TEST BANNER ===== -->
+<div class="ft-banner" id="ft-banner">
+    <div class="ft-left">
+        <span class="phase-pill">Full Test · Speaking</span>
+        <span>🎤 Final Phase — 15–20 minutes · 3 Parts</span>
+    </div>
+    <a href="/ielts-full-test" onclick="return confirm('Return to the full test dashboard? Your speaking test will be paused.');">
+        ← Full Test Dashboard
+    </a>
+</div>
+
+<!-- ===== RETAKE BANNER ===== -->
+<div class="retake-banner" id="retake-banner">
+    <div class="retake-left">
+        <span class="retake-pill">Retake</span>
+        <span>🔄 Retaking your previous speaking test — same questions, fresh timer.</span>
+    </div>
+</div>
+
+<!-- ===== 🆕 PAUSE OVERLAY ===== -->
+<div class="pause-overlay" id="pause-overlay">
+    <div class="icon">⏸️</div>
+    <h2>Test Paused</h2>
+    <p>Your timer is stopped. Click Resume when you're ready.</p>
+    <button class="btn-resume" id="btn-resume">▶️ Resume Test</button>
+</div>
+
+<!-- ===== START OVERLAY ===== -->
+<div class="start-overlay" id="start-overlay">
+    <div class="icon">🎙️</div>
+    <h2>IELTS Speaking Test</h2>
+    <p>
+        You'll be asked <strong>3 parts</strong> of questions by an AI examiner.
+        Total time: <strong>15 minutes</strong> (with +5 min grace if you need more).
+    </p>
+    <div class="rules">
+        <strong>📋 Smart Detection Rules:</strong><br>
+        • <strong>Mic mode:</strong> After you speak, <strong>8 sec silence</strong> moves to next question<br>
+        • <strong>Typing mode:</strong> After you type, <strong>15 sec idle</strong> moves to next question<br>
+        • <strong>Part 2:</strong> Full 2 minutes given (no auto-advance)<br>
+        • <strong>Minimum per Q:</strong> 15 seconds (no rushing)
+    </div>
+    <!-- 🆕 Mic test indicator -->
+    <div class="mic-test" id="mic-test">
+        <span class="dot"></span>
+        <span id="mic-test-text">🎤 Checking microphone…</span>
+    </div>
+    <button class="btn-start" id="btn-start-test">▶️ Start Test</button>
+    <div class="prep-status" id="prep-status">⚙️ Preparing your test…</div>
+    <div class="hint">🔊 Audio will play automatically once you start</div>
+</div>
+
+<!-- ===== REDIRECT OVERLAY ===== -->
+<div class="redirect-overlay" id="redirect-overlay">
+    <div class="icon">🔒</div>
+    <h2>Free Limit Reached</h2>
+    <p id="redirect-message">You have used all your free tests. Opening subscription page…</p>
+    <div class="countdown" id="redirect-countdown">2</div>
+    <p style="font-size:12px;opacity:.6;">Taking you to subscription plans…</p>
+    <button class="btn-goto" id="btn-goto-subscription">Go Now →</button>
+</div>
+
+<!-- ===== 3D CANVAS ===== -->
+<div id="three-container"></div>
+
+<!-- ===== AVATAR LOADER ===== -->
+<div class="avatar-loading" id="avatar-loading">
+    <div class="spinner"></div>
+    <p>Loading examiner...</p>
+</div>
+
+<!-- ===== SUBSCRIPTION / ERROR BANNER ===== -->
+<div class="sub-banner" id="sub-banner">
+    <span id="sub-banner-msg">Message</span>
+    <div class="sub-banner-actions" id="sub-banner-actions"></div>
+</div>
+
+<!-- ===== QUESTION OVERLAY ===== -->
+<div class="question-overlay" id="question-overlay">
+    <div class="category" id="overlay-category"></div>
+    <div class="text" id="overlay-text"></div>
+    <div class="cue-card" id="overlay-cue" style="display:none;"></div>
+    <div class="overlay-timer" id="overlay-timer" style="display:none;">60</div>
+    <div class="overlay-hint" id="overlay-hint" style="display:none;">🗣️ Start speaking now!</div>
+    <div class="attempt-badge" id="overlay-attempt"></div>
+</div>
+
+<!-- ===== UI OVERLAY ===== -->
+<div id="ui-overlay">
+
+    <div class="header">
+        <div class="logo">
+            <h1>🎓 <span>IELTS</span> Speaking</h1>
+            <p>Real Conversation Practice · AI Examiner</p>
+        </div>
+        <div class="nav-links">
+            <span class="pill" id="part-indicator">📋 Part 1</span>
+            <span class="pill" id="source-pill" style="display:none;">📦 Pool</span>
+            <span class="pill amber" id="timer">⏱️ 15:00</span>
+            <!-- 🆕 Connection status -->
+            <span class="conn-status" id="conn-status">
+                <span class="dot"></span>
+                <span id="conn-text">Online</span>
+            </span>
+            <a href="/dashboard">Dashboard</a>
+            <a href="#" id="header-exit">Exit</a>
+        </div>
+    </div>
+
+    <div class="panel" id="main-panel">
+
+        <div class="sub-status">
+            <span class="badge badge-part" id="status-badge">Ready</span>
+            <span id="progress-text" style="opacity:.65;">Q 0 / 0</span>
+        </div>
+
+        <div class="progress-track">
+            <div class="progress-fill" id="progress-fill"></div>
+        </div>
+
+        <div class="options">
+            <label class="opt-chip" id="force-new-label"><input type="checkbox" id="force-new-check"> Force New</label>
+            <label class="opt-chip"><input type="checkbox" id="auto-gen-check" checked> Auto Upgrade</label>
+            <label class="opt-chip"><input type="checkbox" id="preserve-essay-check" checked> Preserve</label>
+        </div>
+
+        <div class="question-box">
+            <div class="question-category" id="q-category">Part 1 · Introduction</div>
+            <div class="question-text" id="question-text">Waiting for examiner…</div>
+        </div>
+
+        <div class="live-transcript" id="live-transcript">
+            <div class="lt-head"><span class="dot"></span>You are speaking</div>
+            <div id="live-transcript-text">Listening…</div>
+        </div>
+
+        <div class="silence-tracker" id="silence-tracker">
+            <div class="st-icon">⏳</div>
+            <div class="st-text" id="st-text">Detecting silence...</div>
+            <div class="st-countdown" id="st-countdown">8</div>
+        </div>
+
+        <div class="typing-mode-banner" id="typing-mode-banner">
+            ⌨️ <strong>Mic unavailable</strong> — please <strong>type your answer</strong> below and click <strong>"✅ Send"</strong>
+        </div>
+
+        <div class="answer-area" id="answer-area">
+            <textarea id="answer-input" rows="2" placeholder="Your answer will appear here…"></textarea>
+            <!-- 🆕 Live word counter -->
+            <div class="word-counter" id="word-counter">0 words</div>
+        </div>
+
+        <div class="controls">
+            <button class="btn btn-mic" id="record-btn" title="Record">🎙️</button>
+            <button class="btn btn-success" id="manual-submit">✅ Send</button>
+            <button class="btn btn-skip-rec" id="skip-rec-btn" style="display:none;" onclick="skipRecording()">
+                ⏭️ Skip & Next
+            </button>
+            <button class="btn btn-outline" id="repeat-btn">🔁 Repeat</button>
+            <!-- 🆕 Pause + Review -->
+            <button class="btn btn-pause" id="pause-btn" title="Pause test">⏸️</button>
+            <button class="btn btn-outline" id="review-btn" title="Review answers">📋 Review</button>
+            <button class="btn btn-outline" id="exit-btn" style="border-color:rgba(198,40,40,.6);color:#ff8a8a;">🚪 Exit</button>
+        </div>
+
+        <div class="status-row">
+            <div class="status-text" id="status-text">🔊 Preparing examiner…</div>
+            <div class="mic-bars" id="mic-bars">
+                <span></span><span></span><span></span><span></span><span></span>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- 🆕 KEYBOARD SHORTCUTS HINT -->
+<div class="kbd-hint">
+    <span><kbd>Space</kbd> record</span>
+    <span><kbd>Enter</kbd> send</span>
+    <span><kbd>Esc</kbd> skip</span>
+    <span><kbd>R</kbd> repeat</span>
+    <span><kbd>P</kbd> pause</span>
+</div>
+
+<!-- ===== RESULTS ===== -->
+<div class="results" id="results-screen">
+    <div class="results-card">
+        <h2>🎯 Test Results</h2>
+        <div class="result-grid">
+            <div class="result-item">
+                <div class="value" id="band-score" style="color:#81c784;">—</div>
+                <div class="label">Overall Band</div>
+            </div>
+            <div class="result-item">
+                <div class="value" id="answered-count" style="color:#6c63ff;">0</div>
+                <div class="label">Answered</div>
+            </div>
+            <div class="result-item">
+                <div class="value" id="words-count" style="color:#ffb74d;">0</div>
+                <div class="label">Words Spoken</div>
+            </div>
+        </div>
+        <div class="feedback" id="feedback-text"></div>
+        <div class="results-actions">
+            <button class="btn btn-retake btn-lg" onclick="window.location.href='/speaking?retake=true'">
+                🔄 Retake
+            </button>
+            <button class="btn btn-new-test btn-lg" onclick="window.location.href='/speaking?new=true'">
+                🆕 New Test
+            </button>
+            <!-- 🆕 Export button -->
+            <button class="btn btn-export btn-lg" id="btn-export-results">
+                ⬇️ Export
+            </button>
+            <button class="btn btn-outline btn-lg" onclick="location.href='/dashboard'">
+                📊 Dashboard
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ===== 🆕 REVIEW MODAL ===== -->
+<div class="review-modal" id="review-modal">
+    <div class="review-card">
+        <h3>📋 Your Answers</h3>
+        <div class="subtitle" id="review-subtitle">0 responses so far</div>
+        <div id="review-list"></div>
+        <div class="review-actions">
+            <button class="btn btn-outline" id="review-close">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================
+     THREE.JS – LOCAL FILES
+     ============================================================ -->
+<script type="importmap">
+{
+    "imports": {
+        "three": "/static/js/three/three.module.js",
+        "three/addons/controls/OrbitControls.js": "/static/js/three/OrbitControls.js",
+        "three/addons/loaders/GLTFLoader.js": "/static/js/three/GLTFLoader.js"
+    }
+}
+</script>
+
+<script type="module">
+    import * as THREE from 'three';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    const AVATAR_URLS = [
+        'https://models.readyplayer.me/64bfa15f0e72c63d7c3934a6.glb?quality=medium&meshLod=1',
+        'https://models.readyplayer.me/6185a4acfb622cf1cdc49348.glb?quality=medium&meshLod=1',
+        'https://models.readyplayer.me/64e5e9a2f5c5b3d8e8f4e8f5.glb?quality=medium&meshLod=1',
+    ];
+
+    const container = document.getElementById('three-container');
+    const loadingEl = document.getElementById('avatar-loading');
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(30, window.innerWidth / window.innerHeight, 0.1, 20);
+    camera.position.set(0, 1.52, 1.28);
+    camera.lookAt(0, 1.55, 0);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.15;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    container.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.target.set(0, 1.55, 0);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.06;
+    controls.enablePan = false;
+    controls.minDistance = 0.75;
+    controls.maxDistance = 2.4;
+    controls.minPolarAngle = Math.PI * 0.25;
+    controls.maxPolarAngle = Math.PI * 0.62;
+    controls.rotateSpeed = 0.45;
+    controls.update();
+
+    scene.add(new THREE.HemisphereLight(0xb8d4ff, 0x1a1f2a, 0.55));
+
+    const keyLight = new THREE.DirectionalLight(0xffeedd, 1.9);
+    keyLight.position.set(1.2, 2.2, 1.6);
+    keyLight.castShadow = true;
+    scene.add(keyLight);
+
+    const fillLight = new THREE.DirectionalLight(0x88aaff, 0.6);
+    fillLight.position.set(-1.4, 1.6, 1.2);
+    scene.add(fillLight);
+
+    const rimLight = new THREE.DirectionalLight(0xffffff, 0.95);
+    rimLight.position.set(0, 2.0, -1.6);
+    scene.add(rimLight);
+
+    const frontLight = new THREE.PointLight(0xffcc99, 0.45, 5);
+    frontLight.position.set(0, 1.6, 1.2);
+    scene.add(frontLight);
+
+    const glow = new THREE.PointLight(0x6c63ff, 1.4, 8);
+    glow.position.set(0, 1.4, -2.2);
+    scene.add(glow);
+
+    let avatar = null;
+    let headMesh = null;
+    let morphDict = {};
+    let headBone = null;
+    const clock = new THREE.Clock();
+
+    let targetHeadRot = { x: 0, y: 0 };
+    let currentHeadRot = { x: 0, y: 0 };
+    let isSpeakingNow = false;
+
+    let blinkTimer = 0;
+    let nextBlinkAt = 3 + Math.random() * 3;
+    let blinkState = 0;
+
+    const loader = new GLTFLoader();
+    let currentAvatarIdx = 0;
+
+    function hideLoader() {
+        loadingEl.classList.add('hidden');
+        setTimeout(() => { loadingEl.style.display = 'none'; }, 600);
+    }
+
+    function loadAvatarWithFallback() {
+        if (currentAvatarIdx >= AVATAR_URLS.length) {
+            console.warn('⚠️ All avatar URLs failed — using fallback character');
+            showFallbackCharacter();
+            return;
+        }
+
+        const url = AVATAR_URLS[currentAvatarIdx];
+
+        loader.load(
+            url,
+            (gltf) => {
+                avatar = gltf.scene;
+                avatar.position.set(0, 0, 0);
+
+                avatar.traverse((child) => {
+                    if (child.isMesh) {
+                        child.castShadow = true;
+                        child.receiveShadow = true;
+                        if (child.material) child.material.envMapIntensity = 0.85;
+                        if (child.morphTargetDictionary && Object.keys(child.morphTargetDictionary).length > 0) {
+                            headMesh = child;
+                            morphDict = child.morphTargetDictionary;
+                        }
+                    }
+                    if (child.isBone && child.name === 'Head') headBone = child;
+                });
+
+                scene.add(avatar);
+                hideLoader();
+
+                window._avatarControl = {
+                    setExpression,
+                    setSpeaking: (on) => { isSpeakingNow = !!on; },
+                    lookAt: (x, y) => {
+                        targetHeadRot.y = x * 0.22;
+                        targetHeadRot.x = -y * 0.12;
+                    }
+                };
+            },
+            (progress) => {
+                if (progress.total) {
+                    const pct = Math.round((progress.loaded / progress.total) * 100);
+                    const el = loadingEl.querySelector('p');
+                    if (el) el.textContent = `Loading examiner… ${pct}%`;
+                }
+            },
+            (error) => {
+                console.warn(`❌ Avatar ${currentAvatarIdx + 1} failed:`, error.message || error);
+                currentAvatarIdx++;
+                const el = loadingEl.querySelector('p');
+                if (el) el.textContent = `Trying alternate examiner… (${currentAvatarIdx + 1}/${AVATAR_URLS.length})`;
+                setTimeout(loadAvatarWithFallback, 400);
+            }
+        );
+    }
+
+    function showFallbackCharacter() {
+        const group = new THREE.Group();
+
+        const headGeo = new THREE.SphereGeometry(0.18, 32, 32);
+        const headMat = new THREE.MeshStandardMaterial({ color: 0xf0d5b0, roughness: 0.6, metalness: 0.05 });
+        const head = new THREE.Mesh(headGeo, headMat);
+        head.position.y = 1.55;
+        head.castShadow = true;
+        group.add(head);
+        headMesh = head;
+
+        const eyeGeo = new THREE.SphereGeometry(0.025, 16, 16);
+        const eyeMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
+        const pupilGeo = new THREE.SphereGeometry(0.014, 12, 12);
+        const pupilMat = new THREE.MeshStandardMaterial({ color: 0x1a1a2e });
+
+        for (const side of [-1, 1]) {
+            const eye = new THREE.Mesh(eyeGeo, eyeMat);
+            eye.position.set(side * 0.06, 1.57, 0.16);
+            group.add(eye);
+            const pupil = new THREE.Mesh(pupilGeo, pupilMat);
+            pupil.position.set(side * 0.062, 1.57, 0.175);
+            group.add(pupil);
+        }
+
+        const bodyGeo = new THREE.CylinderGeometry(0.22, 0.32, 0.5, 24);
+        const bodyMat = new THREE.MeshStandardMaterial({ color: 0x1e3a5f, roughness: 0.7, metalness: 0.1 });
+        const body = new THREE.Mesh(bodyGeo, bodyMat);
+        body.position.y = 1.15;
+        body.castShadow = true;
+        group.add(body);
+
+        const hairGeo = new THREE.SphereGeometry(0.19, 32, 32, 0, Math.PI * 2, 0, Math.PI * 0.5);
+        const hairMat = new THREE.MeshStandardMaterial({ color: 0x3a2b1a });
+        const hair = new THREE.Mesh(hairGeo, hairMat);
+        hair.position.y = 1.57;
+        group.add(hair);
+
+        scene.add(group);
+        avatar = group;
+        headBone = head;
+
+        hideLoader();
+
+        window._avatarControl = {
+            setExpression: () => {},
+            setSpeaking: (on) => { isSpeakingNow = !!on; },
+            lookAt: (x, y) => {
+                targetHeadRot.y = x * 0.22;
+                targetHeadRot.x = -y * 0.12;
+            }
+        };
+    }
+
+    loadAvatarWithFallback();
+
+    function setMorph(name, value) {
+        if (!headMesh || !morphDict) return;
+        const idx = morphDict[name];
+        if (idx === undefined) return;
+        headMesh.morphTargetInfluences[idx] = value;
+    }
+
+    function setExpression(expr) {
+        setMorph('mouthSmile', 0);
+        setMorph('mouthSmileLeft', 0);
+        setMorph('mouthSmileRight', 0);
+        setMorph('browInnerUp', 0);
+        setMorph('browDownLeft', 0);
+        setMorph('browDownRight', 0);
+        setMorph('eyeSquintLeft', 0);
+        setMorph('eyeSquintRight', 0);
+
+        switch (expr) {
+            case 'happy':
+                setMorph('mouthSmile', 0.35);
+                setMorph('mouthSmileLeft', 0.5);
+                setMorph('mouthSmileRight', 0.5);
+                setMorph('browInnerUp', 0.3);
+                break;
+            case 'listening':
+                setMorph('browInnerUp', 0.15);
+                break;
+            case 'thinking':
+                setMorph('browDownLeft', 0.25);
+                setMorph('browDownRight', 0.25);
+                setMorph('eyeSquintLeft', 0.2);
+                setMorph('eyeSquintRight', 0.2);
+                break;
+            default:
+                break;
+        }
+    }
+
+    let audioCtx = null;
+    let analyser = null;
+    let freqData = null;
+    let source = null;
+
+    function ensureAnalyser() {
+        if (audioCtx) return true;
+        try {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            analyser = audioCtx.createAnalyser();
+            analyser.fftSize = 512;
+            analyser.smoothingTimeConstant = 0.72;
+            freqData = new Uint8Array(analyser.frequencyBinCount);
+            return true;
+        } catch (e) {
+            return false;
+        }
+    }
+
+    function attachAudio(el) {
+        if (!ensureAnalyser()) return;
+        try {
+            if (source) { try { source.disconnect(); } catch (e) {} }
+            source = audioCtx.createMediaElementSource(el);
+            source.connect(analyser);
+            analyser.connect(audioCtx.destination);
+        } catch (e) {}
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+        const dt = clock.getDelta();
+
+        if (analyser && freqData && isSpeakingNow) {
+            analyser.getByteFrequencyData(freqData);
+            const n = freqData.length;
+            let bass = 0, mid = 0;
+            for (let i = 0; i < n * 0.15; i++) bass += freqData[i];
+            for (let i = Math.floor(n * 0.15); i < n * 0.35; i++) mid += freqData[i];
+            bass = bass / (n * 0.15) / 255;
+            mid = mid / (n * 0.20) / 255;
+
+            const jawOpen = Math.min(1, bass * 1.4 + mid * 0.6);
+            const mouthFunnel = Math.min(1, mid * 1.2);
+            const mouthPucker = Math.min(1, Math.max(0, (mid - bass) * 1.5));
+
+            setMorph('jawOpen', jawOpen * 0.85);
+            setMorph('mouthOpen', jawOpen * 0.6);
+            setMorph('mouthFunnel', mouthFunnel * 0.4);
+            setMorph('mouthPucker', mouthPucker * 0.3);
+            setMorph('browInnerUp', 0.1 + bass * 0.15);
+        } else {
+            setMorph('jawOpen', 0);
+            setMorph('mouthOpen', 0);
+            setMorph('mouthFunnel', 0);
+            setMorph('mouthPucker', 0);
+        }
+
+        blinkTimer += dt;
+        if (blinkTimer >= nextBlinkAt) {
+            blinkState = 1;
+            blinkTimer = 0;
+            nextBlinkAt = 2.5 + Math.random() * 3.5;
+        }
+        if (blinkState > 0) {
+            const v = Math.sin(Math.min(1, blinkState) * Math.PI);
+            setMorph('eyeBlinkLeft', v);
+            setMorph('eyeBlinkRight', v);
+            blinkState += dt * 6;
+            if (blinkState > 1) blinkState = 0;
+        } else {
+            setMorph('eyeBlinkLeft', 0);
+            setMorph('eyeBlinkRight', 0);
+        }
+
+        const t = performance.now() * 0.001;
+        const breathe = Math.sin(t * 0.9) * 0.006;
+        const sway = Math.sin(t * 0.5) * 0.008;
+        const nod = Math.sin(t * 0.7) * 0.01;
+
+        if (avatar) {
+            currentHeadRot.x += (targetHeadRot.x + nod - currentHeadRot.x) * 0.05;
+            currentHeadRot.y += (targetHeadRot.y + sway - currentHeadRot.y) * 0.05;
+
+            if (headBone) {
+                headBone.rotation.x = currentHeadRot.x;
+                headBone.rotation.y = currentHeadRot.y;
+            } else if (headMesh) {
+                headMesh.rotation.x = currentHeadRot.x;
+                headMesh.rotation.y = currentHeadRot.y;
+            }
+            avatar.position.y = breathe;
+        }
+
+        controls.update();
+        renderer.render(scene, camera);
+    }
+
+    function onResize() {
+        const w = window.innerWidth, h = window.innerHeight;
+        renderer.setSize(w, h);
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+    }
+    window.addEventListener('resize', onResize);
+    onResize();
+
+    window._avatarHelpers = {
+        attachAudio,
+        resumeAudioCtx: () => { if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume(); }
+    };
+
+    animate();
+</script>
+
+<!-- ============================================================
+     CONVERSATION LOGIC — POOL-NATIVE v7
+     ============================================================ -->
+<script>
+(function () {
+    'use strict';
+
+    // ✅ FIX 6: DEBUG flag
+    const DEBUG = new URLSearchParams(location.search).get('debug') === '1';
+    const _origLog = console.log.bind(console);
+    console.log = (...args) => { if (DEBUG) _origLog(...args); };
+
+    const SERVER_FULL_TEST_MODE = {{ 'true' if full_test_mode else 'false' }};
+
+    // ---------- FETCH LOGGER ----------
+    window.__speakingCalls = [];
+    (function installFetchLogger() {
+        if (window.__fetchLoggerInstalled) return;
+        window.__fetchLoggerInstalled = true;
+        const origFetch = window.fetch.bind(window);
+        window.fetch = function (...args) {
+            const url = args[0];
+            const opts = args[1] || {};
+            if (typeof url === 'string' && (url.includes('/speaking') || url.includes('/api/transcribe'))) {
+                window.__speakingCalls.push({
+                    url, method: (opts.method || 'GET').toUpperCase(), time: new Date().toISOString(),
+                });
+                console.log('📞', (opts.method || 'GET').toUpperCase(), url);
+            }
+            return origFetch(...args);
+        };
+    })();
+
+    function getCsrfToken() {
+        const m = document.querySelector('meta[name="csrf-token"]');
+        return m ? m.getAttribute('content') : '';
+    }
+
+    const urlParams = new URLSearchParams(location.search);
+    const URL_FULL_TEST = urlParams.get('full_test') === 'true' || urlParams.get('from_full_test') === 'true';
+    const isFullTest = SERVER_FULL_TEST_MODE || URL_FULL_TEST;
+    const RESUME_ID = urlParams.get('resume');
+    const RETAKE = urlParams.get('retake') === 'true';
+    const FORCE_NEW_URL = urlParams.get('new') === 'true';
+
+    const POOL_MAX_ATTEMPTS = 6;
+    const POOL_DEFAULT_WAIT = 3;
+    const POOL_500_WAIT = 2;
+
+    const SPEAKING_BASE_SECONDS = 15 * 60;
+    const GRACE_SECONDS = 5 * 60;
+
+    const SILENCE_CONFIG = {
+        1: { silence: 8,  typing: 15 },
+        2: { silence: 0,  typing: 0 },
+        3: { silence: 10, typing: 18 },
+    };
+
+    const PART_DURATIONS = { 1: 30, 2: 120, 3: 45 };
+    const STORAGE_KEY = 'ielts_speaking_autosave_v1';
+
+    const state = {
+        audioUrls: {},
+        part1Data: null, part2Data: null, part3Data: null,
+        questionQueue: [],
+        currentQuestion: null,
+        currentPart: 1,
+        isAwaitingResponse: false,
+        responses: [],
+        timeLeft: SPEAKING_BASE_SECONDS,
+        graceUsed: false,
+        currentQNumber: 0,
+        timerInterval: null,
+        totalQuestions: 0,
+        answeredCount: 0,
+        sessionId: null,
+        poolId: null,
+        source: null,
+        isManualRecording: false,
+        isSubmitting: false,
+        hasSubmitted: false,
+        isPaused: false,
+        _timerStartedAt: null,
+        _graceStartedAt: null,
+        _pauseStartedAt: null,
+        _totalPausedMs: 0,
+        _micFailed: false,
+        _silenceTimer: null,
+        _silenceCountdown: 0,
+        _typingIdleTimer: null,
+        _typingIdleCountdown: 0,
+        _questionStartTime: 0,
+        _autoAdvanceTriggered: false,
+    };
+
+    window.__speakingState = state;
+
+    const $ = (id) => document.getElementById(id);
+    const overlay = $('question-overlay');
+    const overlayCategory = $('overlay-category');
+    const overlayText = $('overlay-text');
+    const overlayCue = $('overlay-cue');
+    const overlayTimer = $('overlay-timer');
+    const overlayHint = $('overlay-hint');
+    const overlayAttempt = $('overlay-attempt');
+
+    const questionText = $('question-text');
+    const qCategory = $('q-category');
+    const answerInput = $('answer-input');
+    const answerArea = $('answer-area');
+    const typingModeBanner = $('typing-mode-banner');
+    const manualSubmit = $('manual-submit');
+    const recordBtn = $('record-btn');
+    const skipRecBtn = $('skip-rec-btn');
+    const repeatBtn = $('repeat-btn');
+    const exitBtn = $('exit-btn');
+    const headerExit = $('header-exit');
+    const statusText = $('status-text');
+    const statusBadge = $('status-badge');
+    const progressText = $('progress-text');
+    const progressFill = $('progress-fill');
+    const timerEl = $('timer');
+    const partIndicator = $('part-indicator');
+    const sourcePill = $('source-pill');
+    const liveTranscript = $('live-transcript');
+    const liveTranscriptText = $('live-transcript-text');
+    const micBars = $('mic-bars').children;
+    const micBarsWrap = $('mic-bars');
+    const wordCounter = $('word-counter');
+
+    // 🆕 Pause + Review
+    const pauseBtn = $('pause-btn');
+    const pauseOverlay = $('pause-overlay');
+    const btnResume = $('btn-resume');
+    const reviewBtn = $('review-btn');
+    const reviewModal = $('review-modal');
+    const reviewList = $('review-list');
+    const reviewSubtitle = $('review-subtitle');
+    const reviewClose = $('review-close');
+    const btnExport = $('btn-export-results');
+
+    // 🆕 Connection status
+    const connStatus = $('conn-status');
+    const connText = $('conn-text');
+
+    const silenceTracker = $('silence-tracker');
+    const stIcon = silenceTracker.querySelector('.st-icon');
+    const stText = $('st-text');
+    const stCountdown = $('st-countdown');
+
+    const resultsScreen = $('results-screen');
+    const bandScoreEl = $('band-score');
+    const answeredCountEl = $('answered-count');
+    const wordsCountEl = $('words-count');
+    const feedbackTextEl = $('feedback-text');
+
+    const subBanner = $('sub-banner');
+    const subBannerMsg = $('sub-banner-msg');
+    const subBannerActions = $('sub-banner-actions');
+
+    const redirectOverlay = $('redirect-overlay');
+    const redirectMessage = $('redirect-message');
+    const redirectCountdown = $('redirect-countdown');
+    const btnGotoSubscription = $('btn-goto-subscription');
+
+    const prepStatusEl = $('prep-status');
+    function setPrepStatus(msg, show) {
+        if (!prepStatusEl) return;
+        prepStatusEl.textContent = msg;
+        prepStatusEl.classList.toggle('show', show !== false);
+    }
+    function hidePrepStatus() { if (prepStatusEl) prepStatusEl.classList.remove('show'); }
+
+    // ═══════════════════════════════════════════════════════════
+    // 🆕 MIC TEST at start
+    // ═══════════════════════════════════════════════════════════
+    async function runMicTest() {
+        const el = $('mic-test');
+        const txt = $('mic-test-text');
+        if (!el || !txt) return;
+
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            el.classList.add('fail');
+            txt.textContent = '⚠️ Mic not supported — you can still type';
+            return;
+        }
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            stream.getTracks().forEach(t => t.stop());
+            el.classList.add('ok');
+            txt.textContent = '🎤 Microphone ready';
+        } catch (e) {
+            el.classList.add('fail');
+            txt.textContent = '⚠️ Mic blocked — you can still type';
+        }
+    }
+    runMicTest();
+
+    // ═══════════════════════════════════════════════════════════
+    // 🆕 LOCAL STORAGE AUTOSAVE
+    // ═══════════════════════════════════════════════════════════
+    function saveLocalDraft() {
+        try {
+            const draft = {
+                responses: state.responses,
+                sessionId: state.sessionId,
+                currentQNumber: state.currentQNumber,
+                savedAt: new Date().toISOString(),
+            };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
+        } catch (e) {}
+    }
+    function clearLocalDraft() {
+        try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+    }
+    function loadLocalDraft() {
+        try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (!raw) return null;
+            const draft = JSON.parse(raw);
+            if (!draft || !draft.savedAt) return null;
+            const ageMs = Date.now() - new Date(draft.savedAt).getTime();
+            if (ageMs > 3 * 60 * 60 * 1000) { clearLocalDraft(); return null; }
+            return draft;
+        } catch (e) { return null; }
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // 🆕 CONNECTION STATUS
+    // ═══════════════════════════════════════════════════════════
+    function setConnectionStatus(online) {
+        if (!connStatus) return;
+        connStatus.classList.toggle('offline', !online);
+        if (connText) connText.textContent = online ? 'Online' : 'Offline';
+    }
+    window.addEventListener('online', () => setConnectionStatus(true));
+    window.addEventListener('offline', () => setConnectionStatus(false));
+    setConnectionStatus(navigator.onLine);
+
+    // ═══════════════════════════════════════════════════════════
+    // 🆕 LIVE WORD COUNTER
+    // ═══════════════════════════════════════════════════════════
+    function updateWordCounter() {
+        if (!wordCounter) return;
+        const text = (answerInput.value || '').trim();
+        const words = text ? text.split(/\s+/).filter(Boolean).length : 0;
+        wordCounter.textContent = words + (words === 1 ? ' word' : ' words');
+        wordCounter.classList.remove('good', 'low');
+        if (words >= 20) wordCounter.classList.add('good');
+        else if (words < 5 && words > 0) wordCounter.classList.add('low');
+    }
+
+    // ✅ FIX 1: _hasSpokenOrTyped removed
+    function updateSourcePill() {
+        if (!sourcePill) return;
+        if (state.source === 'pool') {
+            sourcePill.textContent = '📦 Pool';
+            sourcePill.style.display = 'inline-flex';
+        } else if (state.source === 'generated' || state.source === 'on_demand') {
+            sourcePill.textContent = '🆕 Fresh';
+            sourcePill.style.display = 'inline-flex';
+        } else if (state.source === 'retake') {
+            sourcePill.textContent = '🔄 Retake';
+            sourcePill.style.display = 'inline-flex';
+        } else {
+            sourcePill.style.display = 'none';
+        }
+    }
+
+    function applyFullTestMode() {
+        if (!isFullTest) return;
+        const banner = document.getElementById('ft-banner');
+        if (banner) banner.classList.add('show');
+        const uiOverlay = document.getElementById('ui-overlay');
+        if (uiOverlay) uiOverlay.style.paddingTop = '66px';
+
+        const forceCheck = document.getElementById('force-new-check');
+        if (forceCheck) {
+            forceCheck.checked = false;
+            forceCheck.disabled = true;
+            const label = forceCheck.closest('label');
+            if (label) { label.style.opacity = '0.4'; label.style.pointerEvents = 'none'; }
+        }
+
+        document.querySelectorAll('.nav-links a').forEach(a => {
+            const href = a.getAttribute('href') || '';
+            if (href === '/dashboard' || href.includes('/dashboard')) {
+                a.addEventListener('click', function(e) {
+                    if (!confirm('Leave the full test? You will need to return to the Full Test dashboard to continue.')) {
+                        e.preventDefault();
+                    }
+                });
+            }
+        });
+    }
+
+    function applyRetakeMode() {
+        if (!RETAKE) return;
+        const banner = document.getElementById('retake-banner');
+        if (banner) banner.classList.add('show');
+        const uiOverlay = document.getElementById('ui-overlay');
+        if (uiOverlay && !isFullTest) uiOverlay.style.paddingTop = '66px';
+
+        const forceCheck = document.getElementById('force-new-check');
+        if (forceCheck) {
+            forceCheck.checked = false;
+            forceCheck.disabled = true;
+            const label = forceCheck.closest('label');
+            if (label) { label.style.opacity = '0.4'; label.style.pointerEvents = 'none'; }
+        }
+    }
+
+    function escapeHtml(t) {
+        const d = document.createElement('div');
+        d.textContent = t || '';
+        return d.innerHTML;
+    }
+
+    function setStatus(msg, cls) {
+        statusText.textContent = msg;
+        statusText.className = 'status-text' + (cls ? ' ' + cls : '');
+    }
+
+    function showBanner(message, variant, actions) {
+        subBannerMsg.textContent = message;
+        subBanner.className = 'sub-banner show ' + (variant || 'warn');
+        subBannerActions.innerHTML = '';
+        (actions || []).forEach(a => {
+            const el = document.createElement(a.href ? 'a' : 'button');
+            el.className = a.className || 'btn-dismiss';
+            el.textContent = a.label;
+            if (a.href) el.href = a.href;
+            else if (a.onClick) el.addEventListener('click', a.onClick);
+            subBannerActions.appendChild(el);
+        });
+    }
+    function hideBanner() { subBanner.classList.remove('show'); }
+
+    let redirectTimerInterval = null;
+    let hasRedirected = false;
+
+    function showRedirectOverlay(message, redirectUrl, seconds) {
+        if (hasRedirected) return;
+        hasRedirected = true;
+        const targetUrl = redirectUrl || '/subscription?module=ielts';
+
+        redirectOverlay.classList.add('show');
+        redirectMessage.textContent = message || 'Free limit reached. Opening subscription page…';
+
+        btnGotoSubscription.onclick = () => {
+            if (redirectTimerInterval) clearInterval(redirectTimerInterval);
+            window.location.href = targetUrl;
+        };
+
+        const totalSeconds = (typeof seconds === 'number' && seconds > 0) ? seconds : 2;
+        let remaining = totalSeconds;
+        redirectCountdown.textContent = remaining;
+
+        if (redirectTimerInterval) clearInterval(redirectTimerInterval);
+        redirectTimerInterval = setInterval(() => {
+            remaining--;
+            redirectCountdown.textContent = Math.max(0, remaining);
+            if (remaining <= 0) {
+                clearInterval(redirectTimerInterval);
+                redirectTimerInterval = null;
+                window.location.href = targetUrl;
+            }
+        }, 1000);
+
+        setTimeout(() => { window.location.href = targetUrl; }, 4000);
+    }
+
+    async function safeFetch(url, options) {
+        let resp;
+        try {
+            resp = await fetch(url, options);
+        } catch (netErr) {
+            throw { kind: 'network', message: 'Network error — check your connection' };
+        }
+        let data = null;
+        const ct = resp.headers.get('content-type') || '';
+        if (ct.includes('application/json')) {
+            try { data = await resp.json(); } catch (e) { data = null; }
+        }
+        if (resp.status === 402) {
+            const err = new Error((data && data.error) || 'Free limit reached. Please subscribe.');
+            err.kind = 'subscription';
+            err.requiresSubscription = true;
+            err.redirectTo = (data && data.redirect_to) || '/subscription?module=ielts';
+            throw err;
+        }
+        if (!resp.ok) {
+            const err = new Error((data && data.error) || `Server error (${resp.status})`);
+            err.kind = 'server';
+            err.status = resp.status;
+            err.data = data;
+            throw err;
+        }
+        return data;
+    }
+
+    async function poolFetchWithRetry(url, options, onRetry) {
+        for (let attempt = 1; attempt <= POOL_MAX_ATTEMPTS; attempt++) {
+            let resp;
+            try {
+                resp = await fetch(url, options);
+            } catch (netErr) {
+                if (attempt < POOL_MAX_ATTEMPTS) {
+                    onRetry && onRetry(`Network hiccup — retry ${attempt}/${POOL_MAX_ATTEMPTS}`);
+                    await new Promise(r => setTimeout(r, 1000));
+                    continue;
+                }
+                throw { kind: 'network', message: 'Network error — check your connection' };
+            }
+
+            let data = null;
+            const ct = resp.headers.get('content-type') || '';
+            if (ct.includes('application/json')) {
+                try { data = await resp.json(); } catch (e) { data = null; }
+            }
+
+            if (resp.status === 202) {
+                const waitSec = Math.max(1, parseInt((data && data.retry_after) || POOL_DEFAULT_WAIT, 10));
+                onRetry && onRetry(`⏳ Another student generating — retry ${attempt}/${POOL_MAX_ATTEMPTS} in ${waitSec}s…`);
+                await new Promise(r => setTimeout(r, waitSec * 1000));
+                continue;
+            }
+
+            if (resp.status === 503) {
+                const err = new Error((data && data.error) ||
+                    (data && data.source === 'exhausted'
+                        ? 'Speaking pool is full. Please try again shortly.'
+                        : 'Service temporarily unavailable.'));
+                err.kind = 'server';
+                err.status = 503;
+                err.source = data && data.source;
+                throw err;
+            }
+
+            if (resp.status >= 500) {
+                if (attempt < POOL_MAX_ATTEMPTS) {
+                    onRetry && onRetry(`⚠️ Server busy — retry ${attempt}/${POOL_MAX_ATTEMPTS}…`);
+                    await new Promise(r => setTimeout(r, POOL_500_WAIT * 1000));
+                    continue;
+                }
+                throw {
+                    kind: 'server', status: resp.status,
+                    message: (data && data.error) || 'Server error. Please try again later.',
+                };
+            }
+
+            if (resp.status === 402) {
+                const err = new Error((data && data.error) || 'Free limit reached. Please subscribe.');
+                err.kind = 'subscription';
+                err.requiresSubscription = true;
+                err.redirectTo = (data && data.redirect_to) || '/subscription?module=ielts';
+                throw err;
+            }
+
+            if (!resp.ok) {
+                const err = new Error((data && data.error) || `Server error (${resp.status})`);
+                err.kind = 'server';
+                err.status = resp.status;
+                throw err;
+            }
+
+            return data;
+        }
+        throw { kind: 'server', message: 'Could not generate a test after multiple attempts. Please try again.' };
+    }
+
+    function setAvatarState(mode) {
+        const labels = { ready: 'Ready', speaking: 'Speaking', listening: 'Listening', thinking: 'Thinking' };
+        if (statusBadge) statusBadge.textContent = labels[mode] || 'Ready';
+        if (window._avatarControl) {
+            window._avatarControl.setSpeaking(mode === 'speaking');
+            if (mode === 'speaking') window._avatarControl.setExpression('happy');
+            else if (mode === 'listening') window._avatarControl.setExpression('listening');
+            else if (mode === 'thinking') window._avatarControl.setExpression('thinking');
+            else window._avatarControl.setExpression('neutral');
+        }
+    }
+
+    function updateProgress() {
+        const total = state.totalQuestions || 1;
+        const pos = state.currentQNumber || 0;
+        progressFill.style.width = Math.min(100, (pos / total) * 100) + '%';
+        progressText.textContent = `Q ${pos} / ${total}`;
+    }
+
+    function updatePart(part) {
+        const labels = { 1: 'Part 1 · Introduction', 2: 'Part 2 · Long Turn', 3: 'Part 3 · Discussion' };
+        partIndicator.textContent = '📋 ' + (part === 2 ? 'Part 2' : part === 3 ? 'Part 3' : 'Part 1');
+        qCategory.textContent = labels[part] || ('Part ' + part);
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // SILENCE TRACKER UI
+    // ═══════════════════════════════════════════════════════════
+    function showSilenceTracker(text, seconds, level) {
+        if (!silenceTracker) return;
+        silenceTracker.classList.remove('warning', 'critical');
+        if (level === 'warning') silenceTracker.classList.add('warning');
+        if (level === 'critical') silenceTracker.classList.add('critical');
+
+        stIcon.textContent = level === 'critical' ? '⚠️' : (level === 'warning' ? '⏳' : '👂');
+        stText.textContent = text;
+        stCountdown.textContent = seconds;
+        silenceTracker.classList.add('show');
+    }
+
+    function hideSilenceTracker() {
+        if (!silenceTracker) return;
+        silenceTracker.classList.remove('show', 'warning', 'critical');
+    }
+
+    function stopSilenceDetection() {
+        if (state._silenceTimer) { clearInterval(state._silenceTimer); state._silenceTimer = null; }
+        if (state._typingIdleTimer) { clearInterval(state._typingIdleTimer); state._typingIdleTimer = null; }
+        hideSilenceTracker();
+    }
+
+    // ✅ FIX 2: 4 unused timer-based functions removed (startSilenceDetection, resetSilenceTimer, startTypingIdleDetection, resetTypingIdleTimer)
+
+    function autoAdvance(reason) {
+        if (state._autoAdvanceTriggered) return;
+        state._autoAdvanceTriggered = true;
+        console.log(`⏭️ Auto-advance triggered (reason: ${reason})`);
+        stopSilenceDetection();
+
+        const text = (answerInput.value || '').trim();
+        if (text && state.isAwaitingResponse) {
+            setStatus(`⏭️ Auto-advancing (${reason})`, 'warn');
+            commitAnswer(text);
+        } else {
+            setStatus(`⏭️ No answer — moving to next question`, 'warn');
+            state.isAwaitingResponse = false;
+            hideOverlay();
+            setTimeout(() => nextQuestion(), 500);
+        }
+    }
+    window.autoAdvance = autoAdvance;
+
+    // ═══════════════════════════════════════════════════════════
+    // Audio level monitoring for silence detection
+    // ═══════════════════════════════════════════════════════════
+    let _silenceAudioCtx = null;
+    let _silenceAnalyser = null;
+    let _silenceData = null;
+    let _silenceMonitorInterval = null;
+    let _lastSpeechTime = 0;
+    let _hasSpeechStarted = false;
+
+    function startSilenceMonitor(mediaStream, part) {
+        const cfg = SILENCE_CONFIG[part];
+        if (!cfg || cfg.silence <= 0) return;
+
+        try {
+            _silenceAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const src = _silenceAudioCtx.createMediaStreamSource(mediaStream);
+            _silenceAnalyser = _silenceAudioCtx.createAnalyser();
+            _silenceAnalyser.fftSize = 512;
+            _silenceAnalyser.smoothingTimeConstant = 0.6;
+            src.connect(_silenceAnalyser);
+            _silenceData = new Uint8Array(_silenceAnalyser.frequencyBinCount);
+
+            _hasSpeechStarted = false;
+            _lastSpeechTime = Date.now();
+
+            _silenceMonitorInterval = setInterval(() => {
+                if (!_silenceAnalyser || !state.isAwaitingResponse) return;
+                if (state.isPaused) return;
+
+                _silenceAnalyser.getByteFrequencyData(_silenceData);
+                let sum = 0;
+                for (const v of _silenceData) sum += v;
+                const avg = sum / _silenceData.length;
+
+                const hasSpeech = avg > 15;
+                const now = Date.now();
+
+                if (hasSpeech) {
+                    _lastSpeechTime = now;
+                    if (!_hasSpeechStarted) {
+                        _hasSpeechStarted = true;
+                        console.log('🎙️ Speech detected');
+                    }
+                    if (state._silenceTimer) {
+                        clearInterval(state._silenceTimer);
+                        state._silenceTimer = null;
+                        hideSilenceTracker();
+                    }
+                } else if (_hasSpeechStarted) {
+                    const silenceDuration = (now - _lastSpeechTime) / 1000;
+                    const remaining = Math.max(0, cfg.silence - silenceDuration);
+
+                    if (remaining > 0) {
+                        const level = remaining <= 3 ? 'critical' : 'warning';
+                        showSilenceTracker(
+                            remaining <= 3 ? '⏭️ Auto-advancing in…' : 'Silence detected — advancing soon…',
+                            Math.ceil(remaining),
+                            level
+                        );
+                    } else {
+                        if (!state._autoAdvanceTriggered) {
+                            console.log(`⏭️ Silence threshold (${cfg.silence}s) reached`);
+                            autoAdvance('silence');
+                        }
+                    }
+                }
+            }, 300);
+        } catch (e) {
+            console.warn('Silence monitor setup failed:', e);
+        }
+    }
+
+    function stopSilenceMonitor() {
+        if (_silenceMonitorInterval) { clearInterval(_silenceMonitorInterval); _silenceMonitorInterval = null; }
+        if (_silenceAudioCtx) { try { _silenceAudioCtx.close(); } catch (e) {} _silenceAudioCtx = null; }
+        _silenceAnalyser = null;
+        _silenceData = null;
+        _hasSpeechStarted = false;
+        _lastSpeechTime = 0;
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // Typing idle detection
+    // ═══════════════════════════════════════════════════════════
+    let _lastTypingTime = 0;
+    let _hasTypedOnce = false;
+
+    function handleTypingIdleTick() {
+        const cfg = SILENCE_CONFIG[state.currentPart];
+        if (!cfg || cfg.typing <= 0) return;
+        if (!state.isAwaitingResponse) return;
+        if (state.isPaused) return;
+        if (!_hasTypedOnce) return;
+
+        const now = Date.now();
+        const idleDuration = (now - _lastTypingTime) / 1000;
+        const remaining = Math.max(0, cfg.typing - idleDuration);
+
+        if (remaining > 0) {
+            const level = remaining <= 3 ? 'critical' : 'warning';
+            showSilenceTracker(
+                remaining <= 3 ? '⏭️ Auto-advancing in…' : 'Typing idle — advancing soon…',
+                Math.ceil(remaining),
+                level
+            );
+        } else {
+            if (!state._autoAdvanceTriggered) {
+                console.log(`⏭️ Typing idle threshold (${cfg.typing}s) reached`);
+                autoAdvance('typing_idle');
+            }
+        }
+    }
+
+    function startTypingMonitor() {
+        if (state._typingIdleTimer) clearInterval(state._typingIdleTimer);
+        state._typingIdleTimer = setInterval(handleTypingIdleTick, 400);
+    }
+
+    function recordTypingActivity() {
+        _lastTypingTime = Date.now();
+        _hasTypedOnce = true;
+        const cfg = SILENCE_CONFIG[state.currentPart];
+        if (cfg && cfg.typing > 0) {
+            showSilenceTracker('Typing detected — idle countdown…', cfg.typing, 'warning');
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // TIMER (with pause support)
+    // ═══════════════════════════════════════════════════════════
+    function updateTimer() {
+        if (!state._timerStartedAt) return;
+        if (state.isPaused) return;
+
+        const now = Date.now();
+        const pausedOffset = state._totalPausedMs || 0;
+        const baseElapsed = Math.floor((now - state._timerStartedAt - pausedOffset) / 1000);
+
+        if (state.graceUsed) {
+            const graceElapsed = state._graceStartedAt
+                ? Math.floor((now - state._graceStartedAt - pausedOffset) / 1000)
+                : 0;
+            state.timeLeft = Math.max(0, GRACE_SECONDS - graceElapsed);
+        } else {
+            state.timeLeft = Math.max(0, SPEAKING_BASE_SECONDS - baseElapsed);
+        }
+
+        const m = Math.floor(state.timeLeft / 60);
+        const s = state.timeLeft % 60;
+        timerEl.textContent = '⏱️ ' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+
+        timerEl.classList.remove('warning', 'grace', 'paused');
+        if (state.isPaused) {
+            timerEl.classList.add('paused');
+        } else if (state.graceUsed) {
+            timerEl.classList.add('grace');
+        } else if (state.timeLeft <= 60) {
+            timerEl.classList.add('warning');
+        } else if (state.timeLeft <= 180) {
+            timerEl.classList.add('warning');
+        }
+    }
+
+    // ✅ FIX 4: safe hoisting check
+    function isStudentMidAnswer() {
+        if (state.isAwaitingResponse &&
+            typeof stopRecordingEarly === 'function') return true;
+        if (answerInput && answerInput.value.trim().length > 5) return true;
+        return false;
+    }
+
+    function startTimer() {
+        if (state.timerInterval) clearInterval(state.timerInterval);
+
+        state._timerStartedAt = Date.now();
+        state._graceStartedAt = null;
+        state.graceUsed = false;
+        state.timeLeft = SPEAKING_BASE_SECONDS;
+        state._totalPausedMs = 0;
+
+        state.timerInterval = setInterval(() => {
+            if (state.isPaused) return;
+            updateTimer();
+
+            const now = Date.now();
+            const pausedOffset = state._totalPausedMs || 0;
+            const baseElapsed = Math.floor((now - state._timerStartedAt - pausedOffset) / 1000);
+
+            if (state.graceUsed) {
+                const graceElapsed = state._graceStartedAt
+                    ? Math.floor((now - state._graceStartedAt - pausedOffset) / 1000)
+                    : 0;
+                if (graceElapsed >= GRACE_SECONDS) {
+                    clearInterval(state.timerInterval);
+                    state.timerInterval = null;
+                    setStatus('⏰ Time is up — submitting now…', 'err');
+                    endTest('Time limit reached');
+                }
+                return;
+            }
+
+            if (baseElapsed >= SPEAKING_BASE_SECONDS) {
+                if (!state.graceUsed && isStudentMidAnswer()) {
+                    state.graceUsed = true;
+                    state._graceStartedAt = Date.now();
+                    state.timeLeft = GRACE_SECONDS;
+                    updateTimer();
+                    setStatus('⏳ +5 minutes grace added — please finish', 'warn');
+                    showBanner(
+                        '⏳ Grace extension: +5 minutes added because you were mid-answer.',
+                        'success',
+                        [{ label: 'OK', className: 'btn-dismiss', onClick: hideBanner }]
+                    );
+                    return;
+                }
+                clearInterval(state.timerInterval);
+                state.timerInterval = null;
+                setStatus('⏰ Time is up — submitting now…', 'err');
+                endTest('Time limit reached');
+            }
+        }, 1000);
+
+        updateTimer();
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // 🆕 PAUSE / RESUME
+    // ═══════════════════════════════════════════════════════════
+    function pauseTest() {
+        if (state.isPaused || state.hasSubmitted) return;
+        state.isPaused = true;
+        state._pauseStartedAt = Date.now();
+        pauseOverlay.classList.add('show');
+        setStatus('⏸️ Test paused', 'warn');
+        // Stop any ongoing speech recognition
+        try { if (recognition) recognition.stop(); } catch (e) {}
+        // Pause any active recording
+        if (stopRecordingEarly) {
+            const txt = answerInput.value.trim();
+            if (txt) { finalTranscript = txt; interimTranscript = ''; }
+            // Don't actually stop the recording — just freeze timer
+        }
+    }
+
+    function resumeTest() {
+        if (!state.isPaused) return;
+        const pausedFor = Date.now() - state._pauseStartedAt;
+        state._totalPausedMs = (state._totalPausedMs || 0) + pausedFor;
+        if (state._graceStartedAt) {
+            // Adjust grace start to exclude paused time
+            state._graceStartedAt += pausedFor;
+        }
+        state.isPaused = false;
+        state._pauseStartedAt = null;
+        pauseOverlay.classList.remove('show');
+        setStatus('▶️ Test resumed', 'live');
+        updateTimer();
+    }
+
+    pauseBtn.addEventListener('click', pauseTest);
+    btnResume.addEventListener('click', resumeTest);
+
+    // ═══════════════════════════════════════════════════════════
+    // 🆕 REVIEW MODAL
+    // ═══════════════════════════════════════════════════════════
+    function openReview() {
+        reviewList.innerHTML = '';
+        const count = state.responses.length;
+        reviewSubtitle.textContent = `${count} response${count === 1 ? '' : 's'} so far`;
+
+        if (count === 0) {
+            reviewList.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:20px;">No answers yet.</div>';
+        } else {
+            state.responses.forEach((r, i) => {
+                const item = document.createElement('div');
+                item.className = 'review-item';
+                const partLabel = `Part ${r.part} · Q${i + 1}`;
+                const answerText = (r.answer || '').trim();
+                const isEmpty = !answerText;
+                item.innerHTML = `
+                    <div class="rq-part">${escapeHtml(partLabel)}</div>
+                    <div class="rq-q">${escapeHtml(r.question || '')}</div>
+                    <div class="rq-a ${isEmpty ? 'empty' : ''}">${escapeHtml(answerText || '(no answer)')}</div>
+                `;
+                reviewList.appendChild(item);
+            });
+        }
+        reviewModal.classList.add('show');
+    }
+    function closeReview() { reviewModal.classList.remove('show'); }
+    reviewBtn.addEventListener('click', openReview);
+    reviewClose.addEventListener('click', closeReview);
+    reviewModal.addEventListener('click', (e) => { if (e.target === reviewModal) closeReview(); });
+
+    // ═══════════════════════════════════════════════════════════
+    // 🆕 EXPORT RESULTS
+    // ═══════════════════════════════════════════════════════════
+    function exportResults() {
+        const lines = [];
+        lines.push('IELTS Speaking Test — Results');
+        lines.push('='.repeat(45));
+        lines.push(`Date: ${new Date().toLocaleString()}`);
+        lines.push(`Session: ${state.sessionId || 'N/A'}`);
+        lines.push(`Pool ID: ${state.poolId || 'N/A'}`);
+        lines.push(`Source: ${state.source || 'N/A'}`);
+        lines.push('');
+        lines.push(`Overall Band: ${bandScoreEl.textContent}`);
+        lines.push(`Questions Answered: ${answeredCountEl.textContent}`);
+        lines.push(`Words Spoken: ${wordsCountEl.textContent}`);
+        lines.push('');
+        lines.push('Feedback:');
+        lines.push('-'.repeat(45));
+        lines.push(feedbackTextEl.textContent || '(no feedback)');
+        lines.push('');
+        lines.push('Questions & Answers:');
+        lines.push('-'.repeat(45));
+        state.responses.forEach((r, i) => {
+            lines.push(`\n[Part ${r.part}] Q${i + 1}: ${r.question}`);
+            lines.push(`Answer: ${r.answer || '(no answer)'}`);
+        });
+
+        const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `ielts-speaking-${Date.now()}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+    btnExport.addEventListener('click', exportResults);
+
+    // ═══════════════════════════════════════════════════════════
+    // OVERLAY
+    // ═══════════════════════════════════════════════════════════
+    let captionInterval = null;
+    let captionWords = [];
+    let captionIndex = 0;
+    let fullCaptionText = '';
+
+    function showOverlay(category, text) {
+        overlayCategory.textContent = category || '';
+        overlayCue.style.display = 'none';
+        overlayTimer.style.display = 'none';
+        overlayHint.style.display = 'none';
+        overlayAttempt.textContent = '';
+        overlayText.style.display = '';
+        overlayText.textContent = '';
+        overlay.classList.add('visible');
+        startCaptions(text || '');
+    }
+
+    function startCaptions(text) {
+        stopCaptions(false);
+        fullCaptionText = text;
+        captionWords = (text || '').split(/\s+/).filter(Boolean);
+        captionIndex = 0;
+        overlayText.textContent = '';
+        if (captionWords.length) {
+            overlayText.textContent = captionWords[0];
+            captionIndex = 1;
+        }
+        captionInterval = setInterval(() => {
+            if (captionIndex < captionWords.length) {
+                overlayText.textContent += ' ' + captionWords[captionIndex];
+                captionIndex++;
+            } else {
+                clearInterval(captionInterval);
+                captionInterval = null;
+            }
+        }, 170);
+    }
+
+    function stopCaptions(restore) {
+        if (captionInterval) { clearInterval(captionInterval); captionInterval = null; }
+        if (restore !== false && fullCaptionText) overlayText.textContent = fullCaptionText;
+    }
+
+    function hideOverlay() {
+        stopCaptions(false);
+        overlay.classList.remove('visible');
+    }
+
+    function showCueCardOverlay(card) {
+        const prompts = (card.prompts || []).map(p => `<li>${escapeHtml(p)}</li>`).join('');
+        overlayCategory.textContent = 'Part 2 · Long Turn';
+        overlayText.style.display = 'none';
+        overlayText.textContent = '';
+        overlayCue.style.display = 'block';
+        overlayCue.innerHTML = `
+            <h4>📝 ${escapeHtml(card.title || 'Topic Card')}</h4>
+            <p>Describe the following:</p>
+            <ul>${prompts || '<li>Talk about this topic</li>'}</ul>
+            <div class="footer">⏱️ 1 minute to prepare · 1–2 minutes to speak</div>
+        `;
+        overlayTimer.style.display = 'none';
+        overlayHint.style.display = 'none';
+        overlay.classList.add('visible');
+    }
+
+    async function generateAudio(text, key, style) {
+        if (state.audioUrls[key]) return state.audioUrls[key];
+        try {
+            const uniqueId = Math.random().toString(36).slice(2, 8);
+            const filename = key + '_' + uniqueId + '.mp3';
+            const data = await safeFetch('/speaking/audio/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
+                body: JSON.stringify({
+                    question: text, part: state.currentPart, question_num: 0,
+                    custom_filename: filename, style: style || 'default'
+                })
+            });
+            if (data && data.success && data.audio_url) {
+                const url = data.audio_url + '?t=' + Date.now();
+                state.audioUrls[key] = url;
+                return url;
+            }
+        } catch (e) {
+            console.warn('Audio generate failed:', e.message || e);
+        }
+        return null;
+    }
+
+    async function speakText(text, key, style) {
+        setAvatarState('speaking');
+        setStatus('🔊 Examiner is speaking…', 'live');
+        const url = await generateAudio(text, key, style);
+        if (url) {
+            try {
+                await playMp3(url);
+                setAvatarState('ready');
+                return;
+            } catch (e) {
+                console.warn('MP3 playback failed:', e);
+            }
+        }
+        await browserTTS(text);
+        setAvatarState('ready');
+    }
+
+    function playMp3(url) {
+        return new Promise((resolve, reject) => {
+            const audio = new Audio(url);
+            audio.crossOrigin = 'anonymous';
+
+            if (window._avatarHelpers) {
+                window._avatarHelpers.resumeAudioCtx();
+                window._avatarHelpers.attachAudio(audio);
+            }
+
+            audio.onended = () => resolve();
+            audio.onerror = () => reject(new Error('playback error'));
+
+            const playPromise = audio.play();
+            if (playPromise !== undefined) {
+                playPromise.catch(err => {
+                    if (err.name === 'NotAllowedError') {
+                        setStatus('🔇 Click anywhere to enable audio', 'warn');
+                        showBanner(
+                            '🔇 Browser blocked autoplay — click anywhere to enable audio.',
+                            'warn',
+                            [{ label: 'Dismiss', className: 'btn-dismiss', onClick: hideBanner }]
+                        );
+                        const retry = () => {
+                            document.removeEventListener('click', retry);
+                            hideBanner();
+                            audio.play().then(() => setStatus('🔊 Playing…', 'live'))
+                                .catch(e2 => reject(e2));
+                        };
+                        document.addEventListener('click', retry, { once: true });
+                    } else {
+                        reject(err);
+                    }
+                });
+            } else {
+                resolve();
+            }
+        });
+    }
+
+    function browserTTS(text) {
+        return new Promise((resolve) => {
+            if (!('speechSynthesis' in window)) return resolve();
+            speechSynthesis.cancel();
+            const u = new SpeechSynthesisUtterance(text);
+            u.rate = 0.92;
+            u.pitch = 1.0;
+            u.lang = 'en-GB';
+            const voices = speechSynthesis.getVoices();
+            const v = voices.find(x => x.lang === 'en-GB') || voices.find(x => x.lang.startsWith('en'));
+            if (v) u.voice = v;
+            u.onend = () => resolve();
+            u.onerror = () => resolve();
+            speechSynthesis.speak(u);
+        });
+    }
+
+    function buildQueues() {
+        state.questionQueue = [];
+        const p1 = state.part1Data || {};
+
+        const greetings = [
+            { key: 'g0', text: p1.examiner_greeting, interactive: false },
+            { key: 'g1', text: p1.examiner_name_follow_up, interactive: true },
+            { key: 'g2', text: p1.examiner_id_check, interactive: true },
+            { key: 'g3', text: p1.examiner_thank_you, interactive: false },
+            { key: 'g4', text: p1.examiner_test_explanation, interactive: false },
+            { key: 'g5', text: p1.examiner_begin, interactive: false },
+        ];
+        greetings.forEach(g => {
+            if (!g.text) return;
+            state.questionQueue.push({ id: g.key, part: 1, type: 'greeting', text: g.text, expectsResponse: g.interactive });
+        });
+
+        ((p1.warmup_section || {}).questions || []).forEach((q, i) => {
+            const text = typeof q === 'string' ? q : (q.question || q.text);
+            if (text) state.questionQueue.push({ id: 'w' + i, part: 1, type: 'warmup', text, expectsResponse: true });
+        });
+
+        ((p1.topic_section || {}).questions || []).forEach((q, i) => {
+            const text = typeof q === 'string' ? q : (q.question || q.text);
+            if (text) state.questionQueue.push({ id: 't' + i, part: 1, type: 'topic', text, expectsResponse: true });
+        });
+
+        const p2 = state.part2Data || {};
+        const card = p2.topic_card || {};
+        if (card.title) {
+            state.questionQueue.push({ id: 'p2cue', part: 2, type: 'cue_card', text: card.title, cueData: card, expectsResponse: true });
+        }
+        if (p2.examiner_follow_up_question) {
+            state.questionQueue.push({ id: 'p2follow', part: 2, type: 'follow_up', text: p2.examiner_follow_up_question, expectsResponse: true });
+        }
+
+        ((state.part3Data || {}).questions || []).forEach((q, i) => {
+            const text = typeof q === 'string' ? q : (q.question || q.text);
+            if (text) state.questionQueue.push({ id: 'p3_' + i, part: 3, type: 'discussion', text, expectsResponse: true });
+        });
+
+        state.totalQuestions = state.questionQueue.length;
+        updateProgress();
+    }
+
+    async function nextQuestion() {
+        if (state.timeLeft <= 0 && !state.graceUsed) { endTest('Time limit reached'); return; }
+        if (state.graceUsed && state.timeLeft <= 0) { endTest('Time limit reached'); return; }
+
+        if (state.questionQueue.length === 0) { endTest('All questions completed!'); return; }
+
+        stopSilenceDetection();
+        stopSilenceMonitor();
+        state._autoAdvanceTriggered = false;
+        state._questionStartTime = Date.now();
+        _hasTypedOnce = false;
+        _hasSpeechStarted = false;
+
+        state.currentQuestion = state.questionQueue.shift();
+        state.currentPart = state.currentQuestion.part;
+        state.currentQNumber++;
+        updateProgress();
+        updatePart(state.currentPart);
+        questionText.textContent = state.currentQuestion.text;
+        answerInput.value = '';
+        updateWordCounter();
+
+        if (state.currentQuestion.type === 'cue_card') {
+            showCueCardOverlay(state.currentQuestion.cueData || {});
+            await speakText(state.currentQuestion.text, state.currentQuestion.id, 'empathetic');
+            await prepCountdown(60);
+            overlayHint.style.display = 'block';
+            overlayHint.textContent = '🗣️ Speak now — 2 minutes';
+            setStatus('🎙️ Speak now — 2 minutes (or click Skip)', 'live');
+            await recordAnswer(120, true);
+            return;
+        }
+
+        showOverlay(qCategory.textContent, state.currentQuestion.text);
+        await speakText(state.currentQuestion.text, state.currentQuestion.id, 'thoughtful');
+        stopCaptions(true);
+
+        if (state.currentQuestion.expectsResponse) {
+            state.isAwaitingResponse = true;
+            const dur = PART_DURATIONS[state.currentPart] || 30;
+            await recordAnswer(dur, false);
+        } else {
+            hideOverlay();
+            await new Promise(r => setTimeout(r, 400));
+            nextQuestion();
+        }
+    }
+
+    function prepCountdown(seconds) {
+        return new Promise(resolve => {
+            overlayTimer.style.display = 'block';
+            overlayTimer.classList.remove('warning');
+            overlayHint.style.display = 'none';
+            let remaining = seconds;
+            overlayTimer.textContent = remaining;
+            setStatus(`⏳ Preparation time — ${remaining}s`, 'warn');
+
+            const iv = setInterval(() => {
+                if (state.isPaused) return;
+                remaining--;
+                overlayTimer.textContent = remaining;
+                setStatus(`⏳ Preparation time — ${remaining}s`, 'warn');
+                if (remaining <= 10) overlayTimer.classList.add('warning');
+                if (remaining <= 0) {
+                    clearInterval(iv);
+                    overlayTimer.style.display = 'none';
+                    resolve();
+                }
+            }, 1000);
+        });
+    }
+
+    let mediaRecorder = null;
+    let audioChunks = [];
+    let recognition = null;
+    let finalTranscript = '';
+    let interimTranscript = '';
+    let stopRecordingEarly = null;
+    let meterInterval = null;
+
+    async function recordAnswer(durationSec, isCueCard) {
+        setAvatarState('listening');
+        liveTranscript.classList.add('show');
+        liveTranscriptText.textContent = 'Listening…';
+        micBarsWrap.classList.add('show');
+        setStatus('🎙️ Listening — speak now', 'live');
+        answerInput.placeholder = 'Your answer will appear here…';
+        manualSubmit.disabled = false;
+
+        if (skipRecBtn) skipRecBtn.style.display = 'inline-flex';
+
+        finalTranscript = '';
+        interimTranscript = '';
+        audioChunks = [];
+
+        try {
+            const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (SR && !state._micFailed) {
+                recognition = new SR();
+                recognition.lang = 'en-US';
+                recognition.continuous = true;
+                recognition.interimResults = true;
+                recognition.onresult = (event) => {
+                    interimTranscript = '';
+                    for (let i = event.resultIndex; i < event.results.length; i++) {
+                        const t = event.results[i][0].transcript;
+                        if (event.results[i].isFinal) finalTranscript += t + ' ';
+                        else interimTranscript += t;
+                    }
+                    const shown = (finalTranscript + interimTranscript).trim();
+                    liveTranscriptText.textContent = shown || 'Listening…';
+                    answerInput.value = shown;
+                    updateWordCounter();
+                };
+                recognition.onerror = () => {};
+                recognition.onend = () => {};
+                recognition.start();
+            }
+        } catch (e) {}
+
+        let mediaStream = null;
+        if (!state._micFailed) {
+            try {
+                mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(mediaStream);
+                mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+                mediaRecorder.start();
+
+                const ac = new (window.AudioContext || window.webkitAudioContext)();
+                const src = ac.createMediaStreamSource(mediaStream);
+                const an = ac.createAnalyser();
+                an.fftSize = 64;
+                src.connect(an);
+                const data = new Uint8Array(an.frequencyBinCount);
+                meterInterval = setInterval(() => {
+                    an.getByteFrequencyData(data);
+                    let sum = 0;
+                    for (const v of data) sum += v;
+                    const avg = sum / data.length / 255;
+                    for (let i = 0; i < micBars.length; i++) {
+                        const h = Math.max(3, Math.min(16, 3 + avg * 26 * (1 - Math.abs(i - 2) * 0.22)));
+                        micBars[i].style.height = h + 'px';
+                    }
+                }, 80);
+
+                if (!isCueCard) {
+                    startSilenceMonitor(mediaStream, state.currentPart);
+                }
+            } catch (e) {
+                console.warn('Mic unavailable:', e);
+                setStatus('⛔ Mic unavailable — TYPE your answer below', 'err');
+                enableTypingMode();
+            }
+        }
+
+        if (!isCueCard) {
+            startTypingMonitor();
+        }
+
+        await new Promise(resolve => {
+            const _recStart = Date.now();
+            const _recDuration = durationSec * 1000;
+
+            const iv = setInterval(() => {
+                if (state.isPaused) return;
+                if (state._autoAdvanceTriggered) {
+                    clearInterval(iv);
+                    stopRecordingEarly = null;
+                    resolve();
+                    return;
+                }
+
+                const elapsed = Date.now() - _recStart;
+                const remaining = Math.max(0, Math.ceil((_recDuration - elapsed) / 1000));
+
+                setStatus(`🎙️ Recording — ${remaining}s remaining (or click Skip)`, 'live');
+                if (overlayHint && overlayHint.style.display !== 'none') {
+                    overlayHint.textContent = `🗣️ Speak now — ${remaining}s remaining`;
+                }
+
+                if (elapsed >= _recDuration) {
+                    clearInterval(iv);
+                    stopRecordingEarly = null;
+                    resolve();
+                }
+            }, 250);
+
+            stopRecordingEarly = () => {
+                clearInterval(iv);
+                stopRecordingEarly = null;
+                resolve();
+            };
+        });
+
+        if (skipRecBtn) skipRecBtn.style.display = 'none';
+
+        stopSilenceMonitor();
+        stopSilenceDetection();
+        try { if (recognition) recognition.stop(); } catch (e) {}
+        try { if (mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop(); } catch (e) {}
+        try { if (mediaStream) mediaStream.getTracks().forEach(t => t.stop()); } catch (e) {}
+        if (meterInterval) { clearInterval(meterInterval); meterInterval = null; }
+
+        liveTranscript.classList.remove('show');
+        micBarsWrap.classList.remove('show');
+        for (let i = 0; i < micBars.length; i++) micBars[i].style.height = '4px';
+
+        if (state._autoAdvanceTriggered) return;
+
+        let transcript = (finalTranscript + ' ' + interimTranscript).trim();
+        if (!transcript) transcript = (answerInput.value || '').trim();
+
+        if (!transcript && audioChunks.length > 0) {
+            const blob = new Blob(audioChunks, { type: 'audio/webm' });
+            transcript = await transcribeFallback(blob);
+        }
+
+        if (!transcript) {
+            if (state._micFailed) {
+                setStatus('⌨️ Type your answer (60s window) or click Skip', 'warn');
+                const typedOk = await new Promise(resolve => {
+                    const startT = Date.now();
+                    const check = setInterval(() => {
+                        if (!state.isAwaitingResponse) { clearInterval(check); resolve(true); return; }
+                        if (Date.now() - startT >= 60000) { clearInterval(check); resolve(false); }
+                    }, 500);
+                });
+                if (typedOk) return;
+                setStatus('⏭️ No answer typed — moving to next question', 'warn');
+                state.isAwaitingResponse = false;
+                hideOverlay();
+                await new Promise(r => setTimeout(r, 500));
+                nextQuestion();
+                return;
+            }
+            setStatus('⏭️ No speech detected — moving to next question', 'warn');
+            state.isAwaitingResponse = false;
+            hideOverlay();
+            await new Promise(r => setTimeout(r, 500));
+            nextQuestion();
+            return;
+        }
+
+        commitAnswer(transcript);
+    }
+
+    async function transcribeFallback(blob) {
+        try {
+            const fd = new FormData();
+            fd.append('audio', blob, 'rec.webm');
+            const data = await safeFetch('/api/transcribe', {
+                method: 'POST',
+                headers: { 'X-CSRF-Token': getCsrfToken() },
+                body: fd
+            });
+            return (data && data.transcript) || '';
+        } catch (e) {
+            console.warn('Transcribe fallback failed:', e.message || e);
+            return '';
+        }
+    }
+
+    function commitAnswer(transcript) {
+        stopSilenceDetection();
+        stopSilenceMonitor();
+
+        state.responses.push({
+            part: state.currentPart,
+            question: state.currentQuestion.text,
+            answer: transcript
+        });
+        state.answeredCount++;
+        updateProgress();
+        saveLocalDraft();
+        answerInput.value = '';
+        updateWordCounter();
+
+        const wc = transcript.split(/\s+/).filter(Boolean).length;
+        setStatus(`✓ Answer recorded (${wc} words)`, 'live');
+        state.isAwaitingResponse = false;
+
+        setAvatarState('thinking');
+        hideOverlay();
+        setTimeout(nextQuestion, 700);
+    }
+
+    function sendManualAnswer() {
+        if (stopRecordingEarly) {
+            const txt = answerInput.value.trim();
+            if (txt) { finalTranscript = txt; interimTranscript = ''; }
+            stopRecordingEarly();
+            return;
+        }
+        if (!state.isAwaitingResponse) return;
+        const text = answerInput.value.trim();
+        if (!text) {
+            setStatus('⚠️ Type something first', 'warn');
+            if (answerInput) answerInput.focus();
+            return;
+        }
+        commitAnswer(text);
+    }
+
+    function skipRecording() {
+        if (!stopRecordingEarly) return;
+        console.log('⏭️ User clicked Skip');
+        setStatus('⏭️ Skipped — moving to next question', 'warn');
+        state._autoAdvanceTriggered = true;
+        stopRecordingEarly();
+    }
+    window.skipRecording = skipRecording;
+
+    function toggleManualRecording() {
+        if (state._micFailed) {
+            setStatus('⛔ Mic unavailable — please type', 'err');
+            if (answerInput) answerInput.focus();
+            return;
+        }
+        if (stopRecordingEarly) {
+            const txt = answerInput.value.trim();
+            if (txt) { finalTranscript = txt; interimTranscript = ''; }
+            stopRecordingEarly();
+            recordBtn.classList.remove('recording');
+            recordBtn.textContent = '🎙️';
+            return;
+        }
+        if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+            setStatus('⛔ Speech recognition not supported — type your answer', 'err');
+            enableTypingMode();
+            return;
+        }
+        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const rec = new SR();
+        rec.lang = 'en-US';
+        rec.interimResults = true;
+        rec.continuous = false;
+        let acc = answerInput.value ? answerInput.value + ' ' : '';
+        rec.onstart = () => {
+            recordBtn.classList.add('recording');
+            recordBtn.textContent = '⏹️';
+            setStatus('🎙️ Dictating…', 'live');
+        };
+        rec.onresult = (e) => {
+            let interim = '';
+            for (let i = e.resultIndex; i < e.results.length; i++) {
+                if (e.results[i].isFinal) acc += e.results[i][0].transcript + ' ';
+                else interim += e.results[i][0].transcript;
+            }
+            answerInput.value = acc + interim;
+            updateWordCounter();
+            recordTypingActivity();
+        };
+        rec.onend = () => {
+            recordBtn.classList.remove('recording');
+            recordBtn.textContent = '🎙️';
+            setStatus('✓ Dictation finished', 'live');
+        };
+        rec.onerror = () => {
+            recordBtn.classList.remove('recording');
+            recordBtn.textContent = '🎙️';
+            setStatus('⛔ Mic error — type your answer', 'err');
+            enableTypingMode();
+        };
+        try { rec.start(); } catch (e) { enableTypingMode(); }
+    }
+
+    function repeatQuestion() {
+        if (!state.currentQuestion) return;
+        if (state.isAwaitingResponse && stopRecordingEarly) {
+            stopRecordingEarly();
+            setTimeout(() => speakText(state.currentQuestion.text, state.currentQuestion.id + '_r', 'thoughtful'), 400);
+            return;
+        }
+        speakText(state.currentQuestion.text, state.currentQuestion.id + '_r', 'thoughtful');
+    }
+
+    function enableTypingMode() {
+        if (state._micFailed) return;
+        state._micFailed = true;
+
+        if (typingModeBanner) typingModeBanner.classList.add('show');
+        if (answerArea) answerArea.classList.add('typing-mode');
+        if (recordBtn) {
+            recordBtn.disabled = true;
+            recordBtn.title = 'Mic unavailable';
+            recordBtn.style.opacity = '0.35';
+        }
+        if (answerInput) {
+            answerInput.focus();
+            answerInput.placeholder = '👉 Type your answer here and click ✅ Send';
+        }
+    }
+
+    answerInput.addEventListener('input', () => {
+        updateWordCounter();
+        if (state.isAwaitingResponse && state.currentPart !== 2) {
+            recordTypingActivity();
+        }
+    });
+
+    // ═══════════════════════════════════════════════════════════
+    // SUBMIT — /api/speaking/pooled-submit
+    // ═══════════════════════════════════════════════════════════
+    async function endTest(reason) {
+        if (state.isSubmitting || state.hasSubmitted) return;
+        state.isSubmitting = true;
+
+        if (state.timerInterval) { clearInterval(state.timerInterval); state.timerInterval = null; }
+        stopSilenceDetection();
+        stopSilenceMonitor();
+        setAvatarState('ready');
+        setStatus('⏰ ' + reason + ' Submitting…', 'warn');
+        hideOverlay();
+        if (skipRecBtn) skipRecBtn.style.display = 'none';
+
+        const clean = state.responses.filter(r => {
+            const a = (r.answer || '').trim();
+            if (!a) return false;
+            const low = a.toLowerCase();
+            if (['(no response)', '(no answer)', 'no response', 'n/a'].includes(low)) return false;
+            return true;
+        }).map(r => ({ part: r.part, question: r.question, response: r.answer }));
+
+        const submitUrl = '/api/speaking/pooled-submit';
+
+        if (clean.length === 0) {
+            if (isFullTest) {
+                try {
+                    await safeFetch(submitUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
+                        body: JSON.stringify({
+                            responses: [], is_full_test: true,
+                            session_id: state.sessionId, _pool_id: state.poolId,
+                        })
+                    });
+                } catch (e) {}
+                state.hasSubmitted = true;
+                showStatusModalForFullTest('Speaking phase ended. Returning to full test…');
+                setTimeout(() => { window.location.href = '/ielts-full-test?completed=speaking'; }, 1500);
+                return;
+            }
+            state.hasSubmitted = true;
+            state.isSubmitting = false;
+            clearLocalDraft();
+            showResults(0.0, 'BAND 0 — No responses provided.');
+            return;
+        }
+
+        try {
+            const data = await safeFetch(submitUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
+                body: JSON.stringify({
+                    responses: clean,
+                    is_full_test: isFullTest,
+                    session_id: state.sessionId,
+                    _pool_id: state.poolId,
+                })
+            });
+            state.hasSubmitted = true;
+            clearLocalDraft();
+
+            const shouldRedirect = isFullTest || data.is_full_test === true ||
+                (typeof data.redirect === 'string' && data.redirect.length > 0);
+
+            if (shouldRedirect) {
+                const redirectUrl = (typeof data.redirect === 'string' && data.redirect)
+                    ? data.redirect : '/ielts-full-test?completed=speaking';
+                showStatusModalForFullTest('✅ Speaking complete! Returning to full test…');
+                setTimeout(() => { window.location.href = redirectUrl; }, 900);
+                return;
+            }
+
+            if (data && data.success) {
+                const band = data.user_overall_band ?? data.band_score ?? 0;
+                showResults(band, data.feedback);
+            } else {
+                throw new Error((data && data.error) || 'Submission failed');
+            }
+        } catch (e) {
+            // ✅ FIX 5: allow retry on network/server errors
+            if (e.kind === 'subscription') {
+                state.hasSubmitted = true;
+                showRedirectOverlay(
+                    '🔒 Free limit reached. Opening subscription page…',
+                    e.redirectTo || '/subscription?module=ielts', 2
+                );
+            } else if (e.kind === 'network') {
+                showBanner(
+                    '⚠️ Network error — your answers are still saved. Click Retry to submit again.',
+                    'err',
+                    [{ label: '🔄 Retry', className: 'btn-retry',
+                       onClick: () => { hideBanner(); state.isSubmitting = false; endTest('Retry'); } }]
+                );
+                setStatus('❌ Network error — click Retry', 'err');
+                state.isSubmitting = false;
+                return;
+            } else {
+                showResults(null,
+                    'Could not submit: ' + (e.message || 'unknown error') +
+                    '\n\nYour answers are still saved. Click Retry below.'
+                );
+                state.isSubmitting = false;
+                return;
+            }
+        } finally {
+            if (state.hasSubmitted) state.isSubmitting = false;
+        }
+    }
+
+    function showStatusModalForFullTest(message) {
+        let modal = document.getElementById('__ft_modal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = '__ft_modal';
+            modal.style.cssText = `
+                position: fixed; inset: 0; z-index: 9999;
+                background: rgba(5,8,14,0.94); backdrop-filter: blur(14px);
+                display: flex; align-items: center; justify-content: center;
+                flex-direction: column; gap: 22px; padding: 24px; text-align: center;
+            `;
+            modal.innerHTML = `
+                <div style="font-size: 68px; animation: pulse-dot 1.5s infinite;">🎤</div>
+                <h2 style="font-size: 22px; font-weight: 800; color: #fff;">${escapeHtml(message)}</h2>
+                <div style="font-size: 44px; font-weight: 900; color: #6c63ff; line-height: 1;"
+                     id="__ft_modal_count">1</div>
+                <p style="font-size: 13px; color: #b0b0b0;">Returning to Full Test dashboard…</p>
+            `;
+            document.body.appendChild(modal);
+            let n = 1;
+            setInterval(() => {
+                n--;
+                const el = document.getElementById('__ft_modal_count');
+                if (el) el.textContent = Math.max(0, n);
+            }, 1000);
+        }
+    }
+
+    function showResults(band, feedback) {
+        resultsScreen.classList.add('show');
+        if (band === null || band === undefined || isNaN(band)) {
+            bandScoreEl.textContent = '—';
+        } else {
+            bandScoreEl.textContent = Number(band).toFixed(1);
+        }
+        answeredCountEl.textContent = state.answeredCount;
+        const totalWords = state.responses.reduce((sum, r) =>
+            sum + (r.answer || '').split(/\s+/).filter(Boolean).length, 0);
+        wordsCountEl.textContent = totalWords;
+        feedbackTextEl.innerHTML = '<p>' + String(feedback || '').replace(/\|/g, '<br>') + '</p>';
+    }
+
+    function exitTest() {
+        let msg = 'Are you sure you want to exit the test? Your progress will be saved.';
+        if (isFullTest) {
+            msg = 'Leave the Speaking phase and return to the Full Test dashboard?\n\n' +
+                  'You can resume this speaking test later from the full test page.';
+        }
+        if (confirm(msg)) {
+            if (state.timerInterval) clearInterval(state.timerInterval);
+            stopSilenceDetection();
+            stopSilenceMonitor();
+            saveLocalDraft();
+            if (isFullTest) window.location.href = '/ielts-full-test';
+            else window.location.href = '/dashboard';
+        }
+    }
+
+    async function initTest() {
+        const forceNew = $('force-new-check').checked;
+        const autoGen = $('auto-gen-check').checked;
+        const preserve = $('preserve-essay-check').checked;
+
+        setStatus('⚙️ Generating your test…', 'warn');
+        setPrepStatus('⚙️ Preparing your test…');
+        hideBanner();
+
+        try {
+            const payload = {
+                difficulty: 'medium',
+                topic: null,
+                force_new: forceNew,
+                auto_generate: autoGen,
+                preserve_user_essay: preserve,
+                from_full_test: isFullTest,
+            };
+
+            if (RETAKE) payload.retake = true;
+            if (FORCE_NEW_URL) payload.force_new = true;
+            if (RESUME_ID && !RETAKE) payload.resume = RESUME_ID;
+
+            const data = await poolFetchWithRetry(
+                '/api/speaking/pooled-generate',
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
+                    body: JSON.stringify(payload)
+                },
+                (msg) => { setPrepStatus(msg); setStatus(msg, 'warn'); }
+            );
+
+            hidePrepStatus();
+
+            if (!data || data.error || data.success === false) {
+                throw new Error((data && data.error) || 'Failed to generate test');
+            }
+
+            state.poolId = data._pool_id || null;
+            state.source = data.source || null;
+            updateSourcePill();
+
+            const testData = data.test_data || data;
+            state.part1Data = data.part1 || testData.part1;
+            state.part2Data = data.part2 || testData.part2;
+            state.part3Data = data.part3 || testData.part3;
+            state.sessionId = data.session_id || data.test_id || null;
+
+            if (!state.part1Data || !state.part2Data) {
+                throw new Error('Test data incomplete — missing Part 1 or Part 2');
+            }
+
+            if (data.resumed && Array.isArray(data.answers_so_far)) {
+                state.responses = data.answers_so_far;
+                state.answeredCount = state.responses.length;
+            }
+
+            buildQueues();
+
+            if (data.resumed && state.responses.length) {
+                const answeredTexts = state.responses.map(r => (r.question || '').trim());
+                state.questionQueue = state.questionQueue.filter(q => !answeredTexts.includes(q.text.trim()));
+                state.totalQuestions = state.questionQueue.length + state.answeredCount;
+                updateProgress();
+            }
+
+            setStatus('✅ Ready — examiner will begin shortly', 'live');
+            startTimer();
+            await nextQuestion();
+
+        } catch (e) {
+            hidePrepStatus();
+            if (e.kind === 'subscription') {
+                showRedirectOverlay(
+                    '🔒 Free limit reached. Opening subscription page…',
+                    e.redirectTo || '/subscription?module=ielts', 2
+                );
+                setStatus('🔒 Free limit reached — opening subscription…', 'err');
+            } else if (e.kind === 'network') {
+                showBanner('Network error — check your connection', 'err', [
+                    { label: 'Retry', className: 'btn-retry', onClick: () => initTest() }
+                ]);
+                setStatus('❌ Network error', 'err');
+            } else {
+                const msg = e.message || 'unknown';
+                showBanner('Failed to load test: ' + msg, 'err', [
+                    { label: 'Retry', className: 'btn-retry', onClick: () => initTest() },
+                    { label: 'Dashboard', className: 'btn-dismiss', onClick: () => location.href = '/dashboard' }
+                ]);
+                setStatus('❌ ' + msg, 'err');
+            }
+        }
+    }
+
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState !== 'visible') return;
+        if (!state._timerStartedAt) return;
+        if (state.hasSubmitted || state.isSubmitting) return;
+        if (state.isPaused) return;
+
+        updateTimer();
+        const now = Date.now();
+        const pausedOffset = state._totalPausedMs || 0;
+        const baseElapsed = Math.floor((now - state._timerStartedAt - pausedOffset) / 1000);
+
+        if (state.graceUsed) {
+            const graceElapsed = state._graceStartedAt
+                ? Math.floor((now - state._graceStartedAt - pausedOffset) / 1000) : 0;
+            if (graceElapsed >= GRACE_SECONDS) {
+                if (state.timerInterval) clearInterval(state.timerInterval);
+                state.timerInterval = null;
+                setStatus('⏰ Time is up — submitting now…', 'err');
+                endTest('Time limit reached');
+            }
+        } else if (baseElapsed >= SPEAKING_BASE_SECONDS) {
+            if (isStudentMidAnswer()) {
+                state.graceUsed = true;
+                state._graceStartedAt = Date.now();
+                updateTimer();
+                setStatus('⏳ +5 minutes grace added — please finish', 'warn');
+                showBanner(
+                    '⏳ Grace extension: +5 minutes added because you were mid-answer.',
+                    'success',
+                    [{ label: 'OK', className: 'btn-dismiss', onClick: hideBanner }]
+                );
+            } else {
+                if (state.timerInterval) clearInterval(state.timerInterval);
+                state.timerInterval = null;
+                setStatus('⏰ Time is up — submitting now…', 'err');
+                endTest('Time limit reached');
+            }
+        }
+    });
+
+    // ═══════════════════════════════════════════════════════════
+    // 🆕 KEYBOARD SHORTCUTS
+    // ═══════════════════════════════════════════════════════════
+    document.addEventListener('keydown', (e) => {
+        // Ignore if typing in textarea
+        const inText = e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT';
+
+        if (e.key === 'Escape') {
+            if (!inText && stopRecordingEarly) {
+                e.preventDefault();
+                skipRecording();
+            }
+            return;
+        }
+        if (inText) {
+            // Enter in textarea handled separately
+            return;
+        }
+        if (e.key === ' ' || e.code === 'Space') {
+            e.preventDefault();
+            toggleManualRecording();
+        } else if (e.key.toLowerCase() === 'r') {
+            e.preventDefault();
+            repeatQuestion();
+        } else if (e.key.toLowerCase() === 'p') {
+            e.preventDefault();
+            if (state.isPaused) resumeTest(); else pauseTest();
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+        applyFullTestMode();
+        applyRetakeMode();
+
+        manualSubmit.addEventListener('click', sendManualAnswer);
+        recordBtn.addEventListener('click', toggleManualRecording);
+        repeatBtn.addEventListener('click', repeatQuestion);
+        exitBtn.addEventListener('click', exitTest);
+        headerExit.addEventListener('click', (e) => { e.preventDefault(); exitTest(); });
+
+        answerInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendManualAnswer();
+            }
+        });
+
+        let pointerDown = false;
+        document.addEventListener('pointerdown', () => pointerDown = true);
+        document.addEventListener('pointerup', () => pointerDown = false);
+        document.addEventListener('mousemove', (e) => {
+            if (pointerDown || !window._avatarControl) return;
+            const x = (e.clientX / window.innerWidth) * 2 - 1;
+            const y = -(e.clientY / window.innerHeight) * 2 + 1;
+            window._avatarControl.lookAt(x * 0.4, y * 0.4);
+        });
+
+        if (window.speechSynthesis) window.speechSynthesis.getVoices();
+
+        const startOverlay = document.getElementById('start-overlay');
+        const btnStart = document.getElementById('btn-start-test');
+
+        if (RETAKE) {
+            const h2 = startOverlay.querySelector('h2');
+            const p = startOverlay.querySelector('p');
+            if (h2) h2.textContent = 'Retake Ready';
+            if (p) p.innerHTML = 'You are retaking your previous speaking test. Same questions, fresh 15-minute timer.';
+        }
+
+        // 🆕 Check for existing draft
+        const draft = loadLocalDraft();
+        if (draft && draft.responses && draft.responses.length > 0) {
+            console.log('💾 Local draft found:', draft.responses.length, 'responses');
+        }
+
+        btnStart.addEventListener('click', async () => {
+            if (window._avatarHelpers) window._avatarHelpers.resumeAudioCtx();
+
+            if (window.speechSynthesis) {
+                window.speechSynthesis.cancel();
+                const warm = new SpeechSynthesisUtterance('');
+                warm.volume = 0;
+                speechSynthesis.speak(warm);
+            }
+
+            try {
+                const unlockAudio = new Audio(
+                    'data:audio/mpeg;base64,//uQxAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAACcQCA'
+                );
+                unlockAudio.volume = 0;
+                await unlockAudio.play();
+                unlockAudio.pause();
+            } catch (e) {}
+
+            startOverlay.classList.add('hidden');
+            setTimeout(() => { startOverlay.style.display = 'none'; }, 400);
+
+            initTest();
+        });
+
+        updateWordCounter();
+
+        console.log('✅ IELTS Speaking v7 ready');
+        console.log('   Silence: 8s (P1) / 10s (P3)');
+        console.log('   Typing idle: 15s (P1) / 18s (P3)');
+        console.log('   Part 2: full 2min');
+        console.log('   Pool-native: pooled-generate + pooled-submit');
+        console.log('   Shortcuts: Space/Enter/Esc/R/P');
+        console.log('   Debug:', DEBUG);
+        console.log('   Full-test:', isFullTest, '| Retake:', RETAKE);
+    });
+})();
+</script>
+</body>
+</html>
