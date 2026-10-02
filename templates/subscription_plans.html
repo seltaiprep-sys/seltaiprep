@@ -6,29 +6,321 @@
     <title>Subscription Plans</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Arial, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
-        .container { max-width: 1200px; margin: 0 auto; background: white; border-radius: 20px; padding: 40px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
-        .header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; margin-bottom: 30px; }
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 30px;
+        }
         .header h1 { color: #333; }
-        .header .back-link { color: #667eea; text-decoration: none; font-weight: 600; }
-        .plans-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 25px; }
-        .plan-card { background: #f8f9fc; border-radius: 16px; padding: 25px; border: 2px solid transparent; transition: all 0.3s; text-align: center; display: flex; flex-direction: column; justify-content: space-between; }
-        .plan-card:hover { border-color: #667eea; transform: translateY(-5px); box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
-        .plan-card.best { border-color: #ffc107; background: #fff9e6; }
-        .plan-card .plan-name { font-size: 20px; font-weight: bold; color: #333; margin-bottom: 8px; }
-        .plan-card .plan-price { font-size: 28px; font-weight: 800; color: #667eea; margin: 10px 0; }
-        .plan-card .plan-price small { font-size: 14px; font-weight: normal; color: #666; }
-        .plan-card .plan-features { list-style: none; padding: 0; margin: 15px 0; text-align: left; flex-grow: 1; }
-        .plan-card .plan-features li { padding: 6px 0; border-bottom: 1px solid #eee; font-size: 14px; color: #555; }
+        .header .back-link {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .plans-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+        }
+        .plan-card {
+            background: #f8f9fc;
+            border-radius: 16px;
+            padding: 25px;
+            border: 2px solid transparent;
+            transition: all 0.3s;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .plan-card:hover {
+            border-color: #667eea;
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+        }
+        .plan-card.best {
+            border-color: #ffc107;
+            background: #fff9e6;
+        }
+        .plan-card .plan-name {
+            font-size: 20px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 8px;
+        }
+        .plan-card .plan-price {
+            font-size: 28px;
+            font-weight: 800;
+            color: #667eea;
+            margin: 10px 0;
+        }
+        .plan-card .plan-price small {
+            font-size: 14px;
+            font-weight: normal;
+            color: #666;
+        }
+        .plan-card .plan-features {
+            list-style: none;
+            padding: 0;
+            margin: 15px 0;
+            text-align: left;
+            flex-grow: 1;
+        }
+        .plan-card .plan-features li {
+            padding: 6px 0;
+            border-bottom: 1px solid #eee;
+            font-size: 14px;
+            color: #555;
+        }
         .plan-card .plan-features li:last-child { border-bottom: none; }
-        .plan-card .btn-subscribe { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; border-radius: 30px; font-weight: 600; cursor: pointer; transition: transform 0.2s; width: 100%; text-decoration: none; display: inline-block; text-align: center; }
-        .plan-card .btn-subscribe:hover { transform: scale(1.02); }
-        .plan-card .btn-subscribe:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-        .module-badge { background: #667eea; color: white; padding: 4px 16px; border-radius: 20px; font-size: 14px; font-weight: 600; display: inline-block; margin-bottom: 20px; }
-        .subscription-status { background: #e8f0fe; padding: 15px 20px; border-radius: 12px; margin-bottom: 30px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; }
-        .subscription-status .active { color: #28a745; font-weight: bold; }
-        .subscription-status .expired { color: #dc3545; font-weight: bold; }
-        @media (max-width: 768px) { .container { padding: 20px; } .plans-grid { grid-template-columns: 1fr; } }
+
+        /* 🆕 Coupon section */
+        .coupon-box {
+            background: #f0f4ff;
+            border: 2px dashed #667eea;
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-bottom: 24px;
+        }
+        .coupon-box label {
+            display: block;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        .coupon-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .coupon-row input {
+            flex: 1;
+            min-width: 200px;
+            padding: 11px 14px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: 'Courier New', monospace;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            font-weight: 600;
+            background: white;
+        }
+        .coupon-row input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+        }
+        .btn-coupon {
+            padding: 11px 24px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: 0.2s;
+            font-family: inherit;
+        }
+        .btn-coupon:hover:not(:disabled) {
+            background: #5568d3;
+            transform: translateY(-1px);
+        }
+        .btn-coupon:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .btn-coupon-clear {
+            background: #f1f3f5;
+            color: #666;
+            border: 1px solid #ddd;
+        }
+        .btn-coupon-clear:hover:not(:disabled) {
+            background: #e5e8eb;
+            color: #333;
+        }
+        .coupon-msg {
+            margin-top: 10px;
+            font-size: 13px;
+            font-weight: 500;
+            display: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+        }
+        .coupon-msg.success {
+            background: #d4edda;
+            color: #155724;
+            border-left: 3px solid #28a745;
+            display: block;
+        }
+        .coupon-msg.error {
+            background: #f8d7da;
+            color: #721c24;
+            border-left: 3px solid #dc3545;
+            display: block;
+        }
+        .coupon-msg.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border-left: 3px solid #17a2b8;
+            display: block;
+        }
+
+        /* Discount preview */
+        .discount-preview {
+            margin-top: 10px;
+            padding: 12px 16px;
+            background: #dcfce7;
+            border-radius: 8px;
+            font-size: 13.5px;
+            display: none;
+            line-height: 1.7;
+        }
+        .discount-preview.visible { display: block; }
+        .discount-preview .row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 2px;
+        }
+        .discount-preview .row.original { color: #64748b; }
+        .discount-preview .row.discount { color: #16a34a; font-weight: 600; }
+        .discount-preview .row.final {
+            color: #0f172a; font-weight: 800; font-size: 15px;
+            border-top: 1px dashed #16a34a;
+            padding-top: 4px; margin-top: 4px;
+        }
+
+        /* ── Payment buttons ── */
+        .payment-options {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        .btn-payment {
+            width: 100%;
+            padding: 11px 20px;
+            border: none;
+            border-radius: 30px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-family: inherit;
+            letter-spacing: 0.2px;
+        }
+        .btn-payment:hover:not(:disabled) {
+            transform: scale(1.02);
+            box-shadow: 0 4px 14px rgba(0,0,0,0.15);
+        }
+        .btn-payment:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-esewa {
+            background: linear-gradient(135deg, #60BB46 0%, #4a9c36 100%);
+            color: white;
+        }
+        .btn-esewa:hover:not(:disabled) {
+            box-shadow: 0 4px 14px rgba(96, 187, 70, 0.4);
+        }
+
+        .btn-manual {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .btn-manual:hover:not(:disabled) {
+            box-shadow: 0 4px 14px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-active {
+            background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%);
+            color: white;
+            cursor: default;
+        }
+
+        .module-badge {
+            background: #667eea;
+            color: white;
+            padding: 4px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            display: inline-block;
+            margin-bottom: 20px;
+        }
+        .subscription-status {
+            background: #e8f0fe;
+            padding: 15px 20px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+        .subscription-status .active {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .subscription-status .expired {
+            color: #dc3545;
+            font-weight: bold;
+        }
+
+        /* Info note */
+        .info-note {
+            background: #f0f4ff;
+            border-left: 4px solid #667eea;
+            padding: 12px 18px;
+            border-radius: 8px;
+            margin-top: 24px;
+            font-size: 13px;
+            color: #444;
+            line-height: 1.6;
+        }
+        .info-note strong { color: #667eea; }
+
+        .pay-note {
+            font-size: 11px;
+            color: #888;
+            margin-top: 6px;
+            text-align: center;
+            line-height: 1.4;
+        }
+
+        @media (max-width: 768px) {
+            .container { padding: 20px; }
+            .plans-grid { grid-template-columns: 1fr; }
+            .header { flex-direction: column; gap: 10px; align-items: stretch; }
+        }
     </style>
 </head>
 <body>
@@ -52,31 +344,371 @@
             {% endif %}
         </div>
 
+        <!-- 🆕 COUPON BOX -->
+        <div class="coupon-box">
+            <label>
+                <i class="fas fa-ticket-alt" style="color:#667eea;"></i>
+                Have a coupon code?
+            </label>
+            <div class="coupon-row">
+                <input type="text" id="coupon-input" placeholder="Enter code (e.g. WELCOME20)" maxlength="50" autocomplete="off">
+                <button type="button" class="btn-coupon" id="apply-coupon-btn">Apply</button>
+                <button type="button" class="btn-coupon btn-coupon-clear" id="clear-coupon-btn" style="display:none;">Clear</button>
+            </div>
+            <div id="coupon-msg" class="coupon-msg"></div>
+            <div id="discount-preview" class="discount-preview"></div>
+        </div>
+
+        <!-- Plans Grid -->
         <div class="plans-grid">
             {% for key, plan in plans.items() %}
-            <div class="plan-card {% if key == '30days' %}best{% endif %}">
+            <div class="plan-card {% if key == '30days' %}best{% endif %}" data-plan-key="{{ key }}" data-original-price="{{ prices[key] }}">
                 <div>
                     <div class="plan-name">{{ plan.label }}</div>
-                    <div class="plan-price">NPR {{ prices[key] }} <small>/ {{ plan.days }} days</small></div>
+                    <div class="plan-price">
+                        NPR <span class="price-value">{{ prices[key] }}</span> <small>/ {{ plan.days }} days</small>
+                    </div>
                     <ul class="plan-features">
                         <li>✅ Unlimited skill practice (Listening, Reading, Writing, Speaking)</li>
                         <li>✅ <strong>{{ plan.tests }}</strong> full mock tests</li>
                         <li>✅ Full mock exams with all sections</li>
                         <li>✅ AI evaluation for Writing & Speaking</li>
                         <li>✅ Access for {{ plan.days }} days</li>
-                        <li>{% if plan.tests >= 999 %}♾️ Unlimited full tests{% else %}🔢 {{ plan.tests }} full tests{% endif %}</li>
+                        <li>
+                            {% if plan.tests >= 999 %}
+                                ♾️ Unlimited full tests
+                            {% else %}
+                                🔢 {{ plan.tests }} full tests
+                            {% endif %}
+                        </li>
                     </ul>
                 </div>
-                <div style="margin-top: 15px;">
+
+                <!-- Payment Options -->
+                <div class="payment-options">
                     {% if subscription_active and key == current_plan %}
-                        <button class="btn-subscribe" disabled>✅ Active</button>
+                        <button class="btn-payment btn-active" disabled>
+                            ✅ Currently Active
+                        </button>
                     {% else %}
-                        <a href="{{ url_for('manual_payment', module=module) }}?plan={{ key }}" class="btn-subscribe">Subscribe Now</a>
+                        <!-- eSewa (Automatic) -->
+                        <button
+                            type="button"
+                            class="btn-payment btn-esewa"
+                            id="checkout-btn-{{ key }}"
+                            data-plan="{{ key }}"
+                            onclick="startEsewaCheckout('{{ module }}', '{{ key }}', this)">
+                            💳 Pay via eSewa
+                        </button>
+
+                        <!-- Manual (Bank Transfer) -->
+                        <a
+                            href="{{ url_for('manual_payment', module=module) }}?plan={{ key }}"
+                            class="btn-payment btn-manual"
+                            id="manual-btn-{{ key }}">
+                            🏦 Bank Transfer
+                        </a>
+
+                        <div class="pay-note" id="note-{{ key }}">
+                            eSewa = instant activation + auto receipt
+                        </div>
                     {% endif %}
                 </div>
             </div>
             {% endfor %}
         </div>
+
+        <div class="info-note">
+            <strong>ℹ️ Payment Info:</strong>
+            <br>
+            💳 <strong>eSewa (Instant):</strong> Automatic activation + auto-generated PDF receipt in <a href="/my-bills" style="color:#667eea;">My Bills</a>.
+            <br>
+            🏦 <strong>Bank Transfer (Manual):</strong> Upload screenshot → admin verifies manually → subscription activated.
+            <br>
+            🎟️ <strong>Coupon:</strong> Apply code → discount auto-applied to your purchase.
+        </div>
     </div>
+
+    <script>
+        // ═══════════════════════════════════════════════════════════════
+        // 🎟️ COUPON STATE (persists in JS across plan switches)
+        // ═══════════════════════════════════════════════════════════════
+        window.__appliedCoupon = null;      // code (string) or null
+        window.__couponInfo = null;         // {code, discount_amount, original_amount, final_amount, description}
+
+        const MODULE = '{{ module }}';
+        const CSRF_TOKEN = '{{ csrf_token }}';
+
+        // ─────────────────────────────────────────────────────
+        // Apply coupon → POST /api/apply-coupon
+        // ─────────────────────────────────────────────────────
+        async function applyCoupon() {
+            const input = document.getElementById('coupon-input');
+            const msgEl = document.getElementById('coupon-msg');
+            const previewEl = document.getElementById('discount-preview');
+            const applyBtn = document.getElementById('apply-coupon-btn');
+            const clearBtn = document.getElementById('clear-coupon-btn');
+
+            const code = (input.value || '').trim().toUpperCase();
+            if (!code) {
+                showCouponMsg('Please enter a coupon code', 'error');
+                return;
+            }
+
+            applyBtn.disabled = true;
+            applyBtn.textContent = 'Checking...';
+            msgEl.className = 'coupon-msg';
+            msgEl.style.display = 'none';
+
+            // We need a plan for validation — use the cheapest/most common one (30days)
+            // The actual discount will be recalculated per plan during checkout.
+            const plan = '30days';
+
+            try {
+                const res = await fetch('/api/apply-coupon', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': CSRF_TOKEN,
+                    },
+                    body: JSON.stringify({
+                        code: code,
+                        module: MODULE,
+                        plan: plan,
+                    }),
+                });
+
+                const data = await res.json();
+
+                if (!data.success) {
+                    window.__appliedCoupon = null;
+                    window.__couponInfo = null;
+                    showCouponMsg('❌ ' + (data.error || 'Invalid coupon'), 'error');
+                    previewEl.classList.remove('visible');
+                    previewEl.innerHTML = '';
+                    clearBtn.style.display = 'none';
+                    applyBtn.disabled = false;
+                    applyBtn.textContent = 'Apply';
+                    return;
+                }
+
+                // Store coupon
+                window.__appliedCoupon = data.code;
+                window.__couponInfo = data;
+
+                showCouponMsg(
+                    '✅ <strong>' + data.code + '</strong> applied — ' +
+                    'You save <strong>NPR ' + data.discount_amount + '</strong>',
+                    'success'
+                );
+
+                renderDiscountPreview(data);
+                clearBtn.style.display = 'inline-block';
+                input.disabled = true;
+                applyBtn.disabled = true;
+                applyBtn.textContent = 'Applied';
+            } catch (err) {
+                window.__appliedCoupon = null;
+                window.__couponInfo = null;
+                showCouponMsg('Network error: ' + err.message, 'error');
+                applyBtn.disabled = false;
+                applyBtn.textContent = 'Apply';
+            }
+        }
+
+        // ─────────────────────────────────────────────────────
+        // Clear coupon
+        // ─────────────────────────────────────────────────────
+        function clearCoupon() {
+            window.__appliedCoupon = null;
+            window.__couponInfo = null;
+            const input = document.getElementById('coupon-input');
+            const msgEl = document.getElementById('coupon-msg');
+            const previewEl = document.getElementById('discount-preview');
+            const applyBtn = document.getElementById('apply-coupon-btn');
+            const clearBtn = document.getElementById('clear-coupon-btn');
+
+            input.value = '';
+            input.disabled = false;
+            applyBtn.disabled = false;
+            applyBtn.textContent = 'Apply';
+            clearBtn.style.display = 'none';
+            msgEl.className = 'coupon-msg';
+            msgEl.style.display = 'none';
+            previewEl.classList.remove('visible');
+            previewEl.innerHTML = '';
+
+            // Reset plan card prices
+            document.querySelectorAll('.plan-card').forEach(card => {
+                const orig = card.dataset.originalPrice;
+                const priceEl = card.querySelector('.price-value');
+                if (priceEl && orig) priceEl.textContent = orig;
+            });
+        }
+
+        // ─────────────────────────────────────────────────────
+        // Show discount message
+        // ─────────────────────────────────────────────────────
+        function showCouponMsg(html, type) {
+            const el = document.getElementById('coupon-msg');
+            el.innerHTML = html;
+            el.className = 'coupon-msg ' + type;
+            el.style.display = 'block';
+        }
+
+        // ─────────────────────────────────────────────────────
+        // Render discount preview (based on 30days plan, live-updates all cards)
+        // ─────────────────────────────────────────────────────
+        function renderDiscountPreview(data) {
+            const el = document.getElementById('discount-preview');
+            const html = `
+                <div class="row original">
+                    <span>Original (30 Days)</span>
+                    <span>NPR ${data.original_amount}</span>
+                </div>
+                <div class="row discount">
+                    <span>Discount (${data.discount_type === 'percent' ? data.discount_value + '%' : 'flat'})</span>
+                    <span>− NPR ${data.discount_amount}</span>
+                </div>
+                <div class="row final">
+                    <span>You Pay</span>
+                    <span>NPR ${data.final_amount}</span>
+                </div>
+                <div style="font-size:11.5px; color:#64748b; margin-top:6px; text-align:center;">
+                    Final discount is applied per plan at checkout.
+                </div>
+            `;
+            el.innerHTML = html;
+            el.classList.add('visible');
+
+            // Update per-card price display (client-side estimate)
+            updateCardPricesClientSide(data);
+        }
+
+        // ─────────────────────────────────────────────────────
+        // Client-side price update (percent or fixed)
+        // ─────────────────────────────────────────────────────
+        function updateCardPricesClientSide(coupon) {
+            document.querySelectorAll('.plan-card').forEach(card => {
+                const priceEl = card.querySelector('.price-value');
+                const orig = parseInt(card.dataset.originalPrice || '0', 10);
+                if (!priceEl || !orig) return;
+
+                let disc = 0;
+                if (coupon.discount_type === 'percent') {
+                    disc = Math.round(orig * (coupon.discount_value / 100));
+                } else {
+                    disc = Math.round(coupon.discount_value);
+                }
+                const final = Math.max(0, orig - disc);
+                priceEl.innerHTML = `<span style="color:#16a34a;font-weight:800;">${final}</span> <span style="text-decoration:line-through;color:#94a3b8;font-size:0.7em;font-weight:400;">NPR ${orig}</span>`;
+            });
+        }
+
+        // ─────────────────────────────────────────────────────
+        // eSewa Checkout — initiate payment (with coupon)
+        // ─────────────────────────────────────────────────────
+        async function startEsewaCheckout(module, plan, btnEl) {
+            const originalText = btnEl.innerHTML;
+            btnEl.disabled = true;
+            btnEl.innerHTML = '⏳ Redirecting to eSewa...';
+
+            try {
+                const payload = { plan: plan };
+                if (window.__appliedCoupon) {
+                    payload.coupon = window.__appliedCoupon;
+                }
+
+                const res = await fetch(`/${module}/create-checkout-session`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': CSRF_TOKEN,
+                    },
+                    body: JSON.stringify(payload),
+                });
+
+                if (res.status === 401) {
+                    alert('Session expired. Please log in again.');
+                    window.location.href = '/login';
+                    return;
+                }
+
+                const data = await res.json();
+
+                if (data.payment_url) {
+                    window.location.href = data.payment_url;
+                } else {
+                    alert('Error: ' + (data.error || 'Could not initiate payment'));
+                    btnEl.disabled = false;
+                    btnEl.innerHTML = originalText;
+                }
+            } catch (err) {
+                alert('Network error: ' + err.message);
+                btnEl.disabled = false;
+                btnEl.innerHTML = originalText;
+            }
+        }
+
+        // ─────────────────────────────────────────────────────
+        // Wire up coupon buttons
+        // ─────────────────────────────────────────────────────
+        document.addEventListener('DOMContentLoaded', function() {
+            const applyBtn = document.getElementById('apply-coupon-btn');
+            const clearBtn = document.getElementById('clear-coupon-btn');
+            const input = document.getElementById('coupon-input');
+
+            if (applyBtn) applyBtn.addEventListener('click', applyCoupon);
+            if (clearBtn) clearBtn.addEventListener('click', clearCoupon);
+            if (input) {
+                // Auto-uppercase
+                input.addEventListener('input', function() {
+                    this.value = this.value.toUpperCase().replace(/[^A-Z0-9_\-]/g, '');
+                });
+                // Enter key = Apply
+                input.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        applyCoupon();
+                    }
+                });
+            }
+        });
+
+        // ─────────────────────────────────────────────────────
+        // Hide buttons based on admin payment settings
+        // ─────────────────────────────────────────────────────
+        (async () => {
+            try {
+                const opts = {
+                    manual_enabled: {{ 'true' if payment_opts.manual_enabled else 'false' }},
+                    esewa_enabled: {{ 'true' if payment_opts.esewa_enabled else 'false' }},
+                };
+
+                if (!opts.esewa_enabled) {
+                    document.querySelectorAll('[id^="checkout-btn-"]').forEach(el => {
+                        el.style.display = 'none';
+                    });
+                }
+                if (!opts.manual_enabled) {
+                    document.querySelectorAll('[id^="manual-btn-"]').forEach(el => {
+                        el.style.display = 'none';
+                    });
+                }
+                if (!opts.esewa_enabled && !opts.manual_enabled) {
+                    document.querySelectorAll('.payment-options').forEach(el => {
+                        el.innerHTML = '<p style="color:#dc3545;text-align:center;padding:10px;font-size:13px;">⚠️ Payment temporarily unavailable. Please try again later.</p>';
+                    });
+                }
+                if (!opts.esewa_enabled) {
+                    document.querySelectorAll('[id^="note-"]').forEach(el => {
+                        el.style.display = 'none';
+                    });
+                }
+            } catch (e) {
+                console.warn('Could not apply payment settings:', e);
+            }
+        })();
+    </script>
 </body>
 </html>

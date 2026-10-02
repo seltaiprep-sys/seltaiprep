@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <title>Coupons – Admin</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: #f4f6fb; min-height: 100vh; color: #1e293b;
+        }
+        .header {
+            background: #fff; padding: 14px 32px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            display: flex; justify-content: space-between; align-items: center;
+            flex-wrap: wrap; gap: 12px; position: sticky; top: 0; z-index: 100;
+        }
+        .header h1 { font-size: 20px; color: #3b3f5c; }
+        .header h1 span { color: #6c63ff; }
+        .header .links { display: flex; gap: 10px; flex-wrap: wrap; }
+        .header a {
+            color: #6c63ff; text-decoration: none; font-weight: 600;
+            padding: 6px 14px; border: 2px solid #6c63ff;
+            border-radius: 30px; font-size: 13px; transition: 0.2s;
+        }
+        .header a:hover { background: #6c63ff; color: #fff; }
+
+        .container {
+            max-width: 1240px; margin: 0 auto; padding: 28px 24px 60px;
+        }
+
+        .flash {
+            padding: 12px 18px; border-radius: 10px; margin-bottom: 16px;
+            font-weight: 600; display: flex; align-items: center; gap: 8px;
+        }
+        .flash.success { background: #dcfce7; color: #16a34a; border-left: 4px solid #16a34a; }
+        .flash.danger { background: #fee2e2; color: #dc2626; border-left: 4px solid #dc2626; }
+        .flash.warning { background: #fef3c7; color: #b45309; border-left: 4px solid #b45309; }
+        .flash.info { background: #e0e7ff; color: #3730a3; border-left: 4px solid #3730a3; }
+
+        .grid {
+            display: grid; grid-template-columns: 400px 1fr; gap: 24px;
+        }
+        @media (max-width: 1000px) {
+            .grid { grid-template-columns: 1fr; }
+        }
+
+        .card {
+            background: #fff; border-radius: 16px; padding: 24px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.05); margin-bottom: 20px;
+        }
+        .card h2 {
+            font-size: 16px; margin-bottom: 16px;
+            padding-bottom: 12px; border-bottom: 2px solid #f0f0f0;
+            display: flex; align-items: center; gap: 10px;
+        }
+        .card h2 i { color: #6c63ff; }
+
+        .form-group { margin-bottom: 14px; }
+        .form-group label {
+            display: block; margin-bottom: 6px;
+            font-weight: 600; color: #444; font-size: 0.88em;
+        }
+        .form-group input, .form-group select {
+            width: 100%; padding: 10px 12px;
+            border: 1px solid #ddd; border-radius: 8px;
+            font-size: 14px; background: #fafbfc; font-family: inherit;
+        }
+        .form-group input:focus, .form-group select:focus {
+            outline: none; border-color: #6c63ff;
+            box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.1); background: #fff;
+        }
+        .form-hint { font-size: 0.75em; color: #888; margin-top: 3px; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+        .btn {
+            padding: 11px 22px; border: none; border-radius: 10px;
+            font-size: 14px; font-weight: 600; cursor: pointer;
+            transition: 0.2s; display: inline-flex;
+            align-items: center; justify-content: center;
+            gap: 6px; font-family: inherit;
+            text-decoration: none;
+        }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .btn-primary {
+            background: linear-gradient(135deg, #6c63ff, #4f46e5);
+            color: white; width: 100%;
+            box-shadow: 0 4px 14px rgba(108, 99, 255, 0.35);
+        }
+        .btn-primary:hover:not(:disabled) { transform: translateY(-2px); }
+        .btn-sm { padding: 6px 12px; font-size: 12px; }
+        .btn-success { background: #16a34a; color: white; }
+        .btn-success:hover { background: #15803d; }
+        .btn-danger { background: #dc2626; color: white; }
+        .btn-danger:hover { background: #b91c1c; }
+        .btn-warning { background: #f59e0b; color: white; }
+        .btn-warning:hover { background: #d97706; }
+        .btn-outline {
+            background: transparent; color: #6c63ff;
+            border: 2px solid #6c63ff;
+        }
+        .btn-outline:hover { background: #6c63ff; color: #fff; }
+
+        .table-wrap { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.85em; }
+        th, td {
+            text-align: left; padding: 10px 12px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        th {
+            background: #f8f9fc; font-weight: 700; color: #475569;
+            font-size: 0.78em; text-transform: uppercase;
+            letter-spacing: 0.4px; position: sticky; top: 0;
+        }
+        tbody tr:hover { background: #fafbff; }
+
+        .badge {
+            display: inline-block; padding: 3px 10px;
+            border-radius: 20px; font-weight: 700; font-size: 0.82em;
+        }
+        .badge-active { background: #dcfce7; color: #16a34a; }
+        .badge-inactive { background: #fee2e2; color: #dc2626; }
+        .badge-percent { background: #ede9fe; color: #6d28d9; }
+        .badge-fixed { background: #fef3c7; color: #b45309; }
+        .badge-used { background: #e0e7ff; color: #3730a3; }
+
+        .code-cell {
+            font-family: 'Courier New', monospace;
+            font-weight: 800; color: #6c63ff; font-size: 1em;
+            letter-spacing: 1px;
+        }
+
+        .actions-cell {
+            display: flex; gap: 6px; flex-wrap: wrap;
+        }
+
+        .empty {
+            text-align: center; padding: 60px 20px; color: #94a3b8;
+        }
+        .empty .icon { font-size: 3em; display: block; margin-bottom: 10px; }
+
+        .modal {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.6); display: none;
+            align-items: center; justify-content: center;
+            z-index: 9999; padding: 20px;
+        }
+        .modal.active { display: flex; }
+        .modal-content {
+            background: white; border-radius: 16px;
+            max-width: 700px; width: 100%; max-height: 80vh;
+            overflow-y: auto; padding: 26px 30px;
+        }
+        .modal-header {
+            display: flex; justify-content: space-between;
+            align-items: center; margin-bottom: 16px;
+            padding-bottom: 12px; border-bottom: 2px solid #f0f0f0;
+        }
+        .modal-header h3 { font-size: 1.2em; }
+        .modal-close {
+            background: none; border: none; font-size: 1.6em;
+            cursor: pointer; color: #94a3b8; padding: 0 6px;
+        }
+        .modal-close:hover { color: #dc2626; }
+    </style>
+</head>
+<body>
+
+    <header class="header">
+        <h1>🎟️ Coupons <span>Admin</span></h1>
+        <div class="links">
+            <a href="/admin/dashboard"><i class="fas fa-home"></i> Dashboard</a>
+            <a href="/admin/payments"><i class="fas fa-receipt"></i> Payments</a>
+            <a href="/admin/bills"><i class="fas fa-file-invoice"></i> Bills</a>
+        </div>
+    </header>
+
+    <div class="container">
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, msg in messages %}
+                    <div class="flash {{ category }}">
+                        <i class="fas fa-{{ 'check-circle' if category == 'success' else 'exclamation-circle' }}"></i>
+                        {{ msg }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="grid">
+
+            <!-- ============ CREATE FORM ============ -->
+            <div>
+                <div class="card">
+                    <h2><i class="fas fa-plus-circle"></i> Create Coupon</h2>
+                    <form method="POST" action="{{ url_for('admin_coupons_create') }}">
+                        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+
+                        <div class="form-group">
+                            <label>Coupon Code *</label>
+                            <input type="text" name="code" id="code-input"
+                                   placeholder="e.g. WELCOME20"
+                                   required pattern="[A-Za-z0-9_\-]{3,50}"
+                                   style="text-transform:uppercase; font-family:monospace; letter-spacing:1px; font-weight:600;">
+                            <div class="form-hint">A–Z, 0–9, _ or - (min 3 chars)</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Description</label>
+                            <input type="text" name="description"
+                                   placeholder="e.g. New Year Sale 20% off"
+                                   maxlength="255">
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Type *</label>
+                                <select name="discount_type" id="discount-type" required>
+                                    <option value="percent">Percent (%)</option>
+                                    <option value="fixed">Fixed (NPR)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Value *</label>
+                                <input type="number" name="discount_value" id="discount-value"
+                                       step="0.01" min="0.01" required placeholder="10">
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Min Amount (NPR)</label>
+                                <input type="number" name="min_amount" min="0" value="0">
+                                <div class="form-hint">0 = no min</div>
+                            </div>
+                            <div class="form-group">
+                                <label>Max Discount (NPR)</label>
+                                <input type="number" name="max_discount" min="0"
+                                       placeholder="optional">
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Total Uses (0=∞)</label>
+                                <input type="number" name="max_uses" min="0" value="0">
+                                <div class="form-hint">e.g. 100 for first 100 users</div>
+                            </div>
+                            <div class="form-group">
+                                <label>Per User Limit</label>
+                                <input type="number" name="per_user_limit" min="0" value="1">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Applicable Modules</label>
+                            <input type="text" name="applicable_modules"
+                                   placeholder="all OR ielts,pte"
+                                   value="all">
+                            <div class="form-hint">Comma separated: ielts, pte, ukvi</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Applicable Plans</label>
+                            <input type="text" name="applicable_plans"
+                                   placeholder="all OR 7days,30days"
+                                   value="all">
+                            <div class="form-hint">1day, 7days, 15days, 30days, 45days</div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Starts At</label>
+                                <input type="datetime-local" name="starts_at">
+                            </div>
+                            <div class="form-group">
+                                <label>Expires At</label>
+                                <input type="datetime-local" name="expires_at">
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-check"></i> Create Coupon
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- ============ LIST ============ -->
+            <div>
+                <div class="card">
+                    <h2>
+                        <i class="fas fa-list"></i> All Coupons
+                        <span style="margin-left:auto; font-size:0.75em; color:#94a3b8;">
+                            {{ coupons.total }} total
+                        </span>
+                    </h2>
+
+                    {% if coupons.items %}
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Code</th>
+                                    <th>Type</th>
+                                    <th>Value</th>
+                                    <th>Uses</th>
+                                    <th>Modules</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for c in coupons.items %}
+                                <tr>
+                                    <td class="code-cell">{{ c.code }}</td>
+                                    <td>
+                                        <span class="badge badge-{{ c.discount_type }}">
+                                            {{ 'Percent' if c.discount_type == 'percent' else 'Fixed' }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <strong>
+                                            {% if c.discount_type == 'percent' %}
+                                                {{ "%.0f"|format(c.discount_value) }}%
+                                            {% else %}
+                                                NPR {{ "%.0f"|format(c.discount_value) }}
+                                            {% endif %}
+                                        </strong>
+                                        {% if c.max_discount %}
+                                        <div style="font-size:0.75em; color:#94a3b8;">
+                                            cap NPR {{ c.max_discount }}
+                                        </div>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-used">
+                                            {{ c.times_used or 0 }}{% if c.max_uses %} / {{ c.max_uses }}{% else %} / ∞{% endif %}
+                                        </span>
+                                    </td>
+                                    <td style="font-size:0.85em;">
+                                        {{ c.applicable_modules or 'all' }}
+                                    </td>
+                                    <td>
+                                        {% if c.is_active %}
+                                            <span class="badge badge-active">Active</span>
+                                        {% else %}
+                                            <span class="badge badge-inactive">Inactive</span>
+                                        {% endif %}
+                                        {% if c.expires_at %}
+                                        <div style="font-size:0.72em; color:#94a3b8;">
+                                            exp {{ c.expires_at.strftime('%b %d') }}
+                                        </div>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="actions-cell">
+                                            <button class="btn btn-sm btn-outline" type="button"
+                                                    onclick="viewUsages({{ c.id }}, '{{ c.code }}')">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            <form method="POST"
+                                                  action="{{ url_for('admin_coupons_toggle', coupon_id=c.id) }}"
+                                                  style="display:inline;">
+                                                <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                                                <button class="btn btn-sm {{ 'btn-warning' if c.is_active else 'btn-success' }}"
+                                                        type="submit" title="Toggle active">
+                                                    <i class="fas fa-{{ 'pause' if c.is_active else 'play' }}"></i>
+                                                </button>
+                                            </form>
+                                            <form method="POST"
+                                                  action="{{ url_for('admin_coupons_delete', coupon_id=c.id) }}"
+                                                  style="display:inline;"
+                                                  onsubmit="return confirm('Delete coupon {{ c.code }}?');">
+                                                <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                                                <button class="btn btn-sm btn-danger" type="submit">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {% if coupons.pages > 1 %}
+                    <div style="text-align:center; margin-top:16px;">
+                        {% if coupons.has_prev %}
+                        <a href="?page={{ coupons.prev_num }}" class="btn btn-sm btn-outline">
+                            <i class="fas fa-arrow-left"></i> Prev
+                        </a>
+                        {% endif %}
+                        <span style="margin: 0 12px; font-size:0.85em; color:#64748b;">
+                            Page {{ coupons.page }} of {{ coupons.pages }}
+                        </span>
+                        {% if coupons.has_next %}
+                        <a href="?page={{ coupons.next_num }}" class="btn btn-sm btn-outline">
+                            Next <i class="fas fa-arrow-right"></i>
+                        </a>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+
+                    {% else %}
+                    <div class="empty">
+                        <span class="icon">🎟️</span>
+                        <p>No coupons yet. Create one on the left →</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ USAGE MODAL ============ -->
+    <div class="modal" id="usage-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-users"></i> Usages: <span id="modal-code"></span></h3>
+                <button class="modal-close" type="button" onclick="closeModal()">×</button>
+            </div>
+            <div id="usage-body">Loading...</div>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            "use strict";
+            var modal = document.getElementById('usage-modal');
+            var modalCode = document.getElementById('modal-code');
+            var usageBody = document.getElementById('usage-body');
+
+            window.viewUsages = function(couponId, code) {
+                modal.classList.add('active');
+                modalCode.textContent = code;
+                usageBody.innerHTML = '<p style="text-align:center; color:#94a3b8; padding:20px;">Loading...</p>';
+
+                fetch('/admin/coupons/' + couponId + '/usages')
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (!data.success) {
+                        usageBody.innerHTML = '<p style="color:#dc2626;">' + (data.error || 'Failed') + '</p>';
+                        return;
+                    }
+                    var usages = data.usages || [];
+                    if (usages.length === 0) {
+                        usageBody.innerHTML = '<p style="text-align:center; color:#94a3b8; padding:30px;">No usages yet.</p>';
+                        return;
+                    }
+                    var html = '<div class="table-wrap"><table><thead><tr>' +
+                        '<th>User</th><th>Module</th><th>Plan</th><th>Original</th>' +
+                        '<th>Discount</th><th>Final</th><th>Used At</th>' +
+                        '</tr></thead><tbody>';
+                    usages.forEach(function(u) {
+                        html += '<tr>' +
+                            '<td><strong>' + u.username + '</strong></td>' +
+                            '<td>' + (u.module || '—') + '</td>' +
+                            '<td>' + (u.plan || '—') + '</td>' +
+                            '<td>NPR ' + u.original_amount + '</td>' +
+                            '<td style="color:#16a34a; font-weight:700;">− NPR ' + u.discount_amount + '</td>' +
+                            '<td><strong>NPR ' + u.final_amount + '</strong></td>' +
+                            '<td>' + (u.used_at ? u.used_at.slice(0,16).replace('T',' ') : '—') + '</td>' +
+                            '</tr>';
+                    });
+                    html += '</tbody></table></div>';
+                    usageBody.innerHTML = html;
+                })
+                .catch(function(err) {
+                    usageBody.innerHTML = '<p style="color:#dc2626;">Network error</p>';
+                });
+            };
+
+            window.closeModal = function() {
+                modal.classList.remove('active');
+            };
+
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) closeModal();
+            });
+
+            // Auto-uppercase coupon code input
+            var codeInput = document.getElementById('code-input');
+            if (codeInput) {
+                codeInput.addEventListener('input', function() {
+                    this.value = this.value.toUpperCase().replace(/[^A-Z0-9_\-]/g, '');
+                });
+            }
+        })();
+    </script>
+</body>
+</html>

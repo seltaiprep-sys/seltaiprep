@@ -8,6 +8,10 @@
     • PTEUserTestBankUsage → replaced by PTEUserPoolProgress
     • PTETestSession.bank_id → pool tests use test_data.pool_id instead
   Do NOT use these in new code.
+
+v5.1 NOTE (Profile fields):
+    * PTEUser.full_name   — display name (optional)
+    * PTEUser.target_band — target PTE/IELTS equivalent band (optional)
 """
 import json
 from datetime import datetime, timedelta, timezone
@@ -26,6 +30,10 @@ class PTEUser(UserMixin, db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
     google_id = db.Column(db.String(100), unique=True, nullable=True)
+    facebook_id = db.Column(db.String(100), unique=True, nullable=True)
+    phone = db.Column(db.String(20), unique=True, nullable=True, index=True)
+    full_name = db.Column(db.String(120), nullable=True)      # 🆕
+    target_band = db.Column(db.Float, nullable=True)          # 🆕
     is_admin = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     last_login = db.Column(db.DateTime, nullable=True)

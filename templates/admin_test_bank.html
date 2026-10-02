@@ -107,11 +107,14 @@
     .action-btn {
         padding: 6px 12px; font-size: 12px; border-radius: 8px;
         border: none; cursor: pointer; font-weight: 600;
-        margin-right: 4px;
+        margin-right: 4px; text-decoration: none;
+        display: inline-block;
     }
+    .action-btn.preview  { background: #6c63ff; color: white; }
+    .action-btn.preview:hover { background: #5b52d2; }
     .action-btn.backfill { background: #ffc107; color: #333; }
     .action-btn.backfill:hover { background: #e0a800; }
-    .action-btn.delete { background: #dc3545; color: white; }
+    .action-btn.delete   { background: #dc3545; color: white; }
     .action-btn.delete:hover { background: #c82333; }
     .action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
@@ -178,11 +181,12 @@
         </div>
         {% endif %}
 
+        {% set bd = bank_status.by_difficulty if bank_status.by_difficulty is defined else {} %}
         <div style="margin-top:10px; font-size:13px; color:#666;">
             <strong>By difficulty:</strong>
-            Easy: {{ bank_status.by_difficulty.easy or 0 }} ·
-            Medium: {{ bank_status.by_difficulty.medium or 0 }} ·
-            Hard: {{ bank_status.by_difficulty.hard or 0 }}
+            Easy: {{ bd.easy if bd and bd.easy is defined else 0 }} ·
+            Medium: {{ bd.medium if bd and bd.medium is defined else 0 }} ·
+            Hard: {{ bd.hard if bd and bd.hard is defined else 0 }}
         </div>
     </div>
 
@@ -284,6 +288,28 @@
                         {% else %}—{% endif %}
                     </td>
                     <td>
+                        {# ═══════════════════════════════════════════════
+                           🆕 PREVIEW BUTTON — human-readable page
+                           ═══════════════════════════════════════════════ #}
+                        <a href="{{ url_for('admin_full_test_bank_preview', variant_id=v.id) }}"
+                           target="_blank"
+                           class="action-btn preview"
+                           title="Preview this variant (Listening / Reading / Writing / Speaking)">
+                            👁 Preview
+                        </a>
+
+                        {# Raw JSON लिंक (optional, small icon) #}
+                        <a href="{{ url_for('static', filename='full_test_bank/variant_%03d/snapshot.json'|format(v.id)) }}"
+                           target="_blank"
+                           class="action-btn preview"
+                           style="background:#8b95a5; padding: 6px 8px;"
+                           title="Raw JSON">
+                            🔗
+                        </a>
+
+                        {# ═══════════════════════════════════════════════
+                           BACKFILL (only if audio incomplete)
+                           ═══════════════════════════════════════════════ #}
                         {% set audio_count = (v.listening_audio_urls or {})|length %}
                         {% if v.status == 'ready' and audio_count < 4 %}
                             <form method="POST"
@@ -297,6 +323,9 @@
                             </form>
                         {% endif %}
 
+                        {# ═══════════════════════════════════════════════
+                           DELETE
+                           ═══════════════════════════════════════════════ #}
                         <form method="POST"
                               action="{{ url_for('admin_full_test_bank_delete', bank_id=v.id) }}"
                               style="display:inline;"

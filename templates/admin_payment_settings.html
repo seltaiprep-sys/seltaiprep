@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Settings — Admin</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', -apple-system, Arial, sans-serif;
+            background: #0d1117;
+            color: #e6edf3;
+            min-height: 100vh;
+            padding: 30px 20px;
+        }
+        .container { max-width: 720px; margin: 0 auto; }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: #6c63ff;
+            text-decoration: none;
+            font-size: 13px;
+            margin-bottom: 20px;
+        }
+        .back-link:hover { text-decoration: underline; }
+
+        .card {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 14px;
+            padding: 30px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+        }
+
+        h1 {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 6px;
+            letter-spacing: -0.3px;
+        }
+        .subtitle {
+            opacity: 0.6;
+            font-size: 13px;
+            margin-bottom: 26px;
+            line-height: 1.5;
+        }
+
+        .flash {
+            background: rgba(16,185,129,0.15);
+            border-left: 3px solid #10b981;
+            color: #34d399;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            margin-bottom: 20px;
+        }
+
+        .toggle-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            padding: 18px 0;
+            border-bottom: 1px solid #30363d;
+        }
+        .toggle-row:last-of-type { border-bottom: none; }
+
+        .info { flex: 1; }
+        .info .title {
+            font-weight: 600;
+            font-size: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 4px;
+        }
+        .info .description {
+            opacity: 0.6;
+            font-size: 12px;
+            line-height: 1.5;
+            margin-top: 2px;
+        }
+        .info .note {
+            font-size: 11px;
+            margin-top: 4px;
+            display: block;
+        }
+        .note-green { color: #34d399; }
+        .note-amber { color: #fbbf24; }
+
+        .status-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+        .status-on { background: #10b981; color: white; }
+        .status-off { background: #6e7681; color: white; }
+
+        /* Toggle Switch */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 54px;
+            height: 30px;
+            flex-shrink: 0;
+        }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            inset: 0;
+            background: #30363d;
+            border-radius: 34px;
+            transition: 0.3s;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 22px;
+            width: 22px;
+            left: 4px;
+            bottom: 4px;
+            background: white;
+            border-radius: 50%;
+            transition: 0.3s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        .switch input:checked + .slider { background: #10b981; }
+        .switch input:checked + .slider:before {
+            transform: translateX(24px);
+        }
+        .switch input:focus + .slider {
+            box-shadow: 0 0 0 3px rgba(108,99,255,0.35);
+        }
+
+        /* Submit Button */
+        .btn-submit {
+            width: 100%;
+            background: linear-gradient(135deg, #6c63ff, #8b7dff);
+            color: white;
+            border: none;
+            padding: 14px 24px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 26px;
+            letter-spacing: 0.2px;
+            transition: 0.15s;
+            font-family: inherit;
+        }
+        .btn-submit:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 24px rgba(108,99,255,0.4);
+        }
+        .btn-submit:active { transform: translateY(0); }
+
+        .meta-info {
+            margin-top: 22px;
+            padding-top: 20px;
+            border-top: 1px solid #30363d;
+            font-size: 11px;
+            color: #6e7681;
+            line-height: 1.6;
+        }
+        .meta-info strong { color: #8b949e; }
+
+        @media (max-width: 500px) {
+            .card { padding: 22px 18px; }
+            h1 { font-size: 20px; }
+            .toggle-row { padding: 14px 0; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <a href="{{ url_for('admin_dashboard') }}" class="back-link">
+        ← Back to Dashboard
+    </a>
+
+    <div class="card">
+        <h1>💳 Payment Settings</h1>
+        <p class="subtitle">
+            Control which payment methods are available to users.
+            Changes take effect immediately on the subscription page.
+        </p>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+                <div class="flash">✓ {{ message }}</div>
+            {% endfor %}
+        {% endwith %}
+
+        <form method="POST" action="{{ url_for('admin_payment_settings') }}">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+
+            <!-- ═══ Manual Payment ═══ -->
+            <div class="toggle-row">
+                <div class="info">
+                    <div class="title">
+                        🏦 Manual Payment
+                        <span class="status-badge {% if settings.manual_enabled %}status-on{% else %}status-off{% endif %}">
+                            {{ 'ON' if settings.manual_enabled else 'OFF' }}
+                        </span>
+                    </div>
+                    <div class="description">
+                        User transfers to bank, uploads screenshot. Admin verifies manually.
+                    </div>
+                    <span class="note note-amber">
+                        ⚠️ No automatic bill generated — admin handles payment manually
+                    </span>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" name="manual_enabled"
+                           {% if settings.manual_enabled %}checked{% endif %}>
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <!-- ═══ eSewa Automatic ═══ -->
+            <div class="toggle-row">
+                <div class="info">
+                    <div class="title">
+                        💳 eSewa Automatic
+                        <span class="status-badge {% if settings.esewa_enabled %}status-on{% else %}status-off{% endif %}">
+                            {{ 'ON' if settings.esewa_enabled else 'OFF' }}
+                        </span>
+                    </div>
+                    <div class="description">
+                        User pays via eSewa wallet. Instant verification + activation.
+                    </div>
+                    <span class="note note-green">
+                        ✓ Automatic PDF receipt/bill generated
+                    </span>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" name="esewa_enabled"
+                           {% if settings.esewa_enabled %}checked{% endif %}>
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <!-- ═══ Khalti (Coming Soon) ═══ -->
+            <div class="toggle-row">
+                <div class="info">
+                    <div class="title">
+                        🟣 Khalti (Coming Soon)
+                        <span class="status-badge {% if settings.khalti_enabled %}status-on{% else %}status-off{% endif %}">
+                            {{ 'ON' if settings.khalti_enabled else 'OFF' }}
+                        </span>
+                    </div>
+                    <div class="description">
+                        Alternative wallet payment via Khalti gateway.
+                    </div>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" name="khalti_enabled"
+                           {% if settings.khalti_enabled %}checked{% endif %}>
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <button type="submit" class="btn-submit">
+                💾 Save Settings
+            </button>
+        </form>
+
+        <div class="meta-info">
+            <strong>Last updated:</strong>
+            {% if settings.updated_at %}
+                {{ settings.updated_at.strftime('%Y-%m-%d %H:%M UTC') }}
+            {% else %}
+                Never
+            {% endif %}
+            {% if settings.updated_by %}
+                · by admin #{{ settings.updated_by }}
+            {% endif %}
+        </div>
+    </div>
+
+</div>
+</body>
+</html>

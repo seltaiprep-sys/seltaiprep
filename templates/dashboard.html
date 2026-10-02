@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="csrf-token" content="{{ csrf_token }}" />
     <title>{{ selected_module|upper }} Master – Dashboard</title>
+
+    <!-- 🆕 Chart.js for Progress Chart -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
     <style>
         /* ─── RESET & BASE ─── */
         * {
@@ -55,7 +59,7 @@
         .user-info {
             display: flex;
             align-items: center;
-            gap: 16px;
+            gap: 12px;
             flex-wrap: wrap;
         }
         .user-name {
@@ -85,6 +89,42 @@
         }
         .switch-link:hover {
             background: #6c63ff;
+            color: #fff;
+        }
+        /* My Profile link */
+        .profile-link {
+            color: #6c63ff;
+            font-weight: 600;
+            text-decoration: none;
+            padding: 6px 14px;
+            border: 2px solid #6c63ff;
+            border-radius: 30px;
+            font-size: 13px;
+            transition: 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .profile-link:hover {
+            background: #6c63ff;
+            color: #fff;
+        }
+        /* My Bills link */
+        .bills-link {
+            color: #16a34a;
+            font-weight: 600;
+            text-decoration: none;
+            padding: 6px 14px;
+            border: 2px solid #16a34a;
+            border-radius: 30px;
+            font-size: 13px;
+            transition: 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .bills-link:hover {
+            background: #16a34a;
             color: #fff;
         }
         .logout-btn {
@@ -254,6 +294,62 @@
         }
         .module-breakdown .mod-item .mod-limit {
             color: #94a3b8;
+        }
+
+        /* ═══════════════════════════════════════════════════════ */
+        /* 🆕 PHASE 2A — PROGRESS CHART                            */
+        /* ═══════════════════════════════════════════════════════ */
+        .progress-section {
+            background: #fff;
+            border-radius: 16px;
+            padding: 20px 24px;
+            margin-bottom: 28px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+        }
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .progress-header h3 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1e293b;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 0;
+        }
+        .progress-select {
+            padding: 6px 16px;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            font-size: 13px;
+            background: white;
+            cursor: pointer;
+            font-weight: 600;
+            color: #475569;
+            transition: 0.2s;
+        }
+        .progress-select:hover {
+            border-color: #6c63ff;
+        }
+        .progress-chart-wrapper {
+            position: relative;
+            height: 340px;
+            width: 100%;
+        }
+        .progress-empty {
+            text-align: center;
+            padding: 60px 20px;
+            color: #94a3b8;
+            font-size: 14px;
+        }
+        @media (max-width: 480px) {
+            .progress-chart-wrapper { height: 260px; }
         }
 
         /* ─── QUICK ACTIONS ─── */
@@ -689,6 +785,7 @@
             .user-info {
                 justify-content: space-between;
                 gap: 8px;
+                flex-wrap: wrap;
             }
             .welcome-banner {
                 flex-direction: column;
@@ -783,8 +880,10 @@
             </div>
         </div>
         <div class="user-info">
-            <span class="user-name">👋 {{ user.username }}</span>
+            <span class="user-name">👋 {{ user.full_name or user.username }}</span>
             <span class="module-badge">{{ selected_module.upper() }}</span>
+            <a href="/profile" class="profile-link">👤 My Profile</a>
+            <a href="/my-bills" class="bills-link">🧾 My Bills</a>
             <a href="{{ url_for('select_module') }}" class="switch-link">Switch</a>
             <a href="/logout" class="logout-btn">Logout</a>
         </div>
@@ -879,6 +978,26 @@
                 {% else %}
                     <span class="sub-details">⏳ Loading subscription status...</span>
                 {% endif %}
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!-- 🆕 PROGRESS CHART                                       -->
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <div class="progress-section" id="progress-section">
+            <div class="progress-header">
+                <h3>📈 Band Score Progress</h3>
+                <select id="progress-range" class="progress-select">
+                    <option value="10">Last 10 tests</option>
+                    <option value="30" selected>Last 30 tests</option>
+                    <option value="100">All tests</option>
+                </select>
+            </div>
+            <div class="progress-chart-wrapper" id="progress-chart-wrapper">
+                <canvas id="progressChart"></canvas>
+            </div>
+            <div class="progress-empty" id="progress-empty" style="display:none;">
+                📭 No test results yet. Take a test to see your progress here!
             </div>
         </div>
 
@@ -1044,7 +1163,7 @@
         </div>
 
         <!-- ============================================================
-             RESULTS SECTION — ✅ FIXED: no answers() call
+             RESULTS SECTION
              ============================================================ -->
         <div class="results-section">
             <h3>📊 Recent {{ selected_module.upper() }} Results</h3>
@@ -1052,14 +1171,10 @@
                 {% set found = false %}
                 {% for result in results %}
 
-                    {# ══════════════════════════════════════════════════════
-                       ✅ FIX: Full IELTS test result (test_type='full_ielts')
-                       No answers() call — safe attribute access only
-                       ══════════════════════════════════════════════════════ #}
+                    {# Full IELTS test result #}
                     {% if selected_module == 'ielts' and result.test_type in ['full_ielts', 'ielts_full', 'full'] %}
                         {% set found = true %}
 
-                        {# ✅ Safe phase_scores extraction #}
                         {% set phase_scores = {} %}
                         {% if result.answers is defined and result.answers %}
                             {% set answers_raw = result.answers %}
@@ -1085,7 +1200,6 @@
                                 </div>
                             </div>
 
-                            {# ─── Section-wise band chips ─── #}
                             {% if phase_scores %}
                             <div class="section-chips">
                                 {% set l_band = (phase_scores.get('listening', {}) or {}).get('band_score', 0) or 0 %}
@@ -1117,9 +1231,6 @@
                             {% endif %}
                         </div>
 
-                    {# ══════════════════════════════════════════════════════
-                       Individual skill results
-                       ══════════════════════════════════════════════════════ #}
                     {% elif selected_module == 'ielts' and result.test_type in ['reading','listening','writing','speaking'] %}
                         {% set found = true %}
                         <div class="result-item">
@@ -1162,7 +1273,7 @@
                             </div>
                             <div>
                                 <span class="score">{{ "%.1f"|format(result.score or 0) }}%</span>
-                                <span class="band">Band {{ "%.1f"|format(result.band_score or 0) }}</span>
+                                <span class="band">Band {{ "%.1f"|format(result.band_format(result.band_score or 0)) }}</span>
                             </div>
                         </div>
                     {% endif %}
@@ -1315,11 +1426,125 @@
             });
         }
 
+        // ═══════════════════════════════════════════════════════════
+        // 🆕 PHASE 2A — PROGRESS CHART
+        // ═══════════════════════════════════════════════════════════
+        var progressChartInstance = null;
+
+        function loadProgressChart() {
+            var rangeEl = document.getElementById('progress-range');
+            var canvas = document.getElementById('progressChart');
+            var emptyEl = document.getElementById('progress-empty');
+            if (!canvas || !rangeEl) return;
+
+            var limit = rangeEl.value || 30;
+
+            fetch('/api/progress-data?limit=' + limit, {
+                headers: { 'X-CSRF-Token': getCsrfToken() }
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (!data.success || !data.labels || data.labels.length === 0) {
+                    canvas.style.display = 'none';
+                    emptyEl.style.display = 'block';
+                    return;
+                }
+                canvas.style.display = 'block';
+                emptyEl.style.display = 'none';
+                renderProgressChart(canvas, data);
+            })
+            .catch(function(err) {
+                console.warn('Progress chart fetch failed:', err);
+                canvas.style.display = 'none';
+                emptyEl.style.display = 'block';
+            });
+        }
+
+        function renderProgressChart(canvas, data) {
+            if (progressChartInstance) {
+                progressChartInstance.destroy();
+            }
+
+            progressChartInstance = new Chart(canvas, {
+                type: 'line',
+                data: {
+                    labels: data.labels,
+                    datasets: data.datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 16,
+                                font: { size: 12, weight: '600' }
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(30, 41, 59, 0.95)',
+                            padding: 12,
+                            titleFont: { size: 13, weight: 'bold' },
+                            bodyFont: { size: 12 },
+                            callbacks: {
+                                label: function(context) {
+                                    var v = context.parsed.y;
+                                    if (v === null || v === undefined) return null;
+                                    return context.dataset.label + ': Band ' + v.toFixed(1);
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            min: 0,
+                            max: 9,
+                            ticks: {
+                                stepSize: 1,
+                                color: '#64748b',
+                                font: { size: 12 }
+                            },
+                            grid: { color: '#f1f5f9' },
+                            title: {
+                                display: true,
+                                text: 'Band Score',
+                                color: '#64748b',
+                                font: { size: 12, weight: '600' }
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: '#64748b',
+                                font: { size: 11 },
+                                maxRotation: 45,
+                                minRotation: 0
+                            },
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        }
+
         // ─── DOMContentLoaded ──────────────────────────────────────────
         document.addEventListener('DOMContentLoaded', function() {
             const module = '{{ selected_module }}';
             if (module !== 'ielts') {
                 fetchAndUpdateSubscription();
+            }
+
+            // 🆕 Load progress chart
+            loadProgressChart();
+            var rangeEl = document.getElementById('progress-range');
+            if (rangeEl) {
+                rangeEl.addEventListener('change', loadProgressChart);
             }
         });
     </script>

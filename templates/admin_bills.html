@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>All Bills — Admin</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', -apple-system, Arial, sans-serif;
+            background: #0d1117;
+            color: #e6edf3;
+            min-height: 100vh;
+            padding: 30px 20px;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: #6c63ff;
+            text-decoration: none;
+            font-size: 13px;
+            margin-bottom: 20px;
+        }
+        .back-link:hover { text-decoration: underline; }
+
+        .header { margin-bottom: 24px; }
+        h1 {
+            font-size: 26px;
+            font-weight: 700;
+            margin-bottom: 6px;
+            letter-spacing: -0.4px;
+        }
+        .subtitle {
+            opacity: 0.6;
+            font-size: 13px;
+        }
+
+        /* Summary */
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 14px;
+            margin-bottom: 24px;
+        }
+        .summary-card {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            padding: 16px 18px;
+        }
+        .summary-card .label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            opacity: 0.55;
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+        .summary-card .value {
+            font-size: 22px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+        .summary-card.purple .value { color: #8b7dff; }
+        .summary-card.green .value { color: #34d399; }
+        .summary-card.amber .value { color: #fbbf24; }
+        .summary-card.blue .value { color: #60a5fa; }
+
+        /* Filters */
+        .filters {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 18px;
+            flex-wrap: wrap;
+        }
+        .filters a {
+            padding: 8px 16px;
+            background: #21262d;
+            color: #c9d1d9;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            transition: 0.15s;
+        }
+        .filters a:hover {
+            background: #30363d;
+            color: white;
+        }
+        .filters a.active {
+            background: linear-gradient(135deg, #6c63ff, #8b7dff);
+            color: white;
+            border-color: #6c63ff;
+        }
+
+        /* Table */
+        .bills-card {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 14px;
+            overflow: hidden;
+        }
+        table { width: 100%; border-collapse: collapse; }
+        thead { background: #21262d; }
+        th {
+            text-align: left;
+            padding: 13px 14px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #8b949e;
+            border-bottom: 1px solid #30363d;
+            white-space: nowrap;
+        }
+        tbody tr {
+            border-bottom: 1px solid #21262d;
+            transition: background 0.15s;
+        }
+        tbody tr:last-child { border-bottom: none; }
+        tbody tr:hover { background: #1c2128; }
+        td {
+            padding: 13px 14px;
+            font-size: 13px;
+            vertical-align: middle;
+        }
+        td.bill-num {
+            font-weight: 700;
+            color: #a5b4fc;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 12px;
+        }
+        td.user-cell {
+            line-height: 1.4;
+        }
+        td.user-cell .name {
+            font-weight: 600;
+            color: #e6edf3;
+        }
+        td.user-cell .email {
+            font-size: 11px;
+            opacity: 0.55;
+            margin-top: 2px;
+        }
+        td.amount {
+            font-weight: 700;
+            color: #34d399;
+            white-space: nowrap;
+        }
+        td.txn-id {
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 11px;
+            opacity: 0.7;
+            max-width: 160px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .module-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+        .module-ielts { background: rgba(108,99,255,0.2); color: #a5b4fc; }
+        .module-pte { background: rgba(16,185,129,0.2); color: #6ee7b7; }
+        .module-ukvi { background: rgba(245,158,11,0.2); color: #fbbf24; }
+
+        .status-badge {
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            display: inline-block;
+        }
+        .status-paid { background: rgba(16,185,129,0.2); color: #34d399; }
+        .status-pending { background: rgba(245,158,11,0.2); color: #fbbf24; }
+        .status-refunded { background: rgba(239,68,68,0.2); color: #f87171; }
+
+        .method-badge {
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 600;
+            background: rgba(255,255,255,0.06);
+            color: #c9d1d9;
+        }
+
+        .btn-download {
+            display: inline-flex;
+            align-items: center;
+            padding: 5px 12px;
+            background: rgba(108,99,255,0.15);
+            color: #a5b4fc;
+            border: 1px solid rgba(108,99,255,0.3);
+            border-radius: 6px;
+            text-decoration: none;
+            font-size: 11px;
+            font-weight: 600;
+            transition: 0.15s;
+        }
+        .btn-download:hover {
+            background: #6c63ff;
+            color: white;
+            border-color: #6c63ff;
+        }
+
+        .empty-row {
+            text-align: center;
+            padding: 60px 20px !important;
+            opacity: 0.5;
+            font-size: 14px;
+        }
+
+        /* Pagination */
+        .pagination {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .pagination a, .pagination span {
+            padding: 8px 14px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 600;
+            background: #21262d;
+            color: #c9d1d9;
+            border: 1px solid #30363d;
+            transition: 0.15s;
+            min-width: 40px;
+            text-align: center;
+        }
+        .pagination a:hover {
+            background: #30363d;
+            color: white;
+        }
+        .pagination .current {
+            background: linear-gradient(135deg, #6c63ff, #8b7dff);
+            color: white;
+            border-color: #6c63ff;
+        }
+
+        @media (max-width: 900px) {
+            h1 { font-size: 20px; }
+            th, td { padding: 10px 8px; font-size: 11px; }
+            td.txn-id { max-width: 100px; }
+            th:nth-child(6),
+            td:nth-child(6) { display: none; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <a href="{{ url_for('admin_dashboard') }}" class="back-link">
+        ← Back to Dashboard
+    </a>
+
+    <div class="header">
+        <h1>🧾 All Bills</h1>
+        <p class="subtitle">
+            Auto-generated invoices for all automatic eSewa payments.
+            Total: {{ bills.total }} bills.
+        </p>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="summary-cards">
+        <div class="summary-card purple">
+            <div class="label">Total Bills</div>
+            <div class="value">{{ bills.total }}</div>
+        </div>
+        <div class="summary-card green">
+            <div class="label">Page Revenue</div>
+            <div class="value" style="font-size:16px;">
+                NPR {{ "{:,}".format(bills.items|sum(attribute='amount') if bills.items else 0) }}
+            </div>
+        </div>
+        <div class="summary-card blue">
+            <div class="label">Showing</div>
+            <div class="value">{{ bills.items|length }}</div>
+        </div>
+        <div class="summary-card amber">
+            <div class="label">Page</div>
+            <div class="value">{{ bills.page }} / {{ bills.pages }}</div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="filters">
+        <a href="{{ url_for('admin_bills') }}"
+           class="{% if not request.args.get('module') %}active{% endif %}">
+            All Modules
+        </a>
+        <a href="{{ url_for('admin_bills', module='ielts') }}"
+           class="{% if request.args.get('module') == 'ielts' %}active{% endif %}">
+            IELTS
+        </a>
+        <a href="{{ url_for('admin_bills', module='pte') }}"
+           class="{% if request.args.get('module') == 'pte' %}active{% endif %}">
+            PTE
+        </a>
+        <a href="{{ url_for('admin_bills', module='ukvi') }}"
+           class="{% if request.args.get('module') == 'ukvi' %}active{% endif %}">
+            UKVI
+        </a>
+    </div>
+
+    <!-- Bills Table -->
+    <div class="bills-card">
+        <table>
+            <thead>
+                <tr>
+                    <th>Bill Number</th>
+                    <th>User</th>
+                    <th>Module</th>
+                    <th>Plan</th>
+                    <th>Amount</th>
+                    <th>Transaction ID</th>
+                    <th>Method</th>
+                    <th>Date</th>
+                    <th>Status</th>
+                    <th>PDF</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for b in bills.items %}
+                <tr>
+                    <td class="bill-num">{{ b.bill_number }}</td>
+                    <td class="user-cell">
+                        <div class="name">{{ b.user_name or 'Unknown' }}</div>
+                        <div class="email">{{ b.user_email or '—' }}</div>
+                    </td>
+                    <td>
+                        <span class="module-badge module-{{ b.module }}">
+                            {{ b.module.upper() }}
+                        </span>
+                    </td>
+                    <td>{{ b.plan_label or b.plan }}</td>
+                    <td class="amount">NPR {{ "{:,}".format(b.amount) }}</td>
+                    <td class="txn-id" title="{{ b.transaction_id or '—' }}">
+                        {{ b.transaction_id or '—' }}
+                    </td>
+                    <td>
+                        <span class="method-badge">
+                            {{ b.payment_method.title() }}
+                        </span>
+                    </td>
+                    <td>{{ b.issued_at.strftime('%Y-%m-%d %H:%M') if b.issued_at else '—' }}</td>
+                    <td>
+                        <span class="status-badge status-{{ b.status }}">
+                            {{ b.status.upper() }}
+                        </span>
+                    </td>
+                    <td>
+                        <a href="{{ url_for('admin_download_bill', bill_id=b.id) }}"
+                           class="btn-download">
+                            ⬇ PDF
+                        </a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="10" class="empty-row">
+                        🧾 No bills yet. Bills are generated automatically
+                        after successful eSewa payments.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if bills.pages > 1 %}
+    <div class="pagination">
+        {% if bills.has_prev %}
+            <a href="{{ url_for('admin_bills', page=bills.prev_num, module=request.args.get('module')) }}">
+                ← Prev
+            </a>
+        {% endif %}
+
+        {% set start = [1, bills.page - 2]|max %}
+        {% set end = [bills.pages, bills.page + 2]|min %}
+
+        {% if start > 1 %}
+            <a href="{{ url_for('admin_bills', page=1, module=request.args.get('module')) }}">1</a>
+            {% if start > 2 %}
+                <span>…</span>
+            {% endif %}
+        {% endif %}
+
+        {% for p in range(start, end + 1) %}
+            {% if p == bills.page %}
+                <span class="current">{{ p }}</span>
+            {% else %}
+                <a href="{{ url_for('admin_bills', page=p, module=request.args.get('module')) }}">
+                    {{ p }}
+                </a>
+            {% endif %}
+        {% endfor %}
+
+        {% if end < bills.pages %}
+            {% if end < bills.pages - 1 %}
+                <span>…</span>
+            {% endif %}
+            <a href="{{ url_for('admin_bills', page=bills.pages, module=request.args.get('module')) }}">
+                {{ bills.pages }}
+            </a>
+        {% endif %}
+
+        {% if bills.has_next %}
+            <a href="{{ url_for('admin_bills', page=bills.next_num, module=request.args.get('module')) }}">
+                Next →
+            </a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+</div>
+</body>
+</html>

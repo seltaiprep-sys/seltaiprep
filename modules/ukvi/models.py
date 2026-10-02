@@ -2,6 +2,10 @@
 """
 UKVI SQLAlchemy models – using the global db instance from root models.py
 
+v3.1 — Profile fields:
+  • UKVIUser.full_name   — display name (optional)
+  • UKVIUser.target_band — target band score (optional)
+
 v3.0 — UKVI POOL + ASYNC QUEUE:
   • Added UKVIGenerationJob (background job tracking for async generation)
   • UKVITestBank.topic: String(255) — pool cache key
@@ -32,6 +36,10 @@ class UKVIUser(db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(200))
     google_id = db.Column(db.String(80), unique=True, nullable=True)
+    facebook_id = db.Column(db.String(100), unique=True, nullable=True)
+    phone = db.Column(db.String(20), unique=True, nullable=True, index=True)
+    full_name = db.Column(db.String(120), nullable=True)      # 🆕
+    target_band = db.Column(db.Float, nullable=True)          # 🆕
     is_admin = db.Column(db.Boolean, default=False)
     created_at = db.Column(
         db.DateTime, default=lambda: datetime.now(timezone.utc)

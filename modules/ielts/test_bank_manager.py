@@ -4,46 +4,45 @@
    - Pool manager: PTE-style shared pool (IELTSTestPool + locks)
 
 ═══════════════════════════════════════════════════════════════════════
-ARCHITECTURE (v4.2)
+ARCHITECTURE (v4.3 — disk-snapshot fix)
 ═══════════════════════════════════════════════════════════════════════
 
 Three managers, separate responsibilities:
 
   ┌────────────────────────────────────────────────────────────┐
-  │ TestBankManager (STANDALONE — legacy rolling bank) │
-  │ ─ Table: `test_bank` │
-  │ ─ test_type ∈ {listening, reading, writing, speaking} │
-  │ ─ Rolling: serve unused → generate 1 → repeat oldest │
-  │ ─ Cap: 100 per module (all difficulties combined) │
+  │ TestBankManager (STANDALONE — legacy rolling bank)         │
+  │ ─ Table: `test_bank`                                       │
+  │ ─ test_type ∈ {listening, reading, writing, speaking}      │
+  │ ─ Rolling: serve unused → generate 1 → repeat oldest       │
+  │ ─ Cap: 100 per module (all difficulties combined)          │
   └────────────────────────────────────────────────────────────┘
 
   ┌────────────────────────────────────────────────────────────┐
-  │ FullTestBankManager (FULL IELTS MOCK) │
-  │ ─ Table: `full_test_variants` │
-  │ ─ Each row = complete snapshot (4 phases) + audio ready │
-  │ ─ Cap: 100 variants (all difficulties combined) │
+  │ FullTestBankManager (FULL IELTS MOCK)                      │
+  │ ─ Table: `full_test_variants`                              │
+  │ ─ Each row = complete snapshot (4 phases) + audio ready    │
+  │ ─ Cap: 100 variants (all difficulties combined)            │
+  │ ─ 🆕 Writes snapshot.json + audio files to disk under      │
+  │      static/full_test_bank/variant_XXX/                    │
   └────────────────────────────────────────────────────────────┘
 
   ┌────────────────────────────────────────────────────────────┐
-  │ IELTSTestPoolManager (POOL — PTE-style, v4.2 NEW) │
-  │ ─ Tables: `ielts_test_pool`, `ielts_generation_lock`, │
-  │ `ielts_user_pool_progress` │
-  │ ─ Shared pool, 100 per module │
-  │ ─ 202 "waiting" on concurrent generation (thundering-herd)│
-  │ ─ Per-user progress: serve unseen until exhausted │
+  │ IELTSTestPoolManager (POOL — PTE-style, v4.2)              │
+  │ ─ Tables: `ielts_test_pool`, `ielts_generation_lock`,      │
+  │           `ielts_user_pool_progress`                       │
+  │ ─ Shared pool, 100 per module                              │
+  │ ─ 202 "waiting" on concurrent generation                   │
   └────────────────────────────────────────────────────────────┘
 
-WHY TWO BANK SYSTEMS?
-  The legacy `TestBankManager` provides the admin dashboard and
-  pre-generation workflow (rolling bank). The new pool manager
-  provides PTE-style behavior for user-facing routes:
-      • 202 "another user is generating" responses
-      • Shared pool progress tracking per user
-      • Lock-based single-generator election
-
-  User routes now call `ielts_test_pool_manager.get_or_generate()`.
-  Admin routes continue to use `TestBankManager.generate_and_save_tests()`.
-  `FullTestBankManager` is unchanged.
+v4.3 CHANGELOG
+──────────────
+- FIX: FullTestBankManager.generate_full_test_variant_bg() now writes
+       snapshot.json to static/full_test_bank/variant_XXX/ on disk.
+- FIX: Audio files are copied to the same variant folder and their
+       URLs in the snapshot are rewritten to point there.
+- FIX: ensure_variant_audio() re-writes snapshot.json after backfill.
+- FIX: BANK_ROOT is now an absolute path (from app.static_folder).
+- Cleanup: _variant_dir() and _copy_file() are now actually used.
 
 ═══════════════════════════════════════════════════════════════════════
 INSTANTIATION
@@ -60,6 +59,7 @@ INSTANTIATION
 import os
 import json
 import shutil
+import secrets
 import random
 import threading
 import logging
@@ -77,6 +77,9 @@ from models import (
 
 logger = logging.getLogger(__name__)
 
+# ─── Root directory for full-test variant files ──────────────────────
+# NOTE: This is a RELATIVE fallback. FullTestBankManager resolves the
+# absolute path at runtime via app.static_folder.
 BANK_ROOT = os.path.join('static', 'full_test_bank')
 
 # Rolling bank cap — per MODULE (all difficulties combined)
@@ -582,6 +585,11 @@ class TestBankManager:
 class FullTestBankManager:
     """
     Manages FULL IELTS mock test variants in the `full_test_variants` table.
+
+    🆕 v4.3 — now persists snapshot.json + audio files to disk under
+    static/full_test_bank/variant_XXX/ so that the admin "Preview"
+    button (which links to /static/full_test_bank/variant_XXX/snapshot.json)
+    actually resolves.
     """
 
     MAX_VARIANTS = 100
@@ -597,6 +605,140 @@ class FullTestBankManager:
             f" FullTestBankManager initialized "
             f"(app={'yes' if app else 'no'})"
         )
+
+    # ================================================================
+    # PATH HELPERS — absolute paths to static storage
+    # ================================================================
+    def _static_root(self) -> str:
+        """Absolute path to the app's static folder."""
+        # Prefer current_app (works in request & background threads w/ ctx)
+        try:
+            from flask import current_app
+            root = current_app.static_folder
+            if root:
+                return root
+        except RuntimeError:
+            pass
+        except Exception:
+            pass
+
+        # Fallback: derive from this file's location (…/modules/ielts/test_bank_manager.py)
+        here = os.path.abspath(__file__)
+        # …/modules/ielts/ → …/modules → … (project root)
+        project_root = os.path.dirname(os.path.dirname(os.path.dirname(here)))
+        return os.path.join(project_root, 'static')
+
+    def _variant_dir(self, variant_id: int) -> str:
+        """Absolute path to static/full_test_bank/variant_XXX/."""
+        p = os.path.join(
+            self._static_root(),
+            'full_test_bank',
+            f"variant_{variant_id:03d}",
+        )
+        os.makedirs(p, exist_ok=True)
+        return p
+
+    def _write_snapshot(self, variant_id: int, snapshot: dict) -> str:
+        """Write snapshot.json under the variant folder. Returns path."""
+        vdir = self._variant_dir(variant_id)
+        path = os.path.join(vdir, 'snapshot.json')
+        with open(path, 'w', encoding='utf-8') as f:
+            json.dump(snapshot, f, indent=2, ensure_ascii=False)
+        logger.info(
+            f" [full-test] snapshot.json written → {path} "
+            f"({os.path.getsize(path)} bytes)"
+        )
+        return path
+
+    def _url_to_fs(self, url: str) -> Optional[str]:
+        """Convert a /static/... URL to an absolute filesystem path."""
+        if not url or not isinstance(url, str):
+            return None
+        clean = url.split('?', 1)[0].strip()
+        if not clean:
+            return None
+
+        static_root = self._static_root()
+
+        if clean.startswith('/static/'):
+            return os.path.join(static_root, clean[len('/static/'):])
+        if clean.startswith('static/'):
+            return os.path.join(
+                os.path.dirname(static_root), clean
+            )
+        if clean.startswith('/'):
+            # Could be /audio_cache/... (served by a route, backed by static)
+            return os.path.join(static_root, clean.lstrip('/'))
+        # Plain relative path — try under static
+        candidate = os.path.join(static_root, clean)
+        if os.path.exists(candidate):
+            return candidate
+        return clean
+
+    def _copy_audio_to_variant(self, variant_id: int, audio_urls: dict,
+                               audio_timings: dict) -> Tuple[dict, dict]:
+        """
+        Copy each section's audio file into the variant folder.
+        Returns (new_audio_urls, audio_timings) with URLs rewritten to
+        point to the variant folder.
+        """
+        if not audio_urls:
+            return {}, (audio_timings or {})
+
+        vdir = self._variant_dir(variant_id)
+        new_audio_urls: Dict[str, dict] = {}
+
+        for sec_key, sec_val in (audio_urls or {}).items():
+            # Normalise: sec_val may be {'main': url, ...} or a bare string
+            if isinstance(sec_val, dict):
+                main_url = sec_val.get('main')
+                rest = {k: v for k, v in sec_val.items() if k != 'main'}
+            else:
+                main_url = sec_val
+                rest = {}
+
+            if not main_url:
+                continue
+
+            src = self._url_to_fs(main_url)
+            if not src or not os.path.exists(src):
+                logger.warning(
+                    f" [full-test] Audio source missing for "
+                    f"variant #{variant_id} section {sec_key}: {src}"
+                )
+                # Keep the original URL so at least playback might work
+                if isinstance(sec_val, dict):
+                    new_audio_urls[sec_key] = sec_val
+                else:
+                    new_audio_urls[sec_key] = {'main': sec_val}
+                continue
+
+            ext = os.path.splitext(src)[1] or '.mp3'
+            dst_name = f"section_{sec_key}{ext}"
+            dst = os.path.join(vdir, dst_name)
+
+            try:
+                shutil.copy2(src, dst)
+                rel_url = (
+                    f"/static/full_test_bank/"
+                    f"variant_{variant_id:03d}/{dst_name}"
+                )
+                new_audio_urls[sec_key] = {'main': rel_url, **rest}
+                logger.info(
+                    f" [full-test] Audio copied → {dst} "
+                    f"(URL: {rel_url})"
+                )
+            except Exception as e:
+                logger.warning(
+                    f" [full-test] Audio copy failed for section "
+                    f"{sec_key}: {e}"
+                )
+                if isinstance(sec_val, dict):
+                    new_audio_urls[sec_key] = sec_val
+                else:
+                    new_audio_urls[sec_key] = {'main': sec_val}
+
+        return new_audio_urls, (audio_timings or {})
 
     # ================================================================
     # STATUS / ADMIN
@@ -785,6 +927,7 @@ class FullTestBankManager:
         )
 
         try:
+            # ── 1. Listening ──────────────────────────────────────
             from modules.ielts.listening.test_generator import ListeningTestGenerator
             lgen = ListeningTestGenerator(self.ai)
             lfull = lgen.generate(
@@ -819,12 +962,14 @@ class FullTestBankManager:
                 'audio_timings': audio_timings,
             }
 
+            # ── 2. Reading ────────────────────────────────────────
             from modules.ielts.reading.test_generator import IELTSReadingGenerator
             rgen = IELTSReadingGenerator(ai_engine=self.ai)
             rdata = rgen.generate_complete_test(difficulty, None)
             if hasattr(rdata, 'to_dict'):
                 rdata = rdata.to_dict()
 
+            # ── 3. Writing ────────────────────────────────────────
             from modules.ielts.writing import create_writing_api
             wapi = create_writing_api(ai_engine=self.ai, db=self.db)
             wdata = wapi.start_test(
@@ -836,6 +981,7 @@ class FullTestBankManager:
             if wdata.get('error'):
                 raise RuntimeError(f"Writing: {wdata['error']}")
 
+            # ── 4. Speaking ───────────────────────────────────────
             from modules.ielts.speaking import create_speaking_test
             spgen = create_speaking_test(self.ai)
             spdata = spgen.generate_complete_test(
@@ -844,6 +990,7 @@ class FullTestBankManager:
             if not spdata or spdata.get('error'):
                 raise RuntimeError(f"Speaking: {spdata}")
 
+            # ── 5. Save snapshot to DB ────────────────────────────
             snapshot = {
                 'listening': listening_snap,
                 'reading': rdata,
@@ -855,6 +1002,44 @@ class FullTestBankManager:
             placeholder.snapshot = snapshot
             placeholder.listening_audio_urls = audio_urls
             placeholder.listening_audio_timings = audio_timings
+            self.db.session.commit()
+
+            # ══════════════════════════════════════════════════════
+            # 🆕 v4.3 FIX — Persist snapshot.json + audio to disk
+            # ══════════════════════════════════════════════════════
+            try:
+                # 5a. Copy audio files into variant folder and rewrite URLs
+                new_audio_urls, new_audio_timings = (
+                    self._copy_audio_to_variant(
+                        variant_id=variant_id,
+                        audio_urls=audio_urls,
+                        audio_timings=audio_timings,
+                    )
+                )
+
+                # 5b. Update listening snapshot with new audio URLs
+                listening_snap['audio_urls'] = new_audio_urls
+                listening_snap['audio_timings'] = new_audio_timings
+                snapshot['listening'] = listening_snap
+
+                # 5c. Persist snapshot to DB (updated URLs)
+                placeholder.snapshot = snapshot
+                placeholder.listening_audio_urls = new_audio_urls
+                placeholder.listening_audio_timings = new_audio_timings
+                self.db.session.commit()
+
+                # 5d. Write snapshot.json to disk
+                self._write_snapshot(variant_id, snapshot)
+
+            except Exception as disk_err:
+                # Non-fatal: DB has the data, but admin preview will 404
+                logger.error(
+                    f" [full-test] Disk persistence failed for "
+                    f"variant #{variant_id}: {disk_err}",
+                    exc_info=True,
+                )
+
+            # ── 6. Mark ready ─────────────────────────────────────
             placeholder.status = 'ready'
             placeholder.ready_at = datetime.now(timezone.utc)
             self.db.session.commit()
@@ -862,7 +1047,7 @@ class FullTestBankManager:
             logger.info(
                 f" [full-test] Variant #{variant_id} ready "
                 f"(difficulty={difficulty}, sections=4, "
-                f"audio={len(audio_urls)})"
+                f"audio={len(new_audio_urls) if 'new_audio_urls' in dir() else len(audio_urls)})"
             )
 
             if on_done:
@@ -912,6 +1097,14 @@ class FullTestBankManager:
             if str(i) not in existing_audio
         ]
         if not missing:
+            # Even if complete, ensure snapshot.json exists on disk
+            try:
+                self._write_snapshot(variant_id, snap)
+            except Exception as e:
+                logger.warning(
+                    f" [full-test] Could not refresh snapshot for "
+                    f"variant #{variant_id}: {e}"
+                )
             return {
                 'success': True,
                 'variant_id': variant_id,
@@ -934,6 +1127,13 @@ class FullTestBankManager:
         merged_timings = dict(variant.listening_audio_timings or {})
         merged_timings.update(new_timings)
 
+        # 🆕 Copy any newly generated audio into the variant folder
+        merged_audio, merged_timings = self._copy_audio_to_variant(
+            variant_id=variant_id,
+            audio_urls=merged_audio,
+            audio_timings=merged_timings,
+        )
+
         variant.listening_audio_urls = merged_audio
         variant.listening_audio_timings = merged_timings
 
@@ -943,6 +1143,15 @@ class FullTestBankManager:
         variant.snapshot = snap
 
         self.db.session.commit()
+
+        # 🆕 Re-write snapshot.json to disk after backfill
+        try:
+            self._write_snapshot(variant_id, snap)
+        except Exception as e:
+            logger.warning(
+                f" [full-test] snapshot.json refresh after backfill "
+                f"failed for variant #{variant_id}: {e}"
+            )
 
         logger.info(
             f" [full-test] Audio backfill complete — variant #{variant_id} "
@@ -1084,17 +1293,11 @@ class FullTestBankManager:
     # ================================================================
     @staticmethod
     def _make_hash() -> str:
-        import secrets
         return secrets.token_hex(32)
 
     @staticmethod
-    def _variant_dir(variant_id: int) -> str:
-        p = os.path.join(BANK_ROOT, f"variant_{variant_id:03d}")
-        os.makedirs(p, exist_ok=True)
-        return p
-
-    @staticmethod
     def _copy_file(src_url: str, target_dir: str, target_name: str) -> str:
+        """Legacy helper — kept for backward compatibility."""
         if not src_url:
             return src_url
         clean = src_url.split('?', 1)[0]
@@ -1122,9 +1325,20 @@ class FullTestBankManager:
         if not v:
             return {'success': False, 'error': 'Variant not found'}
         try:
-            vdir = os.path.join(BANK_ROOT, f"variant_{variant_id:03d}")
-            if os.path.exists(vdir):
-                shutil.rmtree(vdir, ignore_errors=True)
+            # 🆕 Delete on-disk folder (snapshot.json + audio)
+            try:
+                vdir = self._variant_dir(variant_id)
+                if os.path.exists(vdir):
+                    shutil.rmtree(vdir, ignore_errors=True)
+                    logger.info(
+                        f" [full-test] Deleted on-disk folder: {vdir}"
+                    )
+            except Exception as fs_err:
+                logger.warning(
+                    f" [full-test] Could not delete folder for "
+                    f"variant #{variant_id}: {fs_err}"
+                )
+
             self.db.session.delete(v)
             self.db.session.commit()
             logger.info(f" Full-test variant #{variant_id} deleted")

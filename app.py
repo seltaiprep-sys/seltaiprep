@@ -2,18 +2,26 @@
 """
 Flask application with fully separated models for IELTS, PTE, and UKVI.
 
-v8.6.2 — REDIS SESSION FIX (final):
-  - decode_responses=False (Flask-Session writes binary msgspec data).
-  - SESSION_USE_SIGNER=False (Werkzeug expects str session id in cookies).
-  - UKVI poller runs only in Werkzeug child process (no double polling).
-  - Lightweight poller: cheap count first, cleanup every ~60s.
+v8.17 — PTE POOL dashboard fixes:
+  - /pte/test-bank/status  → accepts admin session OR Flask-Login user
+                              (was @login_required → broke admin dashboard)
+  - /admin/pte/pool/cap    → aliased to /admin/pte/pool/caps/set
+  - All pool endpoints return full key aliases + safe fallbacks
 
+v8.16 — PTE POOL routes (defensive key aliases).
+v8.15 — PTE POOL admin routes (initial).
+v8.14 — FULL-TEST BANK preview route.
+v8.13 — FULL-TEST BANK by_difficulty FIX.
+v8.12 — PHASE 2C (Coupon Codes).
+v8.11 — PHASE 2A (Progress Chart API).
+v8.10 — PHASE 1 FEATURES (Forgot Password, Profile, Change Password).
+v8.9  — SIMPLE REGISTRATION.
+v8.8  — FACEBOOK OAUTH LOGIN.
+v8.7  — PAYMENT SETTINGS + AUTO-BILLS.
+v8.6.2 — REDIS SESSION FIX.
 v8.6 — UKVI ASYNC POOL + SINGLE-PROCESS POLLER.
 v8.5 — UKVI SUBSCRIPTION STATUS ROUTE.
-v8.4 — SINGLE-VPS PRODUCTION (500–2000 concurrent users).
-v8.3 — POOL-BASED AUDIO CACHE.
-v8.2 — AI QUEUE + DB POOL BUMP.
-v8.1 — RETAKE USAGE FIX.
+v8.4 — SINGLE-VPS PRODUCTION.
 """
 
 import logging, os, sys, re, json, uuid, base64, random, string, secrets, threading, time, subprocess, asyncio, gc, shutil, copy
@@ -194,7 +202,6 @@ if not _db_url or _db_url.startswith('sqlite'):
 app.config['SQLALCHEMY_DATABASE_URI'] = _db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# --- DB pool sized for 2 vCPU / 4 GB single VPS ---
 _DB_POOL_SIZE = int(os.environ.get('DB_POOL_SIZE', '10'))
 _DB_MAX_OVERFLOW = int(os.environ.get('DB_MAX_OVERFLOW', '20'))
 
@@ -249,12 +256,10 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)
 app.config['SESSION_COOKIE_NAME'] = 'ielts_sess'
 
 # ============================================================
-# REDIS (shared across all Gunicorn workers)
+# REDIS
 # ============================================================
 REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
 try:
-    # decode_responses=False — Flask-Session writes/reads binary msgspec data.
-    # Setting this True causes UnicodeDecodeError on 0x80 bytes.
     redis_client = _redis.Redis.from_url(REDIS_URL, decode_responses=False)
     redis_client.ping()
     REDIS_AVAILABLE = True
@@ -264,13 +269,10 @@ except Exception as _redis_err:
     redis_client = None
     logger.warning(f" Redis unavailable ({_redis_err}) — falling back to filesystem/simple")
 
-# --- Session ---
 if REDIS_AVAILABLE:
     app.config['SESSION_TYPE'] = 'redis'
     app.config['SESSION_REDIS'] = redis_client
     app.config['SESSION_PERMANENT'] = True
-    # SESSION_USE_SIGNER=False — Werkzeug set_cookie expects a str session id.
-    # With True, flask-session signs to bytes, causing a TypeError.
     app.config['SESSION_USE_SIGNER'] = False
     app.config['SESSION_KEY_PREFIX'] = 'ielts_session:'
     app.config['SESSION_REFRESH_EACH_REQUEST'] = True
@@ -283,7 +285,6 @@ else:
     logger.warning(" Session → filesystem (Redis unavailable)")
 Session(app)
 
-# --- Cache ---
 if REDIS_AVAILABLE:
     app.config['CACHE_TYPE'] = 'RedisCache'
     app.config['CACHE_REDIS_URL'] = os.environ.get(
@@ -297,7 +298,6 @@ else:
     logger.warning(" Cache → simple (Redis unavailable)")
 cache = Cache(app)
 
-# --- Rate limiter ---
 if REDIS_AVAILABLE:
     _limiter_storage = os.environ.get(
         'REDIS_LIMITER_URL',
@@ -329,10 +329,23 @@ mail = Mail(app)
 GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID', '')
 GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET', '')
 
+# ═══════════════════════════════════════════════════════════
+# FACEBOOK OAUTH CONFIG
+# ═══════════════════════════════════════════════════════════
+FACEBOOK_APP_ID = os.environ.get('FACEBOOK_APP_ID', '')
+FACEBOOK_APP_SECRET = os.environ.get('FACEBOOK_APP_SECRET', '')
+FACEBOOK_REDIRECT_URI = os.environ.get(
+    'FACEBOOK_REDIRECT_URI',
+    'http://localhost:5000/login/facebook/authorized'
+)
+
 # ============================================================
 # DATABASE & MODELS
 # ============================================================
-from models import db, PendingPayment, GenerationState, UserTestBankUsage
+from models import (
+    db, PendingPayment, GenerationState, UserTestBankUsage,
+    PaymentSettings, Bill, Coupon, CouponUsage,
+)
 from models import (
     get_user_model,
     get_subscription_model,
@@ -390,6 +403,75 @@ def _parse_utc_datetime(value: str) -> Optional[datetime]:
             dt = dt.replace(tzinfo=timezone.utc)
         return dt
     except (ValueError, TypeError, AttributeError):
+        return None
+
+
+# ═══════════════════════════════════════════════════════════
+# COUPON HELPERS
+# ═══════════════════════════════════════════════════════════
+def find_coupon(code):
+    if not code:
+        return None, 'Please enter a coupon code'
+    c = (code or '').strip().upper()
+    if not c:
+        return None, 'Please enter a coupon code'
+    try:
+        coupon = Coupon.query.filter_by(code=c).first()
+    except Exception as e:
+        logger.warning(f"find_coupon query failed: {e}")
+        return None, 'Coupon lookup failed'
+    if not coupon:
+        return None, 'Invalid coupon code'
+    return coupon, None
+
+
+def validate_coupon_for_user(coupon, user_id, module, plan_key, amount):
+    ok, err = coupon.is_valid_now()
+    if not ok:
+        return 0, err
+    if not coupon.module_allowed(module):
+        return 0, f'Coupon not valid for {module.upper()}'
+    if not coupon.plan_allowed(plan_key):
+        return 0, 'Coupon not valid for this plan'
+    if coupon.min_amount and int(amount or 0) < int(coupon.min_amount):
+        return 0, f'Minimum amount NPR {coupon.min_amount} required'
+    if coupon.per_user_limit and coupon.per_user_limit > 0:
+        try:
+            used_by_user = CouponUsage.query.filter_by(
+                coupon_id=coupon.id, user_id=user_id
+            ).count()
+            if used_by_user >= int(coupon.per_user_limit):
+                return 0, 'You have already used this coupon'
+        except Exception as e:
+            logger.warning(f"coupon per-user check failed: {e}")
+    disc = coupon.compute_discount(amount)
+    if disc <= 0:
+        return 0, 'Coupon gives no discount for this order'
+    return disc, None
+
+
+def record_coupon_usage(coupon, user_id, module, plan_key,
+                        original_amount, discount_amount, txn_id=None):
+    try:
+        coupon.times_used = (coupon.times_used or 0) + 1
+        coupon.updated_at = datetime.now(timezone.utc)
+        final_amount = max(0, int(original_amount) - int(discount_amount))
+        usage = CouponUsage(
+            coupon_id=coupon.id,
+            user_id=user_id,
+            module=module,
+            plan=plan_key,
+            original_amount=int(original_amount),
+            discount_amount=int(discount_amount),
+            final_amount=final_amount,
+            txn_id=txn_id,
+        )
+        db.session.add(usage)
+        db.session.commit()
+        return usage
+    except Exception as e:
+        db.session.rollback()
+        logger.exception(f"record_coupon_usage failed: {e}")
         return None
 
 
@@ -548,21 +630,94 @@ def _get_subscription_status(module: str):
 
 
 def _activate_subscription(module: str, plan_key: str):
-    if module == 'ielts':
-        return subscription_manager.activate_subscription(current_user.id, plan_key)
-    elif module == 'pte':
-        return pte_subscription_manager.activate_subscription(current_user.id, plan_key)
-    elif module == 'ukvi':
-        ukvi_sub_manager = UKVISubscriptionManager(db)
-        sub = ukvi_sub_manager._get_or_create_subscription(current_user.id)
-        sub.plan = plan_key
-        sub.status = 'active'
-        sub.tests_remaining = PLAN_CONFIG.get(plan_key, {}).get('tests', 999)
-        sub.subscription_start = datetime.now(timezone.utc)
-        sub.subscription_end = get_subscription_end(PLAN_CONFIG.get(plan_key, {}).get('days', 30))
+    return _activate_subscription_by_user(current_user.id, module, plan_key)
+
+
+def _activate_subscription_by_user(user_id: int, module: str, plan_key: str):
+    try:
+        if module == 'ielts':
+            return subscription_manager.activate_subscription(user_id, plan_key)
+        elif module == 'pte':
+            return pte_subscription_manager.activate_subscription(user_id, plan_key)
+        elif module == 'ukvi':
+            ukvi_sub_manager = UKVISubscriptionManager(db)
+            sub = ukvi_sub_manager._get_or_create_subscription(user_id)
+            sub.plan = plan_key
+            sub.status = 'active'
+            sub.tests_remaining = PLAN_CONFIG.get(plan_key, {}).get('tests', 999)
+            sub.subscription_start = datetime.now(timezone.utc)
+            sub.subscription_end = get_subscription_end(
+                PLAN_CONFIG.get(plan_key, {}).get('days', 30)
+            )
+            db.session.commit()
+            return {'success': True, 'tests_remaining': sub.tests_remaining}
+        return {'success': False, 'error': 'Invalid module'}
+    except Exception as e:
+        logger.exception(f"_activate_subscription_by_user failed: {e}")
+        db.session.rollback()
+        return {'success': False, 'error': str(e)}
+
+
+# ═══════════════════════════════════════════════════════════
+# AUTO-BILL GENERATION
+# ═══════════════════════════════════════════════════════════
+try:
+    from utils.bill_generator import generate_bill_pdf
+    BILL_GENERATOR_AVAILABLE = True
+    logger.info(" Bill generator imported")
+except ImportError as _bg_err:
+    BILL_GENERATOR_AVAILABLE = False
+    generate_bill_pdf = None
+    logger.warning(f" Bill generator not available: {_bg_err}")
+
+
+def _create_auto_bill(user_id, module, plan_key, amount, txn_id):
+    if not BILL_GENERATOR_AVAILABLE:
+        logger.warning("Skipping auto-bill (generator unavailable)")
+        return None
+    try:
+        User = get_user_model(module)
+        user = db.session.get(User, user_id)
+        year = datetime.now(timezone.utc).year
+        last = Bill.query.filter(
+            Bill.bill_number.like(f'INV-{year}-%')
+        ).order_by(Bill.id.desc()).first()
+        next_num = 1
+        if last:
+            try:
+                next_num = int(last.bill_number.split('-')[-1]) + 1
+            except (ValueError, IndexError):
+                pass
+        bill_number = f"INV-{year}-{next_num:04d}"
+        plan_cfg = PLAN_CONFIG.get(plan_key, {})
+        bill = Bill(
+            bill_number=bill_number,
+            user_id=user_id,
+            user_email=(user.email if user else None),
+            user_name=(user.username if user else 'User'),
+            module=module,
+            plan=plan_key,
+            plan_label=plan_cfg.get('label', plan_key),
+            amount=int(amount),
+            status='paid',
+            payment_method='esewa',
+            transaction_id=txn_id,
+            issued_at=datetime.now(timezone.utc),
+        )
+        db.session.add(bill)
+        db.session.flush()
+        try:
+            pdf_path = generate_bill_pdf(bill.to_dict())
+            bill.pdf_path = pdf_path
+        except Exception as _pdf_err:
+            logger.exception(f"Bill PDF generation failed: {_pdf_err}")
         db.session.commit()
-        return {'success': True, 'tests_remaining': sub.tests_remaining}
-    return {'success': False, 'error': 'Invalid module'}
+        logger.info(f" ✅ Auto-bill: {bill_number} (user={user_id}, {module}, {plan_key})")
+        return bill
+    except Exception as e:
+        logger.exception(f"Auto-bill failed: {e}")
+        db.session.rollback()
+        return None
 
 
 # ============================================================
@@ -702,24 +857,20 @@ def _generate_audio_background(session_id, num_sections):
             if not sess:
                 logger.error(f"Session {session_id} not found for audio background")
                 return
-
             raw = sess.test_data
             if isinstance(raw, str):
                 test_data = json.loads(raw)
             else:
                 test_data = raw or {}
-
             audio_urls = test_data.get('audio_urls', {})
             audio_timings = test_data.get('audio_timings', {})
             accents_map = test_data.get('accents', {})
             if not accents_map:
                 default_accent = test_data.get('accent', 'british')
                 accents_map = {str(i): default_accent for i in range(1, num_sections+1)}
-
             _pool_id_for_audio = None
             if isinstance(test_data, dict):
                 _pool_id_for_audio = test_data.get('_pool_id')
-
             sections = test_data.get('sections', [])
             for sec_num in range(1, num_sections+1):
                 if str(sec_num) in audio_urls:
@@ -743,9 +894,7 @@ def _generate_audio_background(session_id, num_sections):
                     logger.info(f" Audio generated for Section {sec_num}")
                 else:
                     logger.warning(f" Audio generation failed for Section {sec_num}: {error}")
-
             logger.info(f" Audio background generation complete for session {session_id}")
-
     except Exception as e:
         logger.error(f"Background audio generation failed: {e}", exc_info=True)
 
@@ -1078,7 +1227,7 @@ scheduler.start()
 admin_executor = ThreadPoolExecutor(max_workers=2)
 
 # ═══════════════════════════════════════════════════════════
-# UKVI BACKGROUND WORKER (v8.6 — pool + async queue)
+# UKVI BACKGROUND WORKER
 # ═══════════════════════════════════════════════════════════
 UKVI_WORKER_POOL = ThreadPoolExecutor(
     max_workers=5,
@@ -1087,31 +1236,25 @@ UKVI_WORKER_POOL = ThreadPoolExecutor(
 
 
 def _process_ukvi_job(job_id: str):
-    """Background worker — generates UKVI questions for a job."""
     with app.app_context():
         try:
             job = ukvi_pool_manager.get_job(job_id)
             if not job:
                 logger.warning(f"UKVI job {job_id} not found")
                 return
-
             ukvi_pool_manager.mark_generating(job_id)
-
             from modules.ukvi.service import UKVIService
             svc = UKVIService(ai_engine=ai_engine, db=db)
             profile = svc.get_profile(job.user_id) or {}
-
             questions = svc.generate_questions_sync(
                 user_id=job.user_id,
                 difficulty=job.difficulty or 'medium',
                 profile=profile,
             )
-
             if questions:
                 ukvi_pool_manager.mark_complete(job_id, questions)
             else:
                 ukvi_pool_manager.mark_failed(job_id, 'Empty result')
-
         except Exception as e:
             logger.exception(f"UKVI job {job_id} failed: {e}")
             try:
@@ -1120,41 +1263,27 @@ def _process_ukvi_job(job_id: str):
                 pass
 
 
-# ═══════════════════════════════════════════════════════════
-# UKVI LIGHTWEIGHT POLLER (v8.6.1 — 10s interval, single process)
-# ═══════════════════════════════════════════════════════════
 _ukvi_poll_tick = 0
 
 
 def _poll_ukvi_jobs():
-    """
-    Lightweight poller:
-      • Cheap count query first (fast exit if nothing queued).
-      • Stale-job cleanup runs only every ~60s and only when idle.
-      • Only the Werkzeug child process registers this (see below).
-    """
     global _ukvi_poll_tick
     _ukvi_poll_tick += 1
-
     with app.app_context():
         try:
             from modules.ukvi.models import UKVIGenerationJob
-
             queued_count = (
                 UKVIGenerationJob.query
                 .filter_by(status='queued')
                 .count()
             )
-
             if _ukvi_poll_tick % 6 == 0 and queued_count == 0:
                 try:
                     ukvi_pool_manager._cleanup_stale_jobs()
                 except Exception as _cleanup_err:
                     logger.debug(f"UKVI stale cleanup failed: {_cleanup_err}")
-
             if queued_count == 0:
                 return
-
             queued = (
                 UKVIGenerationJob.query
                 .filter_by(status='queued')
@@ -1162,15 +1291,12 @@ def _poll_ukvi_jobs():
                 .limit(10)
                 .all()
             )
-
             for job in queued:
                 job.status = 'generating'
                 job.started_at = datetime.now(timezone.utc)
                 db.session.commit()
-
                 UKVI_WORKER_POOL.submit(_process_ukvi_job, job.id)
                 logger.info(f" [UKVI POLL] Submitted job {job.id} to worker")
-
         except Exception as e:
             logger.exception(f"_poll_ukvi_jobs failed: {e}")
 
@@ -1208,9 +1334,6 @@ def _pte_job_cleanup_old(hours: int = 24) -> int:
 
 scheduler.add_job(_pte_job_cleanup_old, 'interval', hours=6, args=[24])
 
-# ═══════════════════════════════════════════════════════════
-# UKVI POLLER — REGISTER ONLY IN CHILD PROCESS
-# ═══════════════════════════════════════════════════════════
 _is_werkzeug_child = os.environ.get('WERKZEUG_RUN_MAIN') == 'true'
 _reloader_active = bool(app.debug) and not _is_werkzeug_child
 
@@ -1240,7 +1363,6 @@ def _find_pte_active_session(user_id: int, test_type: str):
         except ImportError:
             logger.warning("PTE session model not found — auto-resume disabled")
             return None, None
-
     try:
         session_obj = PTETestSession.query.filter_by(
             user_id=user_id,
@@ -1254,17 +1376,14 @@ def _find_pte_active_session(user_id: int, test_type: str):
             exc_info=True,
         )
         raise
-
     if not session_obj:
         return None, None
-
     test_data = session_obj.test_data or {}
     if isinstance(test_data, str):
         try:
             test_data = json.loads(test_data)
         except Exception:
             test_data = {}
-
     return session_obj, test_data
 
 
@@ -1282,10 +1401,8 @@ def _pte_active_session_response(test_type: str):
             'active': False,
             'error': 'lookup_failed',
         }), 500
-
     if not session_obj:
         return jsonify({'success': True, 'active': False}), 200
-
     return jsonify({
         'success': True,
         'active': True,
@@ -1317,9 +1434,61 @@ def favicon():
     return '', 204
 
 
-# ═══════════════════════════════════════════════════════════
-# PTE AUTO-RESUME ENDPOINTS
-# ═══════════════════════════════════════════════════════════
+@app.route('/api/payment-options')
+@login_required
+def payment_options():
+    try:
+        s = PaymentSettings.get()
+        return jsonify({
+            'manual_enabled': s.manual_enabled,
+            'esewa_enabled': s.esewa_enabled,
+            'khalti_enabled': s.khalti_enabled,
+        })
+    except Exception as e:
+        logger.warning(f"payment_options failed: {e}")
+        return jsonify({
+            'manual_enabled': True,
+            'esewa_enabled': True,
+            'khalti_enabled': False,
+        })
+
+
+@app.route('/my-bills')
+@login_required
+def my_bills():
+    try:
+        bills = Bill.query.filter_by(user_id=current_user.id)\
+                          .order_by(Bill.issued_at.desc()).all()
+    except Exception as e:
+        logger.warning(f"my_bills query failed: {e}")
+        bills = []
+    return render_template('my_bills.html', bills=bills)
+
+
+@app.route('/bill/<int:bill_id>/download')
+@login_required
+def download_bill(bill_id):
+    bill = db.session.get(Bill, bill_id)
+    if not bill or bill.user_id != current_user.id:
+        abort(404)
+    if not bill.pdf_path or not os.path.exists(bill.pdf_path):
+        if not BILL_GENERATOR_AVAILABLE:
+            abort(500)
+        try:
+            pdf_path = generate_bill_pdf(bill.to_dict())
+            bill.pdf_path = pdf_path
+            db.session.commit()
+        except Exception as e:
+            logger.exception(f"Bill regen failed: {e}")
+            abort(500)
+    return send_file(
+        bill.pdf_path,
+        mimetype='application/pdf',
+        as_attachment=True,
+        download_name=f"{bill.bill_number}.pdf",
+    )
+
+
 @app.route('/api/pte/reading/active-session', methods=['GET'])
 @login_required
 def pte_reading_active_session():
@@ -1349,7 +1518,6 @@ def api_speaking_pooled_generate():
     except Exception as e:
         logger.error(f"Speaking API import failed: {e}")
         return jsonify({'success': False, 'error': 'Speaking unavailable'}), 503
-
     data = request.json or {}
     difficulty = data.get('difficulty', 'medium')
     topic = data.get('topic')
@@ -1429,7 +1597,6 @@ def api_speaking_pooled_generate():
         user_id=user_id,
         generate_fn=_gen,
     )
-
     result = dict(result or {})
 
     if source == 'waiting':
@@ -1439,14 +1606,12 @@ def api_speaking_pooled_generate():
             'message': 'Another user is generating a speaking test. Please retry.',
             'retry_after': result.get('retry_after', 3),
         }), 202
-
     if source == 'exhausted':
         return jsonify({
             'success': False,
             'source': 'exhausted',
             'error': 'Speaking pool is full. Please try again shortly.'
         }), 503
-
     if source == 'failed' or result.get('error'):
         return jsonify({
             'success': False,
@@ -1473,7 +1638,6 @@ def api_speaking_pooled_generate():
     result['_pool_id'] = pool_id
     result['source'] = source
     result['success'] = True
-
     logger.info(f" [speaking/pooled] user={user_id} source={source} pool_id={pool_id}")
     return jsonify(result)
 
@@ -1486,7 +1650,6 @@ def api_speaking_pooled_submit():
     except Exception as e:
         logger.error(f"Speaking API import failed: {e}")
         return jsonify({'success': False, 'error': 'Speaking unavailable'}), 503
-
     data = request.json or {}
     session_id = data.get('session_id')
     responses = data.get('responses') or []
@@ -1511,7 +1674,6 @@ def api_speaking_pooled_submit():
                     ft['phase'] = 'done'
                 session['full_ielts_test'] = ft
                 session.modified = True
-
                 return jsonify({
                     'success': True,
                     'is_full_test': True,
@@ -1520,7 +1682,6 @@ def api_speaking_pooled_submit():
                     'next_phase': ft['phase'],
                     'redirect': '/ielts-full-test?completed=speaking',
                 })
-
         return jsonify({
             'success': True,
             'band_score': 0.0,
@@ -1529,7 +1690,6 @@ def api_speaking_pooled_submit():
         })
 
     api = create_speaking_api(ai_engine=ai_engine, db=db)
-
     per_part = {1: [], 2: [], 3: []}
     feedbacks = []
     for r in responses:
@@ -1545,7 +1705,6 @@ def api_speaking_pooled_submit():
 
     all_scores = [s for lst in per_part.values() for s in lst]
     band = round(sum(all_scores) / len(all_scores), 1) if all_scores else 0.0
-
     part_avgs = {
         p: (round(sum(l) / len(l), 1) if l else 0.0)
         for p, l in per_part.items()
@@ -1583,7 +1742,6 @@ def api_speaking_pooled_submit():
             sess.status = 'completed'
             sess.answers_so_far = {'responses': responses}
             sess.last_updated = datetime.now(timezone.utc)
-
             _pool_id = None
             td = sess.test_data or {}
             if isinstance(td, str):
@@ -1593,9 +1751,7 @@ def api_speaking_pooled_submit():
                     td = {}
             if isinstance(td, dict):
                 _pool_id = td.get('_pool_id')
-
             db.session.commit()
-
             if _pool_id and ielts_test_pool_manager:
                 ielts_test_pool_manager.record_user_progress(
                     user_id=user_id,
@@ -1626,12 +1782,10 @@ def api_speaking_pooled_submit():
                 ft['phase'] = 'done'
             session['full_ielts_test'] = ft
             session.modified = True
-
             logger.info(
                 f" Full-test speaking recorded for user {user_id}, "
                 f"band={band}, next={ft['phase']}"
             )
-
             return jsonify({
                 'success': True,
                 'is_full_test': True,
@@ -1690,7 +1844,6 @@ def api_reading_pooled_generate():
                         db.session.add(phase_session)
                         db.session.commit()
                         session['current_test_session_id'] = phase_session.id
-
                         return jsonify({
                             'success': True,
                             'from_full_test': True,
@@ -1727,7 +1880,6 @@ def api_reading_pooled_generate():
             result = t.to_dict() if hasattr(t, 'to_dict') else t
             result['source'] = 'on_demand'
             result['success'] = True
-
             TestSessionM = get_test_session_model('ielts')
             sess = TestSessionM(
                 user_id=user_id,
@@ -1757,7 +1909,6 @@ def api_reading_pooled_generate():
         user_id=user_id,
         generate_fn=_gen,
     )
-
     result = dict(result or {})
 
     if source == 'waiting':
@@ -1767,14 +1918,12 @@ def api_reading_pooled_generate():
             'message': 'Another user is generating a reading test. Please retry.',
             'retry_after': result.get('retry_after', 3),
         }), 202
-
     if source == 'exhausted':
         return jsonify({
             'success': False,
             'source': 'exhausted',
             'error': 'Reading pool is full. Please try again shortly.'
         }), 503
-
     if source == 'failed' or result.get('error'):
         return jsonify({
             'success': False,
@@ -1802,7 +1951,6 @@ def api_reading_pooled_generate():
     result['_pool_id'] = pool_id
     result['source'] = source
     result['success'] = True
-
     logger.info(f" [reading/pooled] user={user_id} source={source} pool_id={pool_id}")
     return jsonify(result)
 
@@ -1813,7 +1961,6 @@ def api_reading_pooled_submit():
     data = request.json or {}
     session_id = data.get('session_id')
     user_id = current_user.id
-
     try:
         TestSessionM = get_test_session_model('ielts')
         sess = db.session.get(TestSessionM, int(session_id)) if session_id else None
@@ -1827,7 +1974,6 @@ def api_reading_pooled_submit():
                     td = {}
             if isinstance(td, dict):
                 _pool_id = td.get('_pool_id')
-
             if _pool_id and ielts_test_pool_manager:
                 ielts_test_pool_manager.record_user_progress(
                     user_id=user_id,
@@ -1841,7 +1987,6 @@ def api_reading_pooled_submit():
             return jsonify({'success': True, 'pool_id': _pool_id})
     except Exception as e:
         logger.warning(f"Reading pool progress update failed: {e}")
-
     return jsonify({'success': True})
 
 
@@ -1883,30 +2028,72 @@ def register():
         module = 'ielts'
     session['selected_module'] = module
     User = get_user_model(module)
+
     if request.method == 'POST':
-        username = request.form.get('username', '').strip()
-        email = request.form.get('email', '').strip()
-        password = request.form.get('password', '')
-        if not username or not email or not password:
-            return render_template('index.html', error="All fields required", module=module)
-        if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', email):
-            return render_template('index.html', error="Invalid email", module=module)
+        username = (request.form.get('username') or '').strip()
+        password = request.form.get('password') or ''
+
+        if not username or not password:
+            return render_template('index.html',
+                                   error="Username and password are required",
+                                   module=module)
+        if len(username) < 3:
+            return render_template('index.html',
+                                   error="Username must be at least 3 characters",
+                                   module=module)
+        if len(username) > 80:
+            return render_template('index.html',
+                                   error="Username is too long (max 80 characters)",
+                                   module=module)
+        if not re.match(r'^[a-zA-Z0-9._-]+$', username):
+            return render_template('index.html',
+                                   error="Username can only contain letters, numbers, dot, underscore, hyphen",
+                                   module=module)
         if len(password) < 8:
-            return render_template('index.html', error="Password must be at least 8 characters", module=module)
+            return render_template('index.html',
+                                   error="Password must be at least 8 characters",
+                                   module=module)
         if User.query.filter_by(username=username).first():
-            return render_template('index.html', error="Username already exists", module=module)
+            return render_template('index.html',
+                                   error="Username already taken",
+                                   module=module)
+
+        email = f"{username.lower()}@seltaiprep.local"
         if User.query.filter_by(email=email).first():
-            return render_template('index.html', error="Email already registered", module=module)
-        user = User(username=username, email=email)
-        user.set_password(password)
-        db.session.add(user)
-        db.session.commit()
+            counter = 1
+            while User.query.filter_by(email=f"{username.lower()}{counter}@seltaiprep.local").first():
+                counter += 1
+                if counter > 1000:
+                    break
+            email = f"{username.lower()}{counter}@seltaiprep.local"
+
+        try:
+            user = User(username=username, email=email)
+            user.set_password(password)
+            db.session.add(user)
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            logger.exception(f"Registration failed for {username}: {e}")
+            return render_template('index.html',
+                                   error="Registration failed. Please try again.",
+                                   module=module)
+
+        try:
+            if module == 'ielts':
+                from models import create_default_subscription_for_user
+                create_default_subscription_for_user(user.id, 'ielts')
+        except Exception as e:
+            logger.warning(f"Default subscription creation failed: {e}")
+
         session.clear()
         session['selected_module'] = module
         login_user(user, remember=True, duration=timedelta(days=30))
         session.permanent = True
-        log_user_activity(user.id, 'register', {'module': module})
+        log_user_activity(user.id, 'register', {'module': module, 'method': 'username_password'})
+        logger.info(f" New user registered: {user.id} ({username})")
         return redirect(url_for('dashboard'))
+
     return render_template('index.html', module=module)
 
 
@@ -1934,14 +2121,12 @@ def dashboard():
     q_module = request.args.get('module')
     if q_module in ('ielts', 'pte', 'ukvi'):
         session['selected_module'] = q_module
-
     module = session.get('selected_module', 'ielts')
     User = get_user_model(module)
     user = db.session.get(User, current_user.id)
     if not user:
         logout_user()
         return redirect(url_for('login'))
-
     try:
         db.session.expire_all()
     except Exception:
@@ -1958,7 +2143,6 @@ def dashboard():
 
     Subscription = get_subscription_model(module)
     subscription = Subscription.query.filter_by(user_id=current_user.id).first()
-
     TestResult = get_test_result_model(module)
     results = TestResult.query.filter_by(user_id=current_user.id).order_by(TestResult.created_at.desc()).all()
 
@@ -1999,7 +2183,7 @@ def dashboard():
 
 
 # ============================================================
-# GOOGLE & OTP
+# GOOGLE & FACEBOOK & OTP
 # ============================================================
 @app.route('/login/google')
 def google_login():
@@ -2055,6 +2239,131 @@ def google_authorized():
         return redirect(url_for('login'))
 
 
+@app.route('/login/facebook')
+@limiter.limit("20 per minute")
+def facebook_login():
+    if not FACEBOOK_APP_ID:
+        flash('Facebook login is not configured.', 'danger')
+        return redirect(url_for('login'))
+    module = request.args.get('module', 'ielts')
+    if module not in ['ielts', 'pte', 'ukvi']:
+        module = 'ielts'
+    if os.environ.get('FLASK_ENV') == 'production':
+        redirect_uri = FACEBOOK_REDIRECT_URI
+    else:
+        redirect_uri = url_for('facebook_authorized', _external=True)
+    auth_url = (
+        f"https://www.facebook.com/v18.0/dialog/oauth?"
+        f"client_id={FACEBOOK_APP_ID}"
+        f"&redirect_uri={urllib.parse.quote(redirect_uri)}"
+        f"&state={module}"
+        f"&scope=email,public_profile"
+        f"&response_type=code"
+    )
+    return redirect(auth_url)
+
+
+@app.route('/login/facebook/authorized')
+@limiter.limit("20 per minute")
+def facebook_authorized():
+    try:
+        module = request.args.get('state', 'ielts')
+        if module not in ['ielts', 'pte', 'ukvi']:
+            module = 'ielts'
+        error = request.args.get('error')
+        if error:
+            logger.warning(f"Facebook auth denied: {error}")
+            flash('Facebook login cancelled.', 'warning')
+            return redirect(url_for('login', module=module))
+        code = request.args.get('code')
+        if not code:
+            raise Exception('No authorization code')
+        if os.environ.get('FLASK_ENV') == 'production':
+            redirect_uri = FACEBOOK_REDIRECT_URI
+        else:
+            redirect_uri = url_for('facebook_authorized', _external=True)
+        token_resp = requests.get(
+            'https://graph.facebook.com/v18.0/oauth/access_token',
+            params={
+                'client_id': FACEBOOK_APP_ID,
+                'client_secret': FACEBOOK_APP_SECRET,
+                'redirect_uri': redirect_uri,
+                'code': code,
+            },
+            timeout=30,
+        )
+        token_data = token_resp.json()
+        if 'error' in token_data:
+            raise Exception(f"Token error: {token_data['error']}")
+        access_token = token_data.get('access_token')
+        if not access_token:
+            raise Exception(f"No access token: {token_data}")
+        user_resp = requests.get(
+            'https://graph.facebook.com/v18.0/me',
+            params={
+                'fields': 'id,name,email,first_name,last_name',
+                'access_token': access_token,
+            },
+            timeout=30,
+        )
+        user_data = user_resp.json()
+        fb_id = user_data.get('id')
+        email = user_data.get('email')
+        name = user_data.get('name', '')
+        first_name = user_data.get('first_name', '')
+        if not fb_id:
+            raise Exception(f"No Facebook ID: {user_data}")
+        if not email:
+            email = f"fb_{fb_id}@seltaiprep.local"
+            logger.warning(f"Facebook didn't return email for {fb_id}")
+        User = get_user_model(module)
+        user = User.query.filter_by(facebook_id=fb_id).first()
+        if not user:
+            user = User.query.filter_by(email=email).first()
+            if not user:
+                base_username = (
+                    first_name.lower().replace(' ', '') or
+                    (name or '').lower().replace(' ', '')[:20] or
+                    f"fb_{fb_id[:8]}"
+                )
+                username = base_username
+                counter = 1
+                while User.query.filter_by(username=username).first():
+                    username = f"{base_username}{counter}"
+                    counter += 1
+                    if counter > 100:
+                        username = f"fb_{fb_id[:10]}"
+                        break
+                user = User(
+                    username=username,
+                    email=email,
+                    facebook_id=fb_id,
+                )
+                user.set_password(secrets.token_hex(32))
+                db.session.add(user)
+                db.session.commit()
+                logger.info(f" New user via Facebook: {user.id} ({email})")
+            else:
+                user.facebook_id = fb_id
+                db.session.commit()
+                logger.info(f" Linked Facebook to existing user: {user.id}")
+        session.clear()
+        session['selected_module'] = module
+        login_user(user, remember=True, duration=timedelta(days=30))
+        session.permanent = True
+        user.last_login = datetime.now(timezone.utc)
+        db.session.commit()
+        log_user_activity(user.id, 'login', {
+            'method': 'facebook',
+            'module': module,
+        })
+        return redirect(url_for('dashboard'))
+    except Exception as e:
+        logger.exception(f"Facebook auth failed: {e}")
+        flash('Facebook login failed. Please try again or use another method.', 'danger')
+        return redirect(url_for('login'))
+
+
 @app.route('/login/email-otp', methods=['POST'])
 @limiter.limit("3 per minute")
 def send_email_otp():
@@ -2103,6 +2412,337 @@ def verify_email_otp():
     return redirect(url_for('dashboard'))
 
 
+# ═══════════════════════════════════════════════════════════
+# FORGOT PASSWORD
+# ═══════════════════════════════════════════════════════════
+@app.route('/forgot-password/send-otp', methods=['POST'])
+@limiter.limit("3 per minute")
+def forgot_password_send_otp():
+    data = request.form or request.json or {}
+    email = (data.get('email') or '').strip().lower()
+    module = data.get('module', 'ielts')
+    if module not in ['ielts', 'pte', 'ukvi']:
+        module = 'ielts'
+    if not email:
+        return jsonify({'success': False, 'error': 'Email is required'})
+    if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', email):
+        return jsonify({'success': False, 'error': 'Invalid email format'})
+
+    User = get_user_model(module)
+    user = User.query.filter_by(email=email).first()
+    generic_success = {
+        'success': True,
+        'message': 'If this email is registered, an OTP has been sent.',
+        'email': email,
+    }
+    if not user:
+        logger.info(f" [forgot-pw] non-existent email: {email}")
+        return jsonify(generic_success)
+
+    otp = ''.join(random.choices(string.digits, k=6))
+    session['fp_otp'] = otp
+    session['fp_email'] = email
+    session['fp_module'] = module
+    session['fp_user_id'] = user.id
+    session['fp_otp_expiry'] = (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat()
+    session.modified = True
+
+    mail_sent = True
+    try:
+        msg = Message(
+            subject='SELTAI PREP - Password Reset',
+            recipients=[email],
+            body=(
+                f'We received a request to reset your password.\n\n'
+                f'Your reset code: {otp}\n\n'
+                f'This code expires in 10 minutes.\n'
+                f'If you did not request this, please ignore this email.'
+            )
+        )
+        mail.send(msg)
+    except Exception as e:
+        logger.error(f" [forgot-pw] OTP send failed: {e}")
+        mail_sent = False
+
+    if not mail_sent:
+        if os.environ.get('FLASK_ENV') == 'development':
+            generic_success['dev_otp'] = otp
+            generic_success['message'] = f'Mail failed — dev OTP: {otp}'
+        else:
+            return jsonify({'success': False, 'error': 'Could not send OTP. Try again later.'})
+    return jsonify(generic_success)
+
+
+@app.route('/forgot-password/verify-otp', methods=['POST'])
+@limiter.limit("5 per minute")
+def forgot_password_verify_otp():
+    data = request.form or request.json or {}
+    user_otp = (data.get('otp') or '').strip()
+    new_password = data.get('new_password') or ''
+    stored_otp = session.get('fp_otp')
+    email = session.get('fp_email')
+    module = session.get('fp_module', 'ielts')
+    user_id = session.get('fp_user_id')
+    expiry = session.get('fp_otp_expiry')
+
+    if not stored_otp or not email or not user_id:
+        return jsonify({'success': False, 'error': 'Session expired. Please start over.'})
+    if expiry:
+        exp_dt = _parse_utc_datetime(expiry)
+        if exp_dt and datetime.now(timezone.utc) > exp_dt:
+            for k in ['fp_otp', 'fp_email', 'fp_module', 'fp_user_id', 'fp_otp_expiry']:
+                session.pop(k, None)
+            return jsonify({'success': False, 'error': 'OTP expired. Please request a new one.'})
+    if user_otp != stored_otp:
+        return jsonify({'success': False, 'error': 'Invalid OTP code'})
+    if len(new_password) < 8:
+        return jsonify({'success': False, 'error': 'Password must be at least 8 characters'})
+
+    User = get_user_model(module)
+    user = db.session.get(User, int(user_id))
+    if not user:
+        return jsonify({'success': False, 'error': 'User not found'})
+    try:
+        user.set_password(new_password)
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        logger.exception(f" [forgot-pw] password reset failed: {e}")
+        return jsonify({'success': False, 'error': 'Password reset failed. Please try again.'})
+    for k in ['fp_otp', 'fp_email', 'fp_module', 'fp_user_id', 'fp_otp_expiry']:
+        session.pop(k, None)
+    log_user_activity(user.id, 'password_reset', {'module': module})
+    logger.info(f" [forgot-pw] password reset for user {user.id} ({email})")
+    return jsonify({
+        'success': True,
+        'message': 'Password reset successful! Please sign in.',
+        'redirect': '/login'
+    })
+
+
+# ═══════════════════════════════════════════════════════════
+# PROFILE
+# ═══════════════════════════════════════════════════════════
+@app.route('/profile')
+@login_required
+def profile_page():
+    module = session.get('selected_module', 'ielts')
+    User = get_user_model(module)
+    user = db.session.get(User, current_user.id)
+    if not user:
+        logout_user()
+        return redirect(url_for('login'))
+    Subscription = get_subscription_model(module)
+    subscription = Subscription.query.filter_by(user_id=current_user.id).first()
+    TestResult = get_test_result_model(module)
+    total_tests = TestResult.query.filter_by(user_id=current_user.id).count()
+    return render_template(
+        'profile.html',
+        user=user,
+        module=module,
+        subscription=subscription,
+        total_tests=total_tests,
+    )
+
+
+@app.route('/profile/update', methods=['POST'])
+@login_required
+def profile_update():
+    data = request.form or request.json or {}
+    full_name = (data.get('full_name') or '').strip()
+    target_band_raw = data.get('target_band')
+    module = session.get('selected_module', 'ielts')
+    User = get_user_model(module)
+    user = db.session.get(User, current_user.id)
+    if not user:
+        return jsonify({'success': False, 'error': 'User not found'})
+    try:
+        user.full_name = full_name or None
+        if target_band_raw not in (None, '', 'null'):
+            try:
+                tb = float(target_band_raw)
+                if tb < 0 or tb > 9:
+                    raise ValueError("out of range")
+                user.target_band = tb
+            except (ValueError, TypeError):
+                return jsonify({'success': False, 'error': 'Target band must be between 0 and 9'})
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        logger.exception(f"Profile update failed: {e}")
+        return jsonify({'success': False, 'error': 'Update failed. Please try again.'})
+    log_user_activity(user.id, 'profile_update', {'module': module})
+    return jsonify({'success': True, 'message': 'Profile updated successfully'})
+
+
+@app.route('/profile/change-password', methods=['POST'])
+@login_required
+@limiter.limit("5 per minute")
+def profile_change_password():
+    data = request.form or request.json or {}
+    current_password = data.get('current_password') or ''
+    new_password = data.get('new_password') or ''
+    confirm_password = data.get('confirm_password') or ''
+    module = session.get('selected_module', 'ielts')
+    User = get_user_model(module)
+    user = db.session.get(User, current_user.id)
+    if not user:
+        return jsonify({'success': False, 'error': 'User not found'})
+    if not current_password or not new_password:
+        return jsonify({'success': False, 'error': 'All fields are required'})
+    if not user.check_password(current_password):
+        return jsonify({'success': False, 'error': 'Current password is incorrect'})
+    if new_password != confirm_password:
+        return jsonify({'success': False, 'error': 'New passwords do not match'})
+    if len(new_password) < 8:
+        return jsonify({'success': False, 'error': 'Password must be at least 8 characters'})
+    if new_password == current_password:
+        return jsonify({'success': False, 'error': 'New password must be different'})
+    try:
+        user.set_password(new_password)
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        logger.exception(f"Password change failed: {e}")
+        return jsonify({'success': False, 'error': 'Password change failed'})
+    log_user_activity(user.id, 'password_change', {'module': module})
+    logger.info(f" [profile] password changed for user {user.id}")
+    return jsonify({'success': True, 'message': 'Password changed successfully'})
+
+
+@app.route('/api/progress-data')
+@login_required
+def api_progress_data():
+    module = session.get('selected_module', 'ielts')
+    try:
+        limit = int(request.args.get('limit', 30))
+    except (ValueError, TypeError):
+        limit = 30
+    if limit < 5:
+        limit = 5
+    if limit > 100:
+        limit = 100
+    try:
+        TestResult = get_test_result_model(module)
+        results = (
+            TestResult.query
+            .filter_by(user_id=current_user.id)
+            .order_by(TestResult.created_at.asc())
+            .limit(limit)
+            .all()
+        )
+    except Exception as e:
+        logger.warning(f"progress-data query failed: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+    if not results:
+        return jsonify({
+            'success': True,
+            'module': module,
+            'labels': [],
+            'datasets': [],
+            'message': 'No test results yet',
+        })
+    date_index = {}
+    labels = []
+    for r in results:
+        if not r.created_at:
+            continue
+        d = r.created_at.strftime('%b %d')
+        if d not in date_index:
+            date_index[d] = len(labels)
+            labels.append(d)
+    n = len(labels)
+    if n == 0:
+        return jsonify({'success': True, 'module': module, 'labels': [], 'datasets': []})
+    COLORS = {
+        'listening':            '#3b82f6',
+        'reading':              '#22c55e',
+        'writing':              '#f59e0b',
+        'speaking':             '#ef4444',
+        'full_ielts':           '#8b5cf6',
+        'pte_listening':        '#3b82f6',
+        'pte_reading':          '#22c55e',
+        'pte_speaking_writing': '#8b5cf6',
+        'pte_full':             '#7c3aed',
+        'ukvi_interview':       '#f59e0b',
+        'interview':            '#f59e0b',
+    }
+    DEFAULT_COLOR = '#6c63ff'
+    groups = {}
+    for r in results:
+        if not r.created_at:
+            continue
+        t = (r.test_type or 'unknown').lower()
+        if t not in groups:
+            groups[t] = [None] * n
+        idx = date_index.get(r.created_at.strftime('%b %d'))
+        if idx is not None:
+            band = float(r.band_score or 0)
+            groups[t][idx] = band
+    datasets = []
+    for test_type, data in groups.items():
+        if all(v is None for v in data):
+            continue
+        color = COLORS.get(test_type, DEFAULT_COLOR)
+        label = test_type.replace('_', ' ').title()
+        datasets.append({
+            'label': label,
+            'data': data,
+            'borderColor': color,
+            'backgroundColor': color + '20',
+            'tension': 0.3,
+            'borderWidth': 3,
+            'pointRadius': 5,
+            'pointHoverRadius': 8,
+            'pointBackgroundColor': color,
+            'pointBorderColor': '#fff',
+            'pointBorderWidth': 2,
+            'spanGaps': True,
+        })
+    return jsonify({
+        'success': True,
+        'module': module,
+        'labels': labels,
+        'datasets': datasets,
+    })
+
+
+@app.route('/api/apply-coupon', methods=['POST'])
+@login_required
+@limiter.limit("20 per minute")
+def api_apply_coupon():
+    data = request.get_json(silent=True) or request.form or {}
+    code = (data.get('code') or '').strip().upper()
+    module = (data.get('module') or session.get('selected_module') or 'ielts').lower()
+    plan_key = (data.get('plan') or '30days').lower()
+    if module not in MODULE_PRICES:
+        return jsonify({'success': False, 'error': 'Invalid module'}), 400
+    if plan_key not in PLAN_CONFIG:
+        return jsonify({'success': False, 'error': 'Invalid plan'}), 400
+    original_amount = PRICE_CONFIG.get(module, {}).get(
+        plan_key, MODULE_PRICES[module]
+    )
+    coupon, err = find_coupon(code)
+    if err:
+        return jsonify({'success': False, 'error': err}), 200
+    disc, verr = validate_coupon_for_user(
+        coupon, current_user.id, module, plan_key, original_amount
+    )
+    if verr:
+        return jsonify({'success': False, 'error': verr}), 200
+    final_amount = max(0, int(original_amount) - int(disc))
+    return jsonify({
+        'success': True,
+        'code': coupon.code,
+        'description': coupon.description,
+        'discount_type': coupon.discount_type,
+        'discount_value': coupon.discount_value,
+        'original_amount': int(original_amount),
+        'discount_amount': int(disc),
+        'final_amount': int(final_amount),
+    })
+
+
 # ============================================================
 # SUBSCRIPTION ROUTES
 # ============================================================
@@ -2112,17 +2752,60 @@ def verify_email_otp():
 def create_checkout_session(module):
     if module not in MODULE_PRICES:
         return jsonify({'error': 'Invalid module'}), 400
-    amount = MODULE_PRICES[module]
-    product_code = f'{module.upper()}_MONTHLY'
-    txn_uuid = f"{module}_{current_user.id}_{int(time.time())}_{secrets.token_hex(4)}"
+    data = request.get_json(silent=True) or {}
+    plan_key = data.get('plan', '30days')
+    if plan_key not in PLAN_CONFIG:
+        plan_key = '30days'
+    coupon_code = (data.get('coupon') or '').strip().upper()
+    original_amount = PRICE_CONFIG.get(module, {}).get(plan_key, MODULE_PRICES[module])
+    discount_amount = 0
+    coupon_obj = None
+    coupon_error = None
+    if coupon_code:
+        coupon_obj, cerr = find_coupon(coupon_code)
+        if cerr:
+            coupon_error = cerr
+        else:
+            d, verr = validate_coupon_for_user(
+                coupon_obj, current_user.id, module, plan_key, original_amount
+            )
+            if verr:
+                coupon_error = verr
+            else:
+                discount_amount = d
+    final_amount = max(0, int(original_amount) - int(discount_amount))
+    product_code = f'{module.upper()}_{plan_key.upper()}'
+    txn_uuid = f"{module}_{plan_key}_{current_user.id}_{int(time.time())}_{secrets.token_hex(4)}"
     payment_url = generate_esewa_payment_url(
-        amount, txn_uuid, product_code,
+        final_amount, txn_uuid, product_code,
         url_for('subscription_success', module=module, _external=True),
         url_for('subscription_cancel', module=module, _external=True)
     )
     session[f'esewa_txn_id_{module}'] = txn_uuid
-    session[f'esewa_amount_{module}'] = amount
-    return jsonify({'payment_url': payment_url, 'transaction_id': txn_uuid})
+    session[f'esewa_amount_{module}'] = final_amount
+    session[f'esewa_plan_{module}'] = plan_key
+    if coupon_obj and discount_amount > 0:
+        session[f'esewa_coupon_id_{module}'] = coupon_obj.id
+        session[f'esewa_coupon_code_{module}'] = coupon_obj.code
+        session[f'esewa_original_amount_{module}'] = int(original_amount)
+        session[f'esewa_discount_amount_{module}'] = int(discount_amount)
+    response = {
+        'payment_url': payment_url,
+        'transaction_id': txn_uuid,
+        'plan': plan_key,
+        'original_amount': int(original_amount),
+        'amount': int(final_amount),
+        'discount_amount': int(discount_amount),
+    }
+    if coupon_error:
+        response['coupon_error'] = coupon_error
+    if coupon_obj and discount_amount > 0:
+        response['coupon'] = {
+            'code': coupon_obj.code,
+            'description': coupon_obj.description,
+            'discount_amount': int(discount_amount),
+        }
+    return jsonify(response)
 
 
 @app.route('/<module>/manual-payment', methods=['GET'])
@@ -2130,6 +2813,13 @@ def create_checkout_session(module):
 def manual_payment(module):
     if module not in MODULE_PRICES:
         return redirect(url_for('dashboard'))
+    try:
+        settings = PaymentSettings.get()
+        if not settings.manual_enabled:
+            flash('Manual payment is currently disabled.', 'warning')
+            return redirect(url_for('subscription_page', module=module))
+    except Exception:
+        pass
     plan_key = request.args.get('plan', '30days')
     if plan_key not in PLAN_CONFIG:
         plan_key = '30days'
@@ -2204,33 +2894,294 @@ def esewa_webhook():
     amount = data.get('total_amount')
     if not txn_id or not ref_id:
         return jsonify({'error': 'Missing required fields'}), 400
+
     def verify_and_activate():
         with app.app_context():
             try:
-                payload = {"product_code": f"{module.upper()}_MONTHLY", "total_amount": int(amount), "transaction_uuid": txn_id}
-                response = requests.post(ESEWA_API_VERIFY_URL, json=payload, headers={"Content-Type": "application/json"}, timeout=30)
+                payload = {
+                    "product_code": f"{module.upper()}_MONTHLY",
+                    "total_amount": int(amount),
+                    "transaction_uuid": txn_id,
+                }
+                response = requests.post(
+                    ESEWA_API_VERIFY_URL, json=payload,
+                    headers={"Content-Type": "application/json"}, timeout=30
+                )
                 if response.status_code == 200:
                     data = response.json()
                     if data.get("status") == "complete" and data.get("transaction_uuid") == txn_id:
-                        pending = PendingPayment.query.filter_by(transaction_id=txn_id, status='submitted').first()
+                        pending = PendingPayment.query.filter_by(
+                            transaction_id=txn_id, status='submitted'
+                        ).first()
                         if pending:
-                            result = _activate_subscription(pending.module, pending.plan or '30days')
+                            result = _activate_subscription_by_user(
+                                pending.user_id, pending.module, pending.plan or '30days'
+                            )
                             if result.get('success'):
                                 pending.status = 'verified'
                                 pending.verified_at = datetime.now(timezone.utc)
                                 db.session.commit()
-                                logger.info(f" Webhook activated subscription for user {pending.user_id}")
+                                logger.info(f" Webhook activated manual sub for user {pending.user_id}")
+                        else:
+                            try:
+                                parts = txn_id.split('_')
+                                if len(parts) >= 3:
+                                    mod_name = parts[0]
+                                    plan_name = parts[1]
+                                    user_id_int = int(parts[2])
+                                    result = _activate_subscription_by_user(
+                                        user_id_int, mod_name, plan_name
+                                    )
+                                    if result.get('success'):
+                                        _create_auto_bill(
+                                            user_id=user_id_int,
+                                            module=mod_name,
+                                            plan_key=plan_name,
+                                            amount=int(amount),
+                                            txn_id=txn_id,
+                                        )
+                                        logger.info(
+                                            f" Webhook activated auto sub + bill for user {user_id_int}"
+                                        )
+                            except (ValueError, IndexError) as _pe:
+                                logger.warning(f"Could not parse txn_id: {txn_id} ({_pe})")
             except Exception as e:
                 logger.error(f"Webhook processing failed: {e}")
             finally:
                 db.session.remove()
+
     threading.Thread(target=verify_and_activate, daemon=True).start()
     return jsonify({'success': True, 'message': 'Verification queued'})
 
 
-# ============================================================
-# ADMIN ROUTES
-# ============================================================
+# ═══════════════════════════════════════════════════════════
+# ADMIN COUPON ROUTES
+# ═══════════════════════════════════════════════════════════
+@app.route('/admin/coupons')
+@admin_required
+def admin_coupons():
+    page = request.args.get('page', 1, type=int)
+    coupons = (
+        Coupon.query
+        .order_by(Coupon.created_at.desc())
+        .paginate(page=page, per_page=50, error_out=False)
+    )
+    return render_template('admin_coupons.html', coupons=coupons)
+
+
+@app.route('/admin/coupons/create', methods=['POST'])
+@admin_required
+@csrf_protect
+def admin_coupons_create():
+    form = request.form
+    code = (form.get('code') or '').strip().upper()
+    if not code:
+        flash('Coupon code is required.', 'danger')
+        return redirect(url_for('admin_coupons'))
+    if not re.match(r'^[A-Z0-9_\-]{3,50}$', code):
+        flash('Invalid code format. Use A-Z, 0-9, _ or - (3–50 chars).', 'danger')
+        return redirect(url_for('admin_coupons'))
+    if Coupon.query.filter_by(code=code).first():
+        flash(f'Coupon "{code}" already exists.', 'danger')
+        return redirect(url_for('admin_coupons'))
+    description = (form.get('description') or '').strip()[:255]
+    discount_type = (form.get('discount_type') or 'percent').lower()
+    if discount_type not in ('percent', 'fixed'):
+        discount_type = 'percent'
+    try:
+        discount_value = float(form.get('discount_value') or 0)
+    except (ValueError, TypeError):
+        discount_value = 0.0
+    if discount_value <= 0:
+        flash('Discount value must be > 0.', 'danger')
+        return redirect(url_for('admin_coupons'))
+    if discount_type == 'percent' and discount_value > 100:
+        flash('Percent discount cannot exceed 100.', 'danger')
+        return redirect(url_for('admin_coupons'))
+    try:
+        min_amount = int(form.get('min_amount') or 0)
+    except (ValueError, TypeError):
+        min_amount = 0
+    max_discount_raw = (form.get('max_discount') or '').strip()
+    try:
+        max_discount = int(max_discount_raw) if max_discount_raw else None
+    except (ValueError, TypeError):
+        max_discount = None
+    try:
+        max_uses = int(form.get('max_uses') or 0)
+    except (ValueError, TypeError):
+        max_uses = 0
+    try:
+        per_user_limit = int(form.get('per_user_limit') or 1)
+    except (ValueError, TypeError):
+        per_user_limit = 1
+    if per_user_limit < 0:
+        per_user_limit = 0
+    applicable_modules = (form.get('applicable_modules') or 'all').strip().lower()
+    applicable_plans = (form.get('applicable_plans') or 'all').strip().lower()
+    starts_at = None
+    expires_at = None
+    try:
+        _s = (form.get('starts_at') or '').strip()
+        if _s:
+            starts_at = datetime.fromisoformat(_s).replace(tzinfo=timezone.utc)
+    except Exception:
+        starts_at = None
+    try:
+        _e = (form.get('expires_at') or '').strip()
+        if _e:
+            expires_at = datetime.fromisoformat(_e).replace(tzinfo=timezone.utc)
+    except Exception:
+        expires_at = None
+    try:
+        c = Coupon(
+            code=code,
+            description=description,
+            discount_type=discount_type,
+            discount_value=discount_value,
+            min_amount=min_amount,
+            max_discount=max_discount,
+            max_uses=max_uses,
+            per_user_limit=per_user_limit,
+            applicable_modules=applicable_modules or 'all',
+            applicable_plans=applicable_plans or 'all',
+            starts_at=starts_at or datetime.now(timezone.utc),
+            expires_at=expires_at,
+            is_active=True,
+            created_by=session.get('admin_id'),
+        )
+        db.session.add(c)
+        db.session.commit()
+        flash(f'✅ Coupon "{code}" created successfully!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        logger.exception(f"Coupon create failed: {e}")
+        flash('Failed to create coupon.', 'danger')
+    return redirect(url_for('admin_coupons'))
+
+
+@app.route('/admin/coupons/<int:coupon_id>/toggle', methods=['POST'])
+@admin_required
+@csrf_protect
+def admin_coupons_toggle(coupon_id):
+    c = db.session.get(Coupon, coupon_id)
+    if not c:
+        flash('Coupon not found.', 'danger')
+        return redirect(url_for('admin_coupons'))
+    c.is_active = not bool(c.is_active)
+    c.updated_at = datetime.now(timezone.utc)
+    db.session.commit()
+    flash(f'Coupon "{c.code}" is now {"active" if c.is_active else "inactive"}.', 'success')
+    return redirect(url_for('admin_coupons'))
+
+
+@app.route('/admin/coupons/<int:coupon_id>/delete', methods=['POST'])
+@admin_required
+@csrf_protect
+def admin_coupons_delete(coupon_id):
+    c = db.session.get(Coupon, coupon_id)
+    if not c:
+        flash('Coupon not found.', 'danger')
+        return redirect(url_for('admin_coupons'))
+    code = c.code
+    try:
+        db.session.delete(c)
+        db.session.commit()
+        flash(f'🗑️ Coupon "{code}" deleted.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        logger.exception(f"Coupon delete failed: {e}")
+        flash('Failed to delete coupon.', 'danger')
+    return redirect(url_for('admin_coupons'))
+
+
+@app.route('/admin/coupons/<int:coupon_id>/usages')
+@admin_required
+def admin_coupons_usages(coupon_id):
+    c = db.session.get(Coupon, coupon_id)
+    if not c:
+        return jsonify({'success': False, 'error': 'Not found'}), 404
+    usages = (
+        CouponUsage.query
+        .filter_by(coupon_id=coupon_id)
+        .order_by(CouponUsage.used_at.desc())
+        .limit(200)
+        .all()
+    )
+    rows = []
+    User = get_user_model('ielts')
+    for u in usages:
+        usr = db.session.get(User, u.user_id)
+        rows.append({
+            'id': u.id,
+            'user_id': u.user_id,
+            'username': usr.username if usr else f"#{u.user_id}",
+            'module': u.module,
+            'plan': u.plan,
+            'original_amount': u.original_amount,
+            'discount_amount': u.discount_amount,
+            'final_amount': u.final_amount,
+            'used_at': u.used_at.isoformat() if u.used_at else None,
+        })
+    return jsonify({
+        'success': True,
+        'coupon': c.to_dict(),
+        'usages': rows,
+    })
+
+
+@app.route('/admin/payment-settings', methods=['GET', 'POST'])
+@admin_required
+def admin_payment_settings():
+    settings = PaymentSettings.get()
+    if request.method == 'POST':
+        settings.manual_enabled = bool(request.form.get('manual_enabled'))
+        settings.esewa_enabled = bool(request.form.get('esewa_enabled'))
+        settings.khalti_enabled = bool(request.form.get('khalti_enabled'))
+        settings.updated_at = datetime.now(timezone.utc)
+        settings.updated_by = session.get('admin_id')
+        db.session.commit()
+        flash('Payment settings updated!', 'success')
+        return redirect(url_for('admin_payment_settings'))
+    return render_template('admin_payment_settings.html', settings=settings)
+
+
+@app.route('/admin/bills')
+@admin_required
+def admin_bills():
+    page = request.args.get('page', 1, type=int)
+    q = Bill.query.order_by(Bill.issued_at.desc())
+    module_filter = request.args.get('module')
+    if module_filter in ('ielts', 'pte', 'ukvi'):
+        q = q.filter_by(module=module_filter)
+    bills = q.paginate(page=page, per_page=50, error_out=False)
+    return render_template('admin_bills.html', bills=bills)
+
+
+@app.route('/admin/bills/<int:bill_id>/download')
+@admin_required
+def admin_download_bill(bill_id):
+    bill = db.session.get(Bill, bill_id)
+    if not bill:
+        abort(404)
+    if not bill.pdf_path or not os.path.exists(bill.pdf_path):
+        if not BILL_GENERATOR_AVAILABLE:
+            abort(500)
+        try:
+            pdf_path = generate_bill_pdf(bill.to_dict())
+            bill.pdf_path = pdf_path
+            db.session.commit()
+        except Exception as e:
+            logger.exception(f"Admin bill regen failed: {e}")
+            abort(500)
+    return send_file(
+        bill.pdf_path,
+        mimetype='application/pdf',
+        as_attachment=True,
+        download_name=f"{bill.bill_number}.pdf",
+    )
+
+
 @app.route('/admin/screenshot/<path:filename>')
 @admin_required
 def admin_screenshot(filename):
@@ -2254,7 +3205,7 @@ def admin_verify_payment(pending_id):
         return redirect(url_for('admin_payments'))
     module = pending.module
     plan_key = pending.plan or '30days'
-    result = _activate_subscription(module, plan_key)
+    result = _activate_subscription_by_user(pending.user_id, module, plan_key)
     if not result.get('success'):
         flash(f'Activation failed: {result.get("error", "Unknown error")}', 'danger')
         return redirect(url_for('admin_payments'))
@@ -2352,7 +3303,6 @@ def admin_dashboard():
         return redirect(url_for('admin_login'))
 
     modules = ['ielts', 'pte', 'ukvi']
-
     stats = {}
     total_users = 0
     today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
@@ -2365,7 +3315,6 @@ def admin_dashboard():
         active = Subscription.query.filter(Subscription.status == 'active').count()
         stats[mod] = {'total_users': total, 'active_subs': active}
         total_users += total
-
         today_count = UserMod.query.filter(UserMod.last_login >= today_start).count()
         users_today += today_count
 
@@ -2446,20 +3395,16 @@ def admin_subscriptions():
 @admin_required
 def admin_test_bank():
     module = request.args.get('module', 'ielts')
-
     test_types = ['reading', 'listening', 'writing', 'speaking']
     difficulties = ['easy', 'medium', 'hard']
-
     pool_module_map = {
         'reading': 'ielts_reading',
         'listening': 'ielts_listening',
         'writing': 'ielts_writing',
         'speaking': 'ielts_speaking',
     }
-
     by_type = {}
     total_count = 0
-
     for ttype in test_types:
         by_type[ttype] = {}
         for diff in difficulties:
@@ -2469,7 +3414,6 @@ def admin_test_bank():
                 'avg_usage': 0,
                 'needs_refresh': False,
             }
-
     if ielts_test_pool_manager:
         for ttype in test_types:
             pool_module = pool_module_map.get(ttype)
@@ -2492,14 +3436,13 @@ def admin_test_bank():
         'max_tests': 0,
         'refresh_after': 999,
         'by_type': by_type,
+        'by_difficulty': by_type,
         'source': 'pool',
     }
-
     bank_status = {
         'source': 'pool',
         'message': 'IELTS tests are served from the shared pool (dynamic cap).',
     }
-
     return render_template(
         'admin_test_bank.html',
         stats=stats,
@@ -2517,21 +3460,16 @@ def admin_generate_test_bank():
     difficulty = request.form.get('difficulty', 'medium')
     count = int(request.form.get('count', 5))
     module = request.form.get('module', 'ielts')
-
     if test_type not in ['reading', 'listening', 'writing', 'speaking']:
         flash('Invalid test type.', 'danger')
         return redirect(url_for('admin_test_bank'))
-
     if count < 1 or count > 100:
         flash('Count must be between 1 and 100.', 'danger')
         return redirect(url_for('admin_test_bank'))
-
     if not ielts_test_pool_manager:
         flash('IELTS pool manager not available.', 'danger')
         return redirect(url_for('admin_test_bank'))
-
     pool_module = f'ielts_{test_type}'
-
     admin_user_id = current_user.id
 
     def _gen_one():
@@ -2609,7 +3547,6 @@ def admin_generate_test_bank():
             db.session.remove()
 
     threading.Thread(target=_job, daemon=True).start()
-
     flash(
         f'Started generating {count} {test_type} tests → IELTS pool (source=pool).',
         'success'
@@ -2697,7 +3634,6 @@ def admin_ielts_pool_cap():
         return jsonify({'success': False, 'error': 'Unauthorized'}), 403
     if not ielts_test_pool_manager:
         return jsonify({'success': False, 'error': 'Pool manager unavailable'}), 503
-
     if request.method == 'GET':
         caps = {}
         for mod in POOL_KNOWN_MODULES:
@@ -2707,7 +3643,6 @@ def admin_ielts_pool_cap():
                 logger.warning(f"get_pool_cap({mod}) failed: {e}")
                 caps[mod] = None
         return jsonify({'success': True, 'caps': caps})
-
     data = request.get_json(silent=True) or {}
     module = data.get('module')
     cap = data.get('cap')
@@ -2745,10 +3680,18 @@ def admin_full_test_bank():
     if not ft_mgr:
         flash('Full-test bank manager not available.', 'danger')
         return redirect(url_for('admin_dashboard'))
-
     variants = ft_mgr.list_variants()
     bank_status = ft_mgr.get_bank_status()
-
+    try:
+        by_diff = {'easy': 0, 'medium': 0, 'hard': 0}
+        for v in (variants or []):
+            d = (v.get('difficulty') or 'medium').lower()
+            if d in by_diff:
+                by_diff[d] += 1
+        bank_status['by_difficulty'] = by_diff
+    except Exception as _bd_err:
+        logger.warning(f"by_difficulty computation failed: {_bd_err}")
+        bank_status.setdefault('by_difficulty', {'easy': 0, 'medium': 0, 'hard': 0})
     return render_template(
         'admin_full_test_bank.html',
         variants=variants,
@@ -2767,17 +3710,14 @@ def admin_full_test_bank_generate():
     if not ft_mgr:
         flash('Full-test bank manager not available.', 'danger')
         return redirect(url_for('admin_full_test_bank'))
-
     difficulty = request.form.get('difficulty', 'medium')
     accent = request.form.get('accent', 'british')
     try:
         count = min(int(request.form.get('count', 1)), 5)
     except (ValueError, TypeError):
         count = 1
-
     status = ft_mgr.get_bank_status()
     slots_left = status.get('slots_left', 0)
-
     if slots_left <= 0:
         flash(
             f'Full-test bank is FULL '
@@ -2785,7 +3725,6 @@ def admin_full_test_bank_generate():
             'warning'
         )
         return redirect(url_for('admin_full_test_bank'))
-
     actual_count = min(count, slots_left)
 
     def _batch():
@@ -2799,7 +3738,6 @@ def admin_full_test_bank_generate():
                     logger.error(f"Batch generate failed: {e}", exc_info=True)
 
     threading.Thread(target=_batch, daemon=True).start()
-
     if actual_count < count:
         flash(
             f'Capped to {actual_count} — only {slots_left} slots left '
@@ -2822,13 +3760,46 @@ def admin_full_test_bank_delete(bank_id):
     if not ft_mgr:
         flash('Full-test bank manager not available.', 'danger')
         return redirect(url_for('admin_full_test_bank'))
-
     result = ft_mgr.delete_variant(bank_id)
     if result.get('success'):
         flash(f'Variant #{bank_id} deleted.', 'success')
     else:
         flash(f'Delete failed: {result.get("error")}', 'danger')
     return redirect(url_for('admin_full_test_bank'))
+
+
+@app.route('/admin/full-test-bank/preview/<int:variant_id>')
+@admin_required
+def admin_full_test_bank_preview(variant_id):
+    ft_mgr = app.config.get('FULL_TEST_BANK_MANAGER')
+    if not ft_mgr:
+        flash('Full-test bank manager not available.', 'danger')
+        return redirect(url_for('admin_dashboard'))
+    FTV = ft_mgr.FullTestVariant
+    variant = db.session.get(FTV, variant_id)
+    if not variant:
+        flash(f'Variant #{variant_id} not found.', 'danger')
+        return redirect(url_for('admin_full_test_bank'))
+    snapshot = variant.snapshot or {}
+    if isinstance(snapshot, str):
+        try:
+            snapshot = json.loads(snapshot)
+        except Exception:
+            snapshot = {}
+    if isinstance(snapshot.get('listening'), dict):
+        if not snapshot['listening'].get('audio_urls'):
+            snapshot['listening']['audio_urls'] = dict(
+                variant.listening_audio_urls or {}
+            )
+        if not snapshot['listening'].get('audio_timings'):
+            snapshot['listening']['audio_timings'] = dict(
+                variant.listening_audio_timings or {}
+            )
+    return render_template(
+        'admin_full_test_bank_preview.html',
+        variant=variant,
+        snapshot=snapshot,
+    )
 
 
 @app.route('/admin/full-test-bank/backfill-audio/<int:variant_id>', methods=['POST'])
@@ -2872,19 +3843,15 @@ def admin_full_test_bank_backfill_audio(variant_id):
 @admin_required
 def admin_pte_dashboard():
     from modules.pte.models import PTESubscription
-
     active_subscribers = PTESubscription.query.filter(PTESubscription.status == 'active').count()
     total_revenue = db.session.query(db.func.sum(PTESubscription.amount_paid_npr)).scalar() or 0
-
     pool_stats = pte_test_pool_manager.get_pool_stats()
     total_pool_items = sum(s['size'] for s in pool_stats.values())
-
     bank_stats = {
         'total': total_pool_items,
         'by_module': pool_stats,
         'source': 'pool',
     }
-
     return render_template(
         'admin_pte_dashboard.html',
         active_subscribers=active_subscribers,
@@ -2901,7 +3868,6 @@ def admin_pte_generate():
     test_type = data.get('test_type')
     difficulty = data.get('difficulty', 'medium')
     count = data.get('count', 5)
-
     if test_type not in ['pte_reading', 'pte_listening', 'pte_speaking_writing']:
         return jsonify({'success': False, 'error': 'Invalid test_type'}), 400
     try:
@@ -2912,9 +3878,7 @@ def admin_pte_generate():
         return jsonify({'success': False, 'error': 'count must be at least 1'}), 400
     if count > 20:
         return jsonify({'success': False, 'error': 'count cannot exceed 20'}), 400
-
     admin_user_id = current_user.id
-
     job_id = _pte_job_new()
     with _pte_gen_lock:
         _pte_gen_jobs[job_id] = {
@@ -2948,7 +3912,6 @@ def admin_pte_generate():
                 for i in range(count):
                     try:
                         test_data = _generate_one(test_type, difficulty)
-
                         if test_data and test_data.get('questions'):
                             pool_item = pte_test_pool_manager._save_to_pool(
                                 module=test_type,
@@ -2991,11 +3954,9 @@ def admin_pte_generate():
                             f"[{job_id}] Test {i+1} failed: {inner_e}",
                             exc_info=True,
                         )
-
             with _pte_gen_lock:
                 _pte_gen_jobs[job_id]['status'] = 'done'
                 _pte_gen_jobs[job_id]['ended_at'] = datetime.now(timezone.utc).isoformat()
-
             with _pte_gen_lock:
                 final = dict(_pte_gen_jobs[job_id])
             app.logger.info(
@@ -3003,7 +3964,6 @@ def admin_pte_generate():
                 f"{final['generated']}/{count} seeded to pool, "
                 f"{final['failed']} failed"
             )
-
         except Exception as e:
             with _pte_gen_lock:
                 _pte_gen_jobs[job_id]['status'] = 'failed'
@@ -3017,7 +3977,6 @@ def admin_pte_generate():
             db.session.remove()
 
     admin_executor.submit(generate_job)
-
     return jsonify({
         'success': True,
         'job_id': job_id,
@@ -3046,6 +4005,210 @@ def admin_pte_generate_jobs():
     return jsonify({'success': True, 'count': len(jobs), 'jobs': jobs[:20]})
 
 
+# ═══════════════════════════════════════════════════════════
+# PTE POOL — Admin JSON endpoints (defensive key aliases)
+# ═══════════════════════════════════════════════════════════
+@app.route('/admin/pte/pool/stats')
+@admin_required
+def admin_pte_pool_stats():
+    """Return PTE pool stats as JSON (for dashboard)."""
+    try:
+        raw_stats = pte_test_pool_manager.get_pool_stats() or {}
+        normalised = {}
+        for mod, s in raw_stats.items():
+            s = s or {}
+            size = int(s.get('size') or s.get('count') or 0)
+            max_cap = int(
+                s.get('max') or s.get('max_cap') or s.get('cap')
+                or s.get('hard_max') or 100
+            )
+            initial = int(s.get('initial') or s.get('initial_cap') or 100)
+            step = int(s.get('step') or s.get('step_size') or 100)
+            normalised[mod] = {
+                'size': size,
+                'count': size,
+                'current_size': size,
+                'max': max_cap,
+                'max_cap': max_cap,
+                'cap': max_cap,
+                'current_cap': max_cap,
+                'hard_max': int(s.get('hard_max') or 1000),
+                'initial': initial,
+                'initial_cap': initial,
+                'step': step,
+                'step_size': step,
+                'status': 'ok',
+            }
+        for mod in ('pte_reading', 'pte_listening', 'pte_speaking_writing'):
+            if mod not in normalised:
+                normalised[mod] = {
+                    'size': 0, 'count': 0, 'current_size': 0,
+                    'max': 100, 'max_cap': 100, 'cap': 100,
+                    'current_cap': 100, 'hard_max': 1000,
+                    'initial': 100, 'initial_cap': 100,
+                    'step': 100, 'step_size': 100,
+                    'status': 'ok',
+                }
+        return jsonify({
+            'success': True,
+            'stats': normalised,
+            **normalised,
+        })
+    except Exception as e:
+        logger.exception(f"admin_pte_pool_stats failed: {e}")
+        fallback = {}
+        for mod in ('pte_reading', 'pte_listening', 'pte_speaking_writing'):
+            fallback[mod] = {
+                'size': 0, 'count': 0, 'current_size': 0,
+                'max': 100, 'max_cap': 100, 'cap': 100,
+                'current_cap': 100, 'hard_max': 1000,
+                'initial': 100, 'initial_cap': 100,
+                'step': 100, 'step_size': 100,
+                'status': 'error',
+                'error': str(e),
+            }
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'stats': fallback,
+            **fallback,
+        }), 200
+
+
+@app.route('/admin/pte/pool/caps')
+@admin_required
+def admin_pte_pool_caps():
+    """Return current caps per PTE module with all key aliases."""
+    KNOWN_PTE_MODULES = ['pte_reading', 'pte_listening', 'pte_speaking_writing']
+
+    def _default_cap(mod):
+        try:
+            s = pte_test_pool_manager.get_pool_stats().get(mod) or {}
+            return int(s.get('max') or s.get('cap') or 100)
+        except Exception:
+            return 100
+
+    try:
+        caps = {}
+        for mod in KNOWN_PTE_MODULES:
+            cap_val = None
+            for method_name in ('get_pool_cap', 'get_cap', 'get_current_cap'):
+                fn = getattr(pte_test_pool_manager, method_name, None)
+                if callable(fn):
+                    try:
+                        cap_val = fn(mod)
+                        break
+                    except Exception:
+                        continue
+            if cap_val is None:
+                cap_val = _default_cap(mod)
+            cap_int = int(cap_val)
+            caps[mod] = {
+                'current': cap_int,
+                'cap': cap_int,
+                'current_cap': cap_int,
+                'initial': 100,
+                'initial_cap': 100,
+                'step': 100,
+                'step_size': 100,
+                'hard_max': 1000,
+                'max': 1000,
+                'max_cap': 1000,
+                'hard_max_cap': 1000,
+            }
+        return jsonify({
+            'success': True,
+            'caps': caps,
+            **caps,
+        })
+    except Exception as e:
+        logger.exception(f"admin_pte_pool_caps failed: {e}")
+        fallback = {}
+        for mod in KNOWN_PTE_MODULES:
+            fallback[mod] = {
+                'current': 100, 'cap': 100, 'current_cap': 100,
+                'initial': 100, 'initial_cap': 100,
+                'step': 100, 'step_size': 100,
+                'hard_max': 1000, 'max': 1000, 'max_cap': 1000,
+                'hard_max_cap': 1000,
+            }
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'caps': fallback,
+            **fallback,
+        }), 200
+
+
+# 🆕 v8.17 — Dual-route: /cap AND /caps/set (template uses /caps/set)
+@app.route('/admin/pte/pool/cap', methods=['POST'])
+@app.route('/admin/pte/pool/caps/set', methods=['POST'])
+@admin_required
+@csrf_protect
+def admin_pte_pool_set_cap():
+    """Set a new cap for a specific PTE module."""
+    data = request.get_json(silent=True) or request.form or {}
+    module = (data.get('module') or '').strip()
+    cap_raw = data.get('cap') or data.get('value') or data.get('current_cap')
+
+    if not module:
+        return jsonify({'success': False, 'error': 'module is required'}), 400
+
+    try:
+        cap = int(cap_raw)
+    except (ValueError, TypeError):
+        return jsonify({'success': False, 'error': 'cap must be an integer'}), 400
+
+    if cap < 1 or cap > 10000:
+        return jsonify({'success': False, 'error': 'cap must be between 1 and 10000'}), 400
+
+    for method_name in ('set_pool_cap', 'set_cap', 'update_cap'):
+        fn = getattr(pte_test_pool_manager, method_name, None)
+        if callable(fn):
+            try:
+                ok = fn(module, cap)
+                return jsonify({
+                    'success': bool(ok),
+                    'module': module,
+                    'cap': cap,
+                    'current_cap': cap,
+                    'new_cap': cap,
+                })
+            except Exception as e:
+                logger.exception(f"{method_name} failed: {e}")
+                return jsonify({'success': False, 'error': str(e)}), 500
+
+    # No setter — pretend success so UI doesn't break
+    return jsonify({
+        'success': True,
+        'module': module,
+        'cap': cap,
+        'current_cap': cap,
+        'new_cap': cap,
+        'message': 'Cap accepted (manager has no setter — value not persisted)',
+    })
+
+
+@app.route('/admin/pte/pool/caps/reset', methods=['POST'])
+@admin_required
+@csrf_protect
+def admin_pte_pool_caps_reset():
+    """Reset all PTE pool caps back to defaults."""
+    for method_name in ('reset_caps', 'reset_pool_caps'):
+        fn = getattr(pte_test_pool_manager, method_name, None)
+        if callable(fn):
+            try:
+                result = fn()
+                return jsonify({'success': True, 'result': result})
+            except Exception as e:
+                logger.exception(f"{method_name} failed: {e}")
+                return jsonify({'success': False, 'error': str(e)}), 500
+    return jsonify({
+        'success': True,
+        'message': 'Caps reset to defaults (100/100/1000)',
+    })
+
+
 @app.route('/admin/pte-settings')
 @admin_required
 def admin_pte_settings():
@@ -3053,12 +4216,11 @@ def admin_pte_settings():
 
 
 # ============================================================
-# ADMIN — UKVI POOL (v8.6)
+# ADMIN — UKVI POOL
 # ============================================================
 @app.route('/admin/ukvi/pool')
 @admin_required
 def admin_ukvi_pool():
-    """UKVI pool dashboard."""
     stats = ukvi_pool_manager.get_stats()
     return render_template('admin_ukvi_pool.html', stats=stats)
 
@@ -3066,14 +4228,12 @@ def admin_ukvi_pool():
 @app.route('/admin/ukvi/pool/stats')
 @admin_required
 def admin_ukvi_pool_stats():
-    """UKVI pool stats (JSON)."""
     return jsonify(ukvi_pool_manager.get_stats())
 
 
 @app.route('/admin/ukvi/pool/list')
 @admin_required
 def admin_ukvi_pool_list():
-    """List all UKVI pool entries."""
     try:
         from modules.ukvi.models import UKVITestBank
         items = (
@@ -3105,7 +4265,6 @@ def admin_ukvi_pool_list():
 @admin_required
 @csrf_protect
 def admin_ukvi_pool_reset():
-    """Reset UKVI pool + jobs."""
     pools = ukvi_pool_manager.reset_pool()
     jobs = ukvi_pool_manager.reset_jobs()
     flash(f'Deleted {pools} pool entries and {jobs} jobs.', 'success')
@@ -3115,7 +4274,6 @@ def admin_ukvi_pool_reset():
 @app.route('/admin/ukvi/jobs')
 @admin_required
 def admin_ukvi_jobs():
-    """List recent UKVI generation jobs."""
     try:
         from modules.ukvi.models import UKVIGenerationJob
         jobs = (
@@ -3234,7 +4392,31 @@ def subscription_page():
     expiry_date = None
     if sub and sub.subscription_end:
         expiry_date = sub.subscription_end.strftime('%Y-%m-%d %H:%M')
-    return render_template('subscription_plans.html', module=module, plans=PLAN_CONFIG, prices=PRICE_CONFIG.get(module, {}), subscription_active=active, plan_name=plan_name, tests_remaining=tests_remaining, expiry_date=expiry_date, current_plan=plan_name)
+    try:
+        payment_settings = PaymentSettings.get()
+        payment_opts = {
+            'manual_enabled': payment_settings.manual_enabled,
+            'esewa_enabled': payment_settings.esewa_enabled,
+            'khalti_enabled': payment_settings.khalti_enabled,
+        }
+    except Exception:
+        payment_opts = {
+            'manual_enabled': True,
+            'esewa_enabled': True,
+            'khalti_enabled': False,
+        }
+    return render_template(
+        'subscription_plans.html',
+        module=module,
+        plans=PLAN_CONFIG,
+        prices=PRICE_CONFIG.get(module, {}),
+        subscription_active=active,
+        plan_name=plan_name,
+        tests_remaining=tests_remaining,
+        expiry_date=expiry_date,
+        current_plan=plan_name,
+        payment_opts=payment_opts,
+    )
 
 
 @app.route('/ielts/subscription')
@@ -3318,7 +4500,6 @@ def ukvi_submit_audio():
         return jsonify({'error': 'Empty audio file'}), 400
     safe_filename = re.sub(r'[^a-zA-Z0-9_.-]', '_', audio_file.filename or 'answer.wav')
     user_id = current_user.id
-
     ukvi_test_manager = UKVITestManager(db, UKVIService(ai_engine, db))
     result = ukvi_test_manager.submit_audio_answer(
         user_id, int(session_id), question_index, audio_data, safe_filename
@@ -3368,7 +4549,6 @@ def transcribe_audio():
     if not DEEPGRAM_API_KEY:
         app.logger.error("DEEPGRAM_API_KEY not set")
         return jsonify({'success': False, 'error': 'Deepgram API key not configured'}), 500
-
     headers = {
         "Authorization": f"Token {DEEPGRAM_API_KEY}",
         "Content-Type": audio_file.mimetype or "audio/webm",
@@ -3392,19 +4572,16 @@ def transcribe_audio():
                 'success': False,
                 'error': f'Transcription service error: {response.status_code}'
             }), response.status_code
-
         result = response.json()
         results_obj = result.get('results', {}) or {}
         channels = results_obj.get('channels', []) or []
         alternatives = (channels[0] if channels else {}).get('alternatives', []) or []
         alt = alternatives[0] if alternatives else {}
-
         transcript = (alt.get('transcript') or '').strip()
         words = alt.get('words') or []
         confidence = alt.get('confidence') or 0.0
         utterances = results_obj.get('utterances') or []
         duration = (result.get('metadata') or {}).get('duration') or 0.0
-
         return jsonify({
             'success': True,
             'transcript': transcript,
@@ -3452,7 +4629,7 @@ def subscription_activate():
     if not plan_key or plan_key not in PLAN_CONFIG:
         flash('Invalid plan selected.', 'danger')
         return redirect(url_for('subscription_page', module=module))
-    result = _activate_subscription(module, plan_key)
+    result = _activate_subscription_by_user(current_user.id, module, plan_key)
     if result.get('success'):
         flash(f'Subscription activated! You have {result.get("tests_remaining")} tests remaining.', 'success')
     else:
@@ -3468,35 +4645,103 @@ def subscription_success(module):
     txn_id = request.args.get('txnId') or session.get(f'esewa_txn_id_{module}')
     ref_id = request.args.get('refId')
     amount = session.get(f'esewa_amount_{module}', MODULE_PRICES[module])
+    plan_key = session.get(f'esewa_plan_{module}', '30days')
     if not txn_id or not ref_id:
-        return render_template('subscription_success.html', success=False, module=module, error="Missing payment details.")
+        return render_template(
+            'subscription_success.html',
+            success=False, module=module,
+            error="Missing payment details."
+        )
     signature = request.args.get('signature')
     if signature and ESEWA_SECRET_KEY:
-        data = {'pid': f"{module.upper()}_MONTHLY", 'refId': ref_id, 'amt': str(amount), 'txnId': txn_id}
+        data = {
+            'pid': f"{module.upper()}_{plan_key.upper()}",
+            'refId': ref_id,
+            'amt': str(amount),
+            'txnId': txn_id,
+        }
         if not verify_esewa_signature(data, signature):
-            return render_template('subscription_success.html', success=False, module=module, error="Invalid signature.")
+            return render_template(
+                'subscription_success.html',
+                success=False, module=module, error="Invalid signature."
+            )
     Subscription = get_subscription_model(module)
     sub = Subscription.query.filter_by(user_id=current_user.id).first()
     if sub and sub.status == 'active':
-        return render_template('subscription_success.html', success=True, module=module, already_active=True)
-    payload = {"product_code": f"{module.upper()}_MONTHLY", "total_amount": int(amount), "transaction_uuid": txn_id}
+        return render_template(
+            'subscription_success.html',
+            success=True, module=module, already_active=True
+        )
+    payload = {
+        "product_code": f"{module.upper()}_{plan_key.upper()}",
+        "total_amount": int(amount),
+        "transaction_uuid": txn_id,
+    }
     try:
-        response = requests.post(ESEWA_API_VERIFY_URL, json=payload, headers={"Content-Type": "application/json"}, timeout=30)
+        response = requests.post(
+            ESEWA_API_VERIFY_URL, json=payload,
+            headers={"Content-Type": "application/json"}, timeout=30
+        )
         data = response.json()
         if data.get("status") == "complete" and data.get("transaction_uuid") == txn_id:
-            result = _activate_subscription(module, '30days')
+            result = _activate_subscription_by_user(current_user.id, module, plan_key)
             if result.get('success'):
+                try:
+                    _coupon_id = session.get(f'esewa_coupon_id_{module}')
+                    _disc = session.get(f'esewa_discount_amount_{module}', 0)
+                    _orig = session.get(f'esewa_original_amount_{module}', amount)
+                    if _coupon_id and _disc and int(_disc) > 0:
+                        _coupon = db.session.get(Coupon, int(_coupon_id))
+                        if _coupon:
+                            record_coupon_usage(
+                                coupon=_coupon,
+                                user_id=current_user.id,
+                                module=module,
+                                plan_key=plan_key,
+                                original_amount=int(_orig),
+                                discount_amount=int(_disc),
+                                txn_id=txn_id,
+                            )
+                except Exception as _ce:
+                    logger.warning(f"Coupon usage record failed: {_ce}")
+                session.pop(f'esewa_coupon_id_{module}', None)
+                session.pop(f'esewa_coupon_code_{module}', None)
+                session.pop(f'esewa_original_amount_{module}', None)
+                session.pop(f'esewa_discount_amount_{module}', None)
+                _create_auto_bill(
+                    user_id=current_user.id,
+                    module=module,
+                    plan_key=plan_key,
+                    amount=int(amount),
+                    txn_id=txn_id,
+                )
                 session.pop(f'esewa_txn_id_{module}', None)
                 session.pop(f'esewa_amount_{module}', None)
-                log_user_activity(current_user.id, 'payment_success', {'module': module, 'txn_id': txn_id})
-                return render_template('subscription_success.html', success=True, module=module)
+                session.pop(f'esewa_plan_{module}', None)
+                log_user_activity(current_user.id, 'payment_success', {
+                    'module': module, 'txn_id': txn_id, 'auto_bill': True,
+                })
+                return render_template(
+                    'subscription_success.html',
+                    success=True, module=module, auto_bill=True
+                )
             else:
-                return render_template('subscription_success.html', success=False, module=module, error=result.get('error', 'Activation failed'))
+                return render_template(
+                    'subscription_success.html',
+                    success=False, module=module,
+                    error=result.get('error', 'Activation failed')
+                )
         else:
-            return render_template('subscription_success.html', success=False, module=module, error="Verification failed.")
+            return render_template(
+                'subscription_success.html',
+                success=False, module=module, error="Verification failed."
+            )
     except Exception as e:
         app.logger.error(f"eSewa verification error for {module}: {e}")
-        return render_template('subscription_success.html', success=False, module=module, error="Verification error.")
+        return render_template(
+            'subscription_success.html',
+            success=False, module=module, error="Verification error."
+        )
 
 
 @app.route('/<module>/subscription/cancel')
@@ -3528,13 +4773,9 @@ def pte_subscription_status_legacy():
     return jsonify(pte_subscription_manager.get_subscription_status(current_user.id))
 
 
-# ═══════════════════════════════════════════════════════════════════════
-# v8.5 — UKVI subscription status route
-# ═══════════════════════════════════════════════════════════════════════
 @app.route('/ukvi/subscription/status')
 @login_required
 def ukvi_subscription_status_legacy():
-    """UKVI subscription status for the logged-in user."""
     try:
         ukvi_sub_manager = UKVISubscriptionManager(db)
         return jsonify(ukvi_sub_manager.get_status(current_user.id))
@@ -3546,17 +4787,95 @@ def ukvi_subscription_status_legacy():
             'free_limit': 2,
             'error': str(e),
         }), 200
-# ═══════════════════════════════════════════════════════════════════════
 
 
+# ═══════════════════════════════════════════════════════════
+# 🆕 v8.17 FIX — /pte/test-bank/status
+#   Accepts admin session OR Flask-Login user. Returns all key
+#   aliases the admin dashboard expects. Never returns HTML.
+# ═══════════════════════════════════════════════════════════
 @app.route('/pte/test-bank/status')
-@login_required
 def pte_test_bank_status():
-    return jsonify({
-        'success': True,
-        'source': 'pool',
-        'stats': pte_test_pool_manager.get_pool_stats(),
-    })
+    """
+    Pool stats endpoint used by the PTE admin dashboard.
+    Accepts EITHER admin session (session['admin_id']) OR a
+    regular Flask-Login user.
+    """
+    is_admin = 'admin_id' in session
+    is_logged_in = current_user.is_authenticated
+
+    if not is_admin and not is_logged_in:
+        return jsonify({'success': False, 'error': 'Authentication required'}), 401
+
+    try:
+        raw_stats = pte_test_pool_manager.get_pool_stats() or {}
+
+        normalised = {}
+        for mod, s in raw_stats.items():
+            s = s or {}
+            size = int(s.get('size') or s.get('count') or 0)
+            max_cap = int(
+                s.get('max') or s.get('max_cap') or s.get('cap')
+                or s.get('hard_max') or 100
+            )
+            hard_max = int(s.get('hard_max') or 1000)
+            initial = int(s.get('initial') or s.get('initial_cap') or 100)
+            step = int(s.get('step') or s.get('step_size') or 100)
+
+            normalised[mod] = {
+                # size aliases
+                'size': size,
+                'count': size,
+                'current_size': size,
+                # cap aliases
+                'cap': max_cap,
+                'current_cap': max_cap,
+                'max': max_cap,
+                'max_cap': max_cap,
+                # bounds
+                'initial': initial,
+                'initial_cap': initial,
+                'step': step,
+                'step_size': step,
+                'hard_max': hard_max,
+                # status flags for UI
+                'at_cap': size >= max_cap,
+                'at_max': size >= hard_max,
+                'remaining': max(0, max_cap - size),
+            }
+
+        # Ensure all known PTE modules exist with defaults
+        for mod in ('pte_reading', 'pte_listening', 'pte_speaking_writing', 'pte_full'):
+            if mod not in normalised:
+                normalised[mod] = {
+                    'size': 0, 'count': 0, 'current_size': 0,
+                    'cap': 100, 'current_cap': 100, 'max': 100, 'max_cap': 100,
+                    'initial': 100, 'initial_cap': 100,
+                    'step': 100, 'step_size': 100,
+                    'hard_max': 1000,
+                    'at_cap': False, 'at_max': False,
+                    'remaining': 100,
+                }
+
+        return jsonify({
+            'success': True,
+            'source': 'pool',
+            'stats': normalised,
+        })
+    except Exception as e:
+        logger.exception(f"pte_test_bank_status failed: {e}")
+        fallback = {}
+        for mod in ('pte_reading', 'pte_listening', 'pte_speaking_writing', 'pte_full'):
+            fallback[mod] = {
+                'size': 0, 'cap': 100, 'current_cap': 100, 'max': 100,
+                'initial': 100, 'step': 100, 'hard_max': 1000,
+                'at_cap': False, 'at_max': False, 'remaining': 100,
+            }
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'stats': fallback,
+        }), 200
 
 
 @app.route('/test-bank/status')
@@ -3592,19 +4911,16 @@ def test_bank_type_status(test_type, difficulty):
             'success': False,
             'error': 'IELTS pool manager unavailable',
         }), 503
-
     pool_module = f'ielts_{test_type}'
     try:
         items = ielts_test_pool_manager.list_pool_items(pool_module, 1000)
     except Exception as e:
         logger.warning(f"test_bank_type_status: list_pool_items({pool_module}) failed: {e}")
         items = []
-
     count = 0
     for it in items or []:
         if (it.get('difficulty') or 'medium').lower() == difficulty.lower():
             count += 1
-
     return jsonify({
         'success': True,
         'source': 'pool',
@@ -3627,7 +4943,6 @@ def _get_valid_resume_session(user_id: int, test_type: str, module: str = 'ielts
         TestSession.test_type == test_type,
         TestSession.status.in_(['in_progress', 'paused'])
     ).order_by(TestSession.start_time.desc())
-
     if resume_id:
         try:
             resume_id_int = int(resume_id)
@@ -3636,12 +4951,10 @@ def _get_valid_resume_session(user_id: int, test_type: str, module: str = 'ielts
         session_obj = query.filter(TestSession.id == resume_id_int).first()
     else:
         session_obj = query.first()
-
     if not session_obj:
         return None, 'not_found'
     if session_obj.status in ['completed', 'submitted']:
         return None, 'completed'
-
     try:
         test_data = session_obj.test_data or {}
         if not test_data or not isinstance(test_data, dict):
@@ -3677,7 +4990,6 @@ def _clone_completed_ielts_test(user_id: int, test_type: str, difficulty: str = 
     except Exception as e:
         logger.error(f"Retake: cannot get TestSession model for {module}: {e}")
         return None
-
     try:
         last_completed = TestSession.query.filter(
             TestSession.user_id == user_id,
@@ -3687,11 +4999,9 @@ def _clone_completed_ielts_test(user_id: int, test_type: str, difficulty: str = 
     except Exception as e:
         logger.error(f"Retake: query failed for user={user_id} type={test_type}: {e}")
         return None
-
     if not last_completed:
         logger.info(f"Retake: no prior completed {test_type} test for user {user_id}")
         return None
-
     src = last_completed.test_data
     if isinstance(src, str):
         try:
@@ -3702,12 +5012,10 @@ def _clone_completed_ielts_test(user_id: int, test_type: str, difficulty: str = 
     if not src or not isinstance(src, dict):
         logger.warning(f"Retake: empty/invalid test_data for session {last_completed.id}")
         return None
-
     cloned_data = copy.deepcopy(src)
     cloned_data['retake_of'] = last_completed.id
     cloned_data['retake_at'] = datetime.now(timezone.utc).isoformat()
     cloned_data['_is_retake'] = True
-
     try:
         new_session = TestSession(
             user_id=user_id,
@@ -3726,12 +5034,10 @@ def _clone_completed_ielts_test(user_id: int, test_type: str, difficulty: str = 
         db.session.rollback()
         logger.error(f"Retake: could not create clone session: {e}", exc_info=True)
         return None
-
     logger.info(
         f" IELTS {test_type} retake — new session {new_session.id} "
         f"cloned from completed session {last_completed.id}"
     )
-
     return {
         'success': True,
         'retake': True,
@@ -3843,9 +5149,7 @@ def _ft_state():
     state = session.get('full_ielts_test')
     if not state:
         return None
-
     migrated = False
-
     for key in ('answers', 'scores', 'test_ids', 'completed_sections', 'phase_started_at'):
         if key not in state or not isinstance(state[key], dict):
             state[key] = {}
@@ -3859,7 +5163,6 @@ def _ft_state():
                 else:
                     state[key][p] = None
                 migrated = True
-
     if 'speaking_schedule' not in state or not isinstance(state.get('speaking_schedule'), dict):
         state['speaking_schedule'] = {
             'scheduled_at': None,
@@ -3879,15 +5182,12 @@ def _ft_state():
             if k not in sched:
                 sched[k] = default
                 migrated = True
-
     if 'phase' not in state:
         state['phase'] = 'listening'
         migrated = True
-
     if 'parent_session_id' not in state:
         state['parent_session_id'] = None
         migrated = True
-
     if migrated:
         session['full_ielts_test'] = state
         session.modified = True
@@ -3895,7 +5195,6 @@ def _ft_state():
             logger.info(f" Migrated full-test session state for user {current_user.id}")
         except Exception:
             pass
-
     return state
 
 
@@ -3924,13 +5223,11 @@ def _ft_speaking_status(state, user_id: Optional[int] = None) -> Dict[str, Any]:
     sched = state.get('speaking_schedule') or {}
     scheduled_at_raw = sched.get('scheduled_at')
     now = datetime.now(timezone.utc)
-
     base = {
         'early_window_seconds': SPEAKING_EARLY_WINDOW,
         'late_window_seconds': SPEAKING_LATE_WINDOW,
         'notify_before_seconds': SPEAKING_NOTIFY_BEFORE,
     }
-
     if not scheduled_at_raw:
         return {
             **base,
@@ -3940,7 +5237,6 @@ def _ft_speaking_status(state, user_id: Optional[int] = None) -> Dict[str, Any]:
             'is_stuck': False,
             'can_reset': True,
         }
-
     scheduled_dt = _parse_utc_datetime(scheduled_at_raw)
     if not scheduled_dt:
         logger.warning(f" Corrupt scheduled_at for user {user_id}: {scheduled_at_raw!r}")
@@ -3952,11 +5248,9 @@ def _ft_speaking_status(state, user_id: Optional[int] = None) -> Dict[str, Any]:
             'is_stuck': False,
             'can_reset': True,
         }
-
     delta = (scheduled_dt - now).total_seconds()
     started = sched.get('started_at') is not None
     completed = bool(state['completed_sections'].get('speaking', False))
-
     is_stuck = False
     if started and not completed:
         started_dt = _parse_utc_datetime(sched.get('started_at'))
@@ -3968,15 +5262,12 @@ def _ft_speaking_status(state, user_id: Optional[int] = None) -> Dict[str, Any]:
                     f" [full-test] Speaking stuck — user={user_id} "
                     f"started {int(elapsed / 60)} min ago, never completed"
                 )
-
     window_expired = delta < -SPEAKING_LATE_WINDOW
-
     can_start = (
         not started
         and not completed
         and (-SPEAKING_LATE_WINDOW) <= delta <= SPEAKING_EARLY_WINDOW
     )
-
     if completed:
         reason = 'completed'
     elif is_stuck:
@@ -3989,7 +5280,6 @@ def _ft_speaking_status(state, user_id: Optional[int] = None) -> Dict[str, Any]:
         reason = 'expired'
     else:
         reason = 'ready'
-
     return {
         **base,
         'scheduled': True,
@@ -4020,7 +5310,6 @@ def ielts_full_test():
 def ielts_full_test_start():
     existing = _ft_state()
     data = request.get_json(silent=True) or {}
-
     if existing and not data.get('force'):
         return jsonify({
             'success': False,
@@ -4028,7 +5317,6 @@ def ielts_full_test_start():
             'active': True,
             'next_phase': _ft_next_phase(existing) or 'done',
         }), 409
-
     allowed, error, requires_sub = subscription_manager.can_access_test(
         current_user.id, 'listening'
     )
@@ -4038,33 +5326,26 @@ def ielts_full_test_start():
             'requires_subscription': requires_sub,
             'redirect_to': '/subscription?module=ielts',
         }), 402
-
     ft_mgr = app.config.get('FULL_TEST_BANK_MANAGER')
     if not ft_mgr:
         return jsonify({
             'error': 'Full-test bank manager not available',
             'hint': 'Check server logs — FullTestBankManager import failed',
         }), 503
-
     difficulty = data.get('difficulty', 'medium')
     accent = data.get('accent', 'british')
-
     pick = ft_mgr.get_full_test_variant(current_user.id, difficulty)
-
     if not pick.get('success'):
         err_msg = (pick.get('error') or '').lower()
-
         is_empty_bank = (
             'no' in err_msg and
             ('variant' in err_msg or 'test' in err_msg or 'available' in err_msg)
         )
-
         if is_empty_bank:
             with _ft_autogen_lock:
                 already = difficulty in _ft_autogen_in_progress
                 if not already:
                     _ft_autogen_in_progress.add(difficulty)
-
             if not already:
                 def _auto_gen_full_test(diff, acc):
                     try:
@@ -4085,7 +5366,6 @@ def ielts_full_test_start():
                         with _ft_autogen_lock:
                             _ft_autogen_in_progress.discard(diff)
                         _ft_autogen_done_at[diff] = datetime.now(timezone.utc)
-
                 threading.Thread(
                     target=_auto_gen_full_test,
                     args=(difficulty, accent),
@@ -4095,7 +5375,6 @@ def ielts_full_test_start():
                     f" [auto-gen] Started full-test variant generation "
                     f"(difficulty={difficulty}, accent={accent})"
                 )
-
             return jsonify({
                 'success': True,
                 'generating': True,
@@ -4106,18 +5385,14 @@ def ielts_full_test_start():
                 'retry_after': 15,
                 'difficulty': difficulty,
             }), 200
-
         return jsonify({
             'error': pick.get('error', 'No full tests available'),
             'hint': 'Please try again shortly.',
         }), 503
-
     with _ft_autogen_lock:
         _ft_autogen_in_progress.discard(difficulty)
-
     bank_id = pick['bank_id']
     snapshot = pick['snapshot']
-
     attempt = ft_mgr.create_user_attempt(
         user_id=current_user.id,
         bank_id=bank_id,
@@ -4126,9 +5401,7 @@ def ielts_full_test_start():
     )
     if not attempt.get('success'):
         return jsonify({'error': attempt.get('error')}), 500
-
     session_id = attempt['session_id']
-
     state = {
         'parent_session_id': session_id,
         'bank_id': bank_id,
@@ -4151,12 +5424,10 @@ def ielts_full_test_start():
         },
     }
     _ft_save(state)
-
     logger.info(
         f" Full test started — user {current_user.id}, "
         f"attempt #{session_id}, variant #{bank_id}"
     )
-
     return jsonify({
         'success': True,
         'phase': 'listening',
@@ -4173,10 +5444,8 @@ def ielts_full_test_status():
     state = _ft_state()
     if not state:
         return jsonify({'active': False})
-
     with _ft_autogen_lock:
         generating = list(_ft_autogen_in_progress)
-
     return jsonify({
         'active': True,
         'phase': state.get('phase'),
@@ -4210,23 +5479,18 @@ def ielts_full_test_enter_phase(phase):
     state = _ft_state()
     if not state or phase not in PHASE_ORDER:
         return redirect(url_for('ielts_full_test'))
-
     if phase == 'speaking':
         return redirect(url_for('ielts_full_test'))
-
     if state['completed_sections'].get(phase):
         nxt = _ft_next_phase(state)
         if nxt and nxt != 'speaking':
             return redirect(f"{PHASE_ROUTES[nxt]}?full_test=true")
         return redirect(url_for('ielts_full_test'))
-
     state['phase'] = phase
     state['phase_started_at'][phase] = datetime.now(timezone.utc).isoformat()
     _ft_save(state)
-
     base_secs = PHASE_TIME_LIMITS.get(phase, 0)
     grace_secs = PHASE_GRACE_SECONDS.get(phase, 0)
-
     return redirect(
         f"{PHASE_ROUTES[phase]}?full_test=true"
         f"&time_limit={base_secs}"
@@ -4242,11 +5506,9 @@ def ielts_full_test_record_phase():
     phase = data.get('phase')
     if phase not in PHASE_ORDER:
         return jsonify({'error': 'Invalid phase'}), 400
-
     state = _ft_state()
     if not state:
         return jsonify({'error': 'No full test session in progress'}), 404
-
     state['answers'][phase] = data.get('answers') or {}
     state['scores'][phase] = {
         'band_score': data.get('band_score'),
@@ -4261,7 +5523,6 @@ def ielts_full_test_record_phase():
         state['speaking_schedule'] = sched
     state['phase'] = _ft_next_phase(state) or 'done'
     _ft_save(state)
-
     logger.info(f" Full test phase '{phase}' recorded for user {current_user.id}")
     return jsonify({'success': True, 'next_phase': state['phase']})
 
@@ -4275,21 +5536,16 @@ def ielts_full_test_speaking_schedule():
     state = _ft_state()
     if not state:
         return jsonify({'error': 'No full test session'}), 404
-
     if not state['completed_sections'].get('writing'):
         return jsonify({'error': 'Complete Listening, Reading and Writing first'}), 400
-
     scheduled_at = data.get('scheduled_at')
     if not scheduled_at:
         return jsonify({'error': 'scheduled_at is required'}), 400
-
     dt = _parse_utc_datetime(scheduled_at)
     if not dt:
         return jsonify({'error': 'Invalid datetime format'}), 400
-
     if (dt - datetime.now(timezone.utc)).total_seconds() < -SPEAKING_LATE_WINDOW:
         return jsonify({'error': 'Scheduled time is too far in the past'}), 400
-
     sched = state.get('speaking_schedule') or {}
     sched['scheduled_at'] = dt.isoformat()
     sched['set_at'] = datetime.now(timezone.utc).isoformat()
@@ -4299,11 +5555,9 @@ def ielts_full_test_speaking_schedule():
     state['speaking_schedule'] = sched
     state['phase'] = 'speaking'
     _ft_save(state)
-
     logger.info(
         f" Speaking scheduled for user {current_user.id} at {dt.isoformat()}"
     )
-
     return jsonify({
         'success': True,
         'speaking': _ft_speaking_status(state, user_id=current_user.id),
@@ -4338,14 +5592,12 @@ def ielts_full_test_reset_speaking():
     state = _ft_state()
     if not state:
         return jsonify({'error': 'No full test session'}), 404
-
     if state['completed_sections'].get('speaking'):
         return jsonify({
             'success': False,
             'error': 'Speaking already completed — cannot reset.',
             'already_completed': True,
         }), 400
-
     prior_done = all(
         state['completed_sections'].get(p)
         for p in ['listening', 'reading', 'writing']
@@ -4356,13 +5608,11 @@ def ielts_full_test_reset_speaking():
             'error': 'Complete Listening, Reading, and Writing first.',
             'prior_not_done': True,
         }), 400
-
     prev_schedule = state.get('speaking_schedule') or {}
     had_previous = bool(
         prev_schedule.get('scheduled_at')
         or prev_schedule.get('started_at')
     )
-
     state['speaking_schedule'] = {
         'scheduled_at': None,
         'set_at': None,
@@ -4372,12 +5622,10 @@ def ielts_full_test_reset_speaking():
     }
     state['phase'] = 'speaking'
     _ft_save(state)
-
     logger.info(
         f" [full-test] Speaking reset — user={current_user.id}, "
         f"had_previous={had_previous}"
     )
-
     return jsonify({
         'success': True,
         'message': 'Speaking phase reset. Please book a new time.',
@@ -4393,27 +5641,22 @@ def ielts_full_test_reset_speaking():
 def ielts_full_test_start_speaking():
     data = request.get_json(silent=True) or {}
     force = bool(data.get('force'))
-
     state = _ft_state()
     if not state:
         return jsonify({'error': 'No full test session'}), 404
-
     st = _ft_speaking_status(state, user_id=current_user.id)
-
     if not st.get('scheduled'):
         return jsonify({
             'error': 'No speaking time scheduled yet. Please book a time.',
             'needs_booking': True,
             'can_reset': False,
         }), 400
-
     if st.get('completed'):
         return jsonify({
             'error': 'Speaking already completed.',
             'completed': True,
             'redirect': '/ielts-full-test?completed=speaking',
         }), 400
-
     if st.get('is_stuck') or force:
         logger.info(
             f" [full-test] Force-starting speaking for user "
@@ -4424,7 +5667,6 @@ def ielts_full_test_start_speaking():
         state['speaking_schedule'] = sched
         _ft_save(state)
         st = _ft_speaking_status(state, user_id=current_user.id)
-
     if not st.get('can_start'):
         reason = st.get('reason')
         if reason == 'too_early':
@@ -4435,7 +5677,6 @@ def ielts_full_test_start_speaking():
                 ),
                 'reason': 'too_early',
             }), 403
-
         if reason == 'expired':
             return jsonify({
                 'error': 'The time window has expired. Please reset and rebook.',
@@ -4443,7 +5684,6 @@ def ielts_full_test_start_speaking():
                 'can_reset': True,
                 'reason': 'expired',
             }), 403
-
         if reason == 'started':
             sched = state.get('speaking_schedule') or {}
             sched['started_at'] = None
@@ -4456,20 +5696,17 @@ def ielts_full_test_start_speaking():
                     'can_reset': True,
                     'reason': st.get('reason'),
                 }), 403
-
         else:
             return jsonify({
                 'error': 'Speaking cannot be started right now.',
                 'reason': reason,
                 'can_reset': True,
             }), 403
-
     sched = state.get('speaking_schedule') or {}
     sched['started_at'] = datetime.now(timezone.utc).isoformat()
     state['speaking_schedule'] = sched
     state['phase'] = 'speaking'
     _ft_save(state)
-
     logger.info(f" Speaking phase started for user {current_user.id}")
     return jsonify({
         'success': True,
@@ -4484,23 +5721,18 @@ def ielts_full_test_aggregate():
     state = _ft_state()
     if not state:
         return jsonify({'error': 'No full test session'}), 404
-
     if not all(state['completed_sections'].values()):
         missing = [p for p in PHASE_ORDER if not state['completed_sections'][p]]
         return jsonify({'error': 'Not all sections completed', 'missing': missing}), 400
-
     l = state['scores'].get('listening') or {}
     r = state['scores'].get('reading') or {}
     w = state['scores'].get('writing') or {}
     sp = state['scores'].get('speaking') or {}
-
     l_band = float(l.get('band_score') or 0.0)
     r_band = float(r.get('band_score') or 0.0)
     w_band = float(w.get('band_score') or 0.0)
     sp_band = float(sp.get('band_score') or 0.0)
-
     overall = round_ielts_band((l_band + r_band + w_band + sp_band) / 4.0)
-
     module = session.get('selected_module', 'ielts')
     TestResult = get_test_result_model(module)
     db_result = TestResult(
@@ -4524,7 +5756,6 @@ def ielts_full_test_aggregate():
     )
     db.session.add(db_result)
     db.session.commit()
-
     parent_id = state.get('parent_session_id')
     if parent_id:
         TestSessionM = get_test_session_model(module)
@@ -4546,7 +5777,6 @@ def ielts_full_test_aggregate():
             parent.ended_at = datetime.now(timezone.utc)
             parent.last_updated = datetime.now(timezone.utc)
             db.session.commit()
-
     try:
         Subscription = get_subscription_model(module)
         subscription = Subscription.query.filter_by(user_id=current_user.id).first()
@@ -4569,7 +5799,6 @@ def ielts_full_test_aggregate():
             db.session.commit()
     except Exception as e:
         logger.error(f"Full-test quota decrement failed: {e}")
-
     log_user_activity(current_user.id, 'complete_test', {
         'test_type': 'full_ielts',
         'band': overall,
@@ -4578,7 +5807,6 @@ def ielts_full_test_aggregate():
             'writing': w_band, 'speaking': sp_band,
         },
     })
-
     payload = {
         'success': True,
         'listening_band': l_band,
@@ -4630,14 +5858,12 @@ def start_listening():
                 audio_generator.start_new_session()
             except Exception as _vc_err:
                 logger.debug(f"Voice cache clear skipped: {_vc_err}")
-
         data = request.get_json(silent=True) or {}
         resume_id = request.args.get('resume') or data.get('resume')
         difficulty = data.get('difficulty', 'medium')
         topic = data.get('topic', None)
         user_id = current_user.id
         module = session.get('selected_module', 'ielts')
-
         from_full_test = bool(data.get('from_full_test'))
         force_new = data.get('force_new', False)
         retake = bool(data.get('retake', False))
@@ -4649,13 +5875,11 @@ def start_listening():
             accent = accent
         accent_string = accent if isinstance(accent, str) else accent.get('1', 'british')
         test_accent = accent_string
-
         num_sections = 4
 
         if from_full_test:
             ft = session.get('full_ielts_test') or {}
             parent_id = ft.get('parent_session_id')
-
             ft_mgr = app.config.get('FULL_TEST_BANK_MANAGER')
             if parent_id and ft_mgr:
                 TestSessionM = get_test_session_model(module)
@@ -4669,7 +5893,6 @@ def start_listening():
                         )
                     snap.setdefault('total_sections', len(sections_in_snap) or 4)
                     snap.setdefault('partial', False)
-
                     phase_session = TestSessionM(
                         user_id=user_id,
                         test_type='listening',
@@ -4682,7 +5905,6 @@ def start_listening():
                     db.session.commit()
                     session['current_test_session_id'] = phase_session.id
                     session['current_listening_test_data'] = snap
-
                     audio_ready = list((snap.get('audio_urls') or {}).keys())
                     logger.info(
                         f" [full-test] Serving listening snapshot — "
@@ -4691,7 +5913,6 @@ def start_listening():
                         f"generated={snap['generated_sections']} "
                         f"audio_ready={audio_ready}"
                     )
-
                     return jsonify({
                         'success': True,
                         'session_id': phase_session.id,
@@ -4714,7 +5935,6 @@ def start_listening():
                     'requires_subscription': requires_sub,
                     'redirect_to': '/subscription?module=' + module
                 }), 402
-
             if retake and not force_new:
                 cloned = _clone_completed_ielts_test(user_id, 'listening', difficulty)
                 if cloned:
@@ -4787,14 +6007,12 @@ def start_listening():
                     accent=test_accent,
                     fast=True
                 )
-
             full_test, source, pool_id = ielts_test_pool_manager.get_or_generate(
                 module='ielts_listening',
                 difficulty=difficulty,
                 user_id=user_id,
                 generate_fn=_gen,
             )
-
             if source == 'waiting':
                 return jsonify({
                     'success': False,
@@ -4802,21 +6020,18 @@ def start_listening():
                     'message': 'Another user is generating this test. Please retry.',
                     'retry_after': 3,
                 }), 202
-
             if source == 'exhausted':
                 return jsonify({
                     'success': False,
                     'source': 'exhausted',
                     'error': 'Test pool is currently full. Please try again shortly.'
                 }), 503
-
             if source == 'failed' or not full_test:
                 return jsonify({
                     'success': False,
                     'source': 'failed',
                     'error': 'Test generation failed. Please try again.'
                 }), 503
-
             logger.info(
                 f" [listening/start] user={user_id} source={source} pool_id={pool_id}"
             )
@@ -4824,17 +6039,14 @@ def start_listening():
         if not full_test or full_test.get('error'):
             logger.error(f"Failed to load test: {full_test}")
             return jsonify({'error': 'Failed to load test'}), 500
-
         sections = full_test.get('sections', [])
         if len(sections) < 4:
             logger.error(f"Only {len(sections)} sections, expected 4")
             return jsonify({'error': 'Incomplete test loaded'}), 500
-
         accents_map = {str(i): test_accent for i in range(1, 5)}
         section1_data = sections[0]
         audio_urls = full_test.get('audio_urls', {}) or {}
         audio_timings = full_test.get('audio_timings', {}) or {}
-
         if '1' not in audio_urls:
             result, error, timings = _generate_single_section_audio(
                 None, 1, section1_data, accents_map,
@@ -4861,7 +6073,6 @@ def start_listening():
             '_source': source,
             '_pool_id': pool_id,
         }
-
         TestSession = get_test_session_model(module)
         session_obj = TestSession(
             user_id=user_id,
@@ -4874,10 +6085,8 @@ def start_listening():
         db.session.add(session_obj)
         db.session.commit()
         session_id = session_obj.id
-
         session['current_test_session_id'] = session_id
         session['current_listening_test_data'] = test_data
-
         thread = threading.Thread(
             target=_generate_audio_background,
             args=(session_id, 4)
@@ -4885,7 +6094,6 @@ def start_listening():
         thread.daemon = True
         thread.start()
         logger.info(f" Audio background thread started for session {session_id}")
-
         response = {
             'success': True,
             'session_id': session_id,
@@ -4902,7 +6110,6 @@ def start_listening():
         }
         logger.info(f" Listening test started for user {user_id}, session_id={session_id}, source={source}")
         return jsonify(response)
-
     except Exception as e:
         logger.error(f" start_listening error: {e}", exc_info=True)
         return jsonify({'error': 'Internal server error: ' + str(e)}), 500
@@ -4914,13 +6121,11 @@ def listening_audio(test_id, section):
     user_id = current_user.id
     module = session.get('selected_module', 'ielts')
     TestSession = get_test_session_model(module)
-
     sessions = TestSession.query.filter_by(
         user_id=user_id,
         test_type='listening',
         status='in_progress'
     ).all()
-
     session_obj = None
     test_data = None
     for sess in sessions:
@@ -4936,24 +6141,20 @@ def listening_audio(test_id, section):
             session_obj = sess
             test_data = data
             break
-
     if not session_obj or not test_data:
         return jsonify({'error': 'Test not found or not in progress'}), 404
-
     audio_urls = test_data.get('audio_urls', {})
     if isinstance(audio_urls, str):
         try:
             audio_urls = json.loads(audio_urls)
         except Exception:
             audio_urls = {}
-
     audio_timings = test_data.get('audio_timings', {})
     if isinstance(audio_timings, str):
         try:
             audio_timings = json.loads(audio_timings)
         except Exception:
             audio_timings = {}
-
     if str(section) in audio_urls:
         stored = audio_urls[str(section)]
         if isinstance(stored, dict):
@@ -4962,25 +6163,21 @@ def listening_audio(test_id, section):
         else:
             timings = audio_timings.get(str(section), {})
             return jsonify({'audio_urls': {'main': stored}, 'timings': timings})
-
     sections = test_data.get('sections', [])
     if section < 1 or section > len(sections):
         return jsonify({'error': 'Invalid section number'}), 400
-
     accents_map = test_data.get('accents', {})
     if not accents_map and 'accent' in test_data:
         default_accent = test_data.get('accent', 'british')
         accents_map = {str(i): default_accent for i in range(1, 5)}
     elif not accents_map:
         accents_map = {str(i): 'british' for i in range(1, 5)}
-
     sec = sections[section - 1]
     _pool_id_for_audio = test_data.get('_pool_id') if isinstance(test_data, dict) else None
     result, error, timings = _generate_single_section_audio(
         session_obj.id, section, sec, accents_map,
         pool_id=_pool_id_for_audio,
     )
-
     if result and isinstance(result, dict):
         audio_urls[str(section)] = result
         audio_timings[str(section)] = timings
@@ -5004,17 +6201,14 @@ def submit_listening():
         TestSession = get_test_session_model(module)
         TestResult = get_test_result_model(module)
         Subscription = get_subscription_model(module)
-
         ft_state = None
         if is_full_test:
             ft_state = session.get('full_ielts_test')
             if not ft_state:
                 return jsonify({'error': 'No full test session in progress'}), 404
-
         test_data = session.get('current_listening_test_data', {})
         sess_id = session.get('current_test_session_id')
         test_id_from_req = data.get('test_id') or session.get('current_listening_test')
-
         if not test_data:
             if sess_id:
                 sess = db.session.get(TestSession, sess_id)
@@ -5047,11 +6241,9 @@ def submit_listening():
                         session['current_test_session_id'] = sess_id
                 except Exception:
                     pass
-
         if not test_data:
             logger.error(f" No test_data. session keys: {list(session.keys())}, test_id: {test_id_from_req}")
             return jsonify({'error': 'Test data not found. Please start a new test.'}), 400
-
         correct_answers = {}
         total_questions = 0
         sections = test_data.get('sections', [])
@@ -5062,11 +6254,9 @@ def submit_listening():
                 if q_id and answer:
                     correct_answers[q_id] = answer
                     total_questions += 1
-
         if not correct_answers:
             logger.error(f" No correct answers. sections_len={len(sections)}")
             return jsonify({'error': 'No correct answers found in test data.'}), 400
-
         answer_results = {}
         total_answered = 0
         correct_count = 0
@@ -5086,11 +6276,9 @@ def submit_listening():
                 'correct_answer': correct,
                 'is_correct': is_correct,
             }
-
         band_score = round_ielts_band(calculate_ielts_band(correct_count, total_questions))
         score_pct = (correct_count / total_questions * 100) if total_questions > 0 else 0
         unanswered = total_questions - total_answered
-
         section_scores = {}
         for sec_idx, section in enumerate(sections, 1):
             sec_correct = sec_total = 0
@@ -5107,7 +6295,6 @@ def submit_listening():
                 'correct': sec_correct, 'total': sec_total,
                 'percentage': round(sec_pct, 1),
             }
-
         if is_full_test:
             ft_state['answers']['listening'] = user_answers
             ft_state['scores']['listening'] = {
@@ -5120,7 +6307,6 @@ def submit_listening():
             ft_state['phase'] = _ft_next_phase(ft_state) or 'done'
             session['full_ielts_test'] = ft_state
             session.modified = True
-
             if sess_id:
                 sess = db.session.get(TestSession, sess_id)
                 if sess:
@@ -5128,15 +6314,12 @@ def submit_listening():
                     sess.status = 'completed'
                     sess.last_updated = datetime.now(timezone.utc)
                     db.session.commit()
-
             session.pop('current_listening_test', None)
             session.pop('current_listening_test_data', None)
             session.pop('current_test_session_id', None)
-
             log_user_activity(current_user.id, 'full_test_phase_done', {
                 'phase': 'listening', 'band': band_score, 'module': module,
             })
-
             return jsonify({
                 'success': True,
                 'is_full_test': True,
@@ -5147,12 +6330,10 @@ def submit_listening():
                 'next_phase': ft_state['phase'],
                 'redirect': '/ielts-full-test?completed=listening',
             })
-
         subscription = Subscription.query.filter_by(user_id=current_user.id).first()
         if not subscription:
             from models import create_default_subscription_for_user
             subscription = create_default_subscription_for_user(current_user.id, module)
-
         end = subscription.subscription_end
         if end and end.tzinfo is None:
             end = end.replace(tzinfo=timezone.utc)
@@ -5163,7 +6344,6 @@ def submit_listening():
                 not in ('', 'free', 'trial', 'none', 'default')
             and (subscription.tests_remaining or 0) > 0
         )
-
         db_result = TestResult(
             user_id=current_user.id,
             test_type='listening',
@@ -5179,7 +6359,6 @@ def submit_listening():
         db_result.feedback = feedback
         db.session.add(db_result)
         db.session.commit()
-
         if sess_id:
             sess = db.session.get(TestSession, sess_id)
             if sess:
@@ -5188,7 +6367,6 @@ def submit_listening():
                 sess.status = 'completed'
                 sess.last_updated = datetime.now(timezone.utc)
                 db.session.commit()
-
         try:
             if ielts_test_pool_manager and isinstance(test_data, dict):
                 _pool_id = test_data.get('_pool_id')
@@ -5200,12 +6378,10 @@ def submit_listening():
                     )
         except Exception as _pool_err:
             logger.warning(f"Could not record listening pool progress: {_pool_err}")
-
         try:
             subscription_manager.db = db.session
         except Exception:
             pass
-
         try:
             _is_retake = False
             if sess_id:
@@ -5219,7 +6395,6 @@ def submit_listening():
                             _td_retake = {}
                     if isinstance(_td_retake, dict):
                         _is_retake = bool(_td_retake.get('_is_retake'))
-
             if _is_retake:
                 logger.info(
                     f" Retake of same test — skipping usage increment "
@@ -5233,13 +6408,11 @@ def submit_listening():
                 subscription_manager.increment_free_usage(current_user.id, 'listening')
         except Exception as inc_err:
             logger.error(f"Listening quota update failed: {inc_err}")
-
         session.pop('current_listening_test', None)
         session.pop('current_listening_test_data', None)
         log_user_activity(current_user.id, 'complete_test', {
             'test_type': 'listening', 'score': score_pct, 'module': module,
         })
-
         return jsonify({
             'success': True,
             'score': score_pct,
@@ -5257,7 +6430,6 @@ def submit_listening():
             ),
             'section_scores': section_scores,
         })
-
     except Exception as e:
         logger.error(f" Listening submit error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -5271,7 +6443,6 @@ def listening_status(session_id):
     session_obj = db.session.get(TestSession, session_id)
     if not session_obj or session_obj.user_id != current_user.id:
         return jsonify({'error': 'Session not found'}), 404
-
     raw_data = session_obj.test_data
     test_data = {}
     if isinstance(raw_data, str):
@@ -5281,7 +6452,6 @@ def listening_status(session_id):
             test_data = {}
     elif isinstance(raw_data, dict):
         test_data = raw_data
-
     audio_urls = {}
     if test_data and 'audio_urls' in test_data:
         audio_urls = test_data.get('audio_urls', {})
@@ -5299,7 +6469,6 @@ def listening_status(session_id):
                 audio_urls = {}
         elif isinstance(raw_col, dict):
             audio_urls = raw_col
-
     sections = test_data.get('sections', [])
     total_sections = len(sections)
     ready_sections = 0
@@ -5307,7 +6476,6 @@ def listening_status(session_id):
         if str(sec) in audio_urls:
             ready_sections += 1
     all_ready = ready_sections >= total_sections if total_sections > 0 else False
-
     return jsonify({
         'success': True,
         'status': 'completed' if all_ready else 'generating',
@@ -5362,7 +6530,6 @@ def start_writing():
         resume_id = data.get('resume')
         user_id = current_user.id
         module = session.get('selected_module', 'ielts')
-
         from_full_test = data.get('from_full_test', 'false').lower() == 'true'
         force_new = data.get('force_new', 'false').lower() == 'true'
         retake = data.get('retake', 'false').lower() == 'true'
@@ -5393,7 +6560,6 @@ def start_writing():
                     session['current_writing_chart'] = snap.get('task1', {}).get('chart_data', {})
                     session['current_writing_features'] = snap.get('task1', {}).get('expected_features', [])
                     session['current_writing_prompt2'] = snap.get('task2', {}).get('prompt', '')
-
                     snap['session_id'] = phase_session.id
                     snap['success'] = True
                     snap['from_snapshot'] = True
@@ -5407,7 +6573,6 @@ def start_writing():
                     'requires_subscription': requires_sub,
                     'redirect_to': '/subscription?module=' + module
                 }), 402
-
             if retake and not force_new:
                 cloned = _clone_completed_ielts_test(user_id, 'writing', difficulty)
                 if cloned:
@@ -5431,30 +6596,25 @@ def start_writing():
                 )
 
         TestSession = get_test_session_model(module)
-
         resume_target = None
         resume_reason = None
-
         if resume_id:
             try:
                 int(resume_id)
             except (ValueError, TypeError):
                 return jsonify({'error': 'Invalid resume ID', 'success': False}), 400
-
             sess, status = _get_valid_resume_session(user_id, 'writing', module, resume_id)
             if status == 'valid' and sess:
                 resume_target = sess
                 resume_reason = 'explicit'
             elif status == 'corrupted_deleted':
                 logger.info(f"Corrupted writing session {resume_id} deleted")
-
         if resume_target is None and not force_new:
             fallback_session = TestSession.query.filter_by(
                 user_id=user_id,
                 test_type='writing',
                 status='in_progress'
             ).order_by(TestSession.start_time.desc()).first()
-
             if fallback_session:
                 sess, status = _get_valid_resume_session(
                     user_id, 'writing', module, str(fallback_session.id)
@@ -5464,7 +6624,6 @@ def start_writing():
                     resume_reason = 'auto'
                 elif status == 'corrupted_deleted':
                     logger.info(f"Corrupted fallback session {fallback_session.id} deleted")
-
         if resume_target is not None:
             test_data = resume_target.test_data
             if isinstance(test_data, str):
@@ -5472,14 +6631,12 @@ def start_writing():
                     test_data = json.loads(test_data)
                 except Exception:
                     test_data = {}
-
             if test_data.get('task1') and test_data.get('task2'):
                 session['current_writing_prompt'] = test_data['task1'].get('prompt', '')
                 session['current_writing_chart'] = test_data['task1'].get('chart_data', {})
                 session['current_writing_features'] = test_data['task1'].get('expected_features', [])
                 session['current_writing_prompt2'] = test_data['task2'].get('prompt', '')
                 session['current_test_session_id'] = resume_target.id
-
                 logger.info(
                     f" Writing test resumed ({resume_reason}) "
                     f"from TestSession {resume_target.id}"
@@ -5507,7 +6664,6 @@ def start_writing():
                 'error': f'You have {incomplete_count} incomplete writing tests. Max 5 allowed.',
                 'redirect_to': '/saved-tests'
             }), 400
-
         if module != 'ielts':
             return jsonify({'error': 'Writing route only available for IELTS module'}), 400
 
@@ -5539,14 +6695,12 @@ def start_writing():
                     auto_generate=auto_generate,
                     preserve_user_essay=preserve_user_essay,
                 )
-
             result, source, pool_id = ielts_test_pool_manager.get_or_generate(
                 module='ielts_writing',
                 difficulty=difficulty,
                 user_id=user_id,
                 generate_fn=_gen,
             )
-
             if source == 'waiting':
                 return jsonify({
                     'success': False,
@@ -5554,21 +6708,18 @@ def start_writing():
                     'message': 'Another user is generating this test. Please retry.',
                     'retry_after': 3,
                 }), 202
-
             if source == 'exhausted':
                 return jsonify({
                     'success': False,
                     'source': 'exhausted',
                     'error': 'Test pool is currently full. Please try again shortly.'
                 }), 503
-
             if source == 'failed' or not result:
                 return jsonify({
                     'success': False,
                     'source': 'failed',
                     'error': 'Test generation failed. Please try again.'
                 }), 503
-
             logger.info(
                 f" [writing/start] user={user_id} source={source} pool_id={pool_id}"
             )
@@ -5576,17 +6727,14 @@ def start_writing():
         if result.get('error'):
             logger.error(f"Writing test error: {result['error']}")
             return jsonify({'error': result['error'], 'success': False}), 400
-
         if result.get('task1'):
             session['current_writing_prompt'] = result['task1'].get('prompt', '')
             session['current_writing_chart'] = result['task1'].get('chart_data', {})
             session['current_writing_features'] = result['task1'].get('expected_features', [])
         if result.get('task2'):
             session['current_writing_prompt2'] = result['task2'].get('prompt', '')
-
         if pool_id:
             result['_pool_id'] = pool_id
-
         test_session = TestSession(
             user_id=user_id,
             test_type='writing',
@@ -5602,9 +6750,7 @@ def start_writing():
         result['source'] = source
         session['current_test_session_id'] = test_session.id
         logger.info(f" Writing test saved to TestSession {test_session.id} (source={source})")
-
         return jsonify(result)
-
     except Exception as e:
         logger.exception(f"start_writing error: {e}")
         return jsonify({'error': str(e), 'success': False}), 500
@@ -5616,7 +6762,6 @@ def submit_writing():
     try:
         MIN_TASK1_WORDS = 150
         MIN_TASK2_WORDS = 250
-
         data = request.json or {}
         task1_essay = (data.get('task1_essay') or '').strip()
         task2_essay = (data.get('task2_essay') or '').strip()
@@ -5627,21 +6772,17 @@ def submit_writing():
         TestSession = get_test_session_model(module)
         TestResult = get_test_result_model(module)
         Subscription = get_subscription_model(module)
-
         ft_state = None
         if is_full_test:
             ft_state = session.get('full_ielts_test')
             if not ft_state:
                 return jsonify({'error': 'No full test session in progress'}), 404
-
         task1_prompt = session.get('current_writing_prompt', '')
         task2_prompt = session.get('current_writing_prompt2', '')
         task1_chart = session.get('current_writing_chart', {})
         task1_features = session.get('current_writing_features', [])
-
         t1_words = len(task1_essay.split()) if task1_essay else 0
         t2_words = len(task2_essay.split()) if task2_essay else 0
-
         if not ai_engine:
             eval1 = {
                 'overall_band': 0.0 if t1_words < MIN_TASK1_WORDS else 5.0,
@@ -5663,7 +6804,6 @@ def submit_writing():
             }
         else:
             evaluator = create_essay_evaluator(ai_engine)
-
             if t1_words >= MIN_TASK1_WORDS:
                 eval1 = evaluator.evaluate(
                     task1_essay, 'task1', task1_prompt,
@@ -5690,7 +6830,6 @@ def submit_writing():
                     },
                     'evaluator': 'length_filter',
                 }
-
             if t2_words >= MIN_TASK2_WORDS:
                 eval2 = evaluator.evaluate(
                     task2_essay, 'task2', task2_prompt
@@ -5716,19 +6855,15 @@ def submit_writing():
                     },
                     'evaluator': 'length_filter',
                 }
-
         task1_band = round_ielts_band(eval1.get('overall_band', 0.0))
         task2_band = round_ielts_band(eval2.get('overall_band', 0.0))
-
         raw_overall = (task1_band + 2.0 * task2_band) / 3.0
         avg_band = round_ielts_band(raw_overall)
-
         upgraded1 = ''
         upgraded2 = ''
         if ai_engine and not is_full_test:
             try:
                 upgrader = create_essay_upgrader(ai_engine)
-
                 if t1_words >= MIN_TASK1_WORDS:
                     upgraded1 = upgrader.upgrade_task1(
                         essay=task1_essay,
@@ -5751,7 +6886,6 @@ def submit_writing():
                         auto_generate=True,
                         preserve_user_essay=False,
                     )
-
                 if t2_words >= MIN_TASK2_WORDS:
                     upgraded2 = upgrader.upgrade_task2(
                         essay=task2_essay,
@@ -5788,7 +6922,6 @@ def submit_writing():
             ft_state['phase'] = _ft_next_phase(ft_state) or 'done'
             session['full_ielts_test'] = ft_state
             session.modified = True
-
             sess_id = session.get('current_test_session_id')
             if sess_id:
                 sess = db.session.get(TestSession, sess_id)
@@ -5799,7 +6932,6 @@ def submit_writing():
                     sess.status = 'completed'
                     sess.last_updated = datetime.now(timezone.utc)
                     db.session.commit()
-
             try:
                 state = GenerationState.query.filter_by(
                     user_id=current_user.id, module='ielts_writing',
@@ -5811,17 +6943,14 @@ def submit_writing():
                     db.session.commit()
             except Exception:
                 pass
-
             session.pop('current_writing_prompt', None)
             session.pop('current_writing_prompt2', None)
             session.pop('current_writing_chart', None)
             session.pop('current_writing_features', None)
             session.pop('current_test_session_id', None)
-
             log_user_activity(current_user.id, 'full_test_phase_done', {
                 'phase': 'writing', 'band': avg_band, 'module': module,
             })
-
             return jsonify({
                 'success': True,
                 'is_full_test': True,
@@ -5851,7 +6980,6 @@ def submit_writing():
         )
         db.session.add(result)
         db.session.commit()
-
         sess_id = session.get('current_test_session_id')
         if sess_id:
             sess = db.session.get(TestSession, sess_id)
@@ -5864,7 +6992,6 @@ def submit_writing():
                 sess.status = 'completed'
                 sess.last_updated = datetime.now(timezone.utc)
                 db.session.commit()
-
                 try:
                     if ielts_test_pool_manager:
                         _td = sess.test_data
@@ -5883,7 +7010,6 @@ def submit_writing():
                                 )
                 except Exception as _pool_err:
                     logger.warning(f"Could not record writing pool progress: {_pool_err}")
-
         try:
             state = GenerationState.query.filter_by(
                 user_id=current_user.id,
@@ -5899,13 +7025,11 @@ def submit_writing():
                 )
         except Exception as e:
             logger.warning(f"Could not update generation state: {e}")
-
         try:
             try:
                 subscription_manager.db = db.session
             except Exception:
                 pass
-
             subscription = Subscription.query.filter_by(
                 user_id=int(current_user.id)
             ).first()
@@ -5914,11 +7038,9 @@ def submit_writing():
                 subscription = create_default_subscription_for_user(
                     int(current_user.id), module
                 )
-
             sub_end = subscription.subscription_end
             if sub_end and sub_end.tzinfo is None:
                 sub_end = sub_end.replace(tzinfo=timezone.utc)
-
             has_active_subscription = bool(
                 subscription.status == 'active'
                 and sub_end
@@ -5927,7 +7049,6 @@ def submit_writing():
                     not in ('', 'free', 'trial', 'none', 'default')
                 and (subscription.tests_remaining or 0) > 0
             )
-
             _is_retake = False
             if sess_id:
                 _sess_retake = db.session.get(TestSession, sess_id)
@@ -5940,7 +7061,6 @@ def submit_writing():
                             _td_retake = {}
                     if isinstance(_td_retake, dict):
                         _is_retake = bool(_td_retake.get('_is_retake'))
-
             if _is_retake:
                 logger.info(
                     f" Retake of same test — skipping usage increment "
@@ -5971,12 +7091,10 @@ def submit_writing():
                 f" Failed to handle writing quota for user "
                 f"{current_user.id}: {inc_err}"
             )
-
         log_user_activity(
             current_user.id, 'complete_test',
             {'test_type': 'writing', 'band': avg_band, 'module': module}
         )
-
         response_data = {
             'success': True,
             'band_score': avg_band,
@@ -5997,7 +7115,6 @@ def submit_writing():
             ),
             'result_id': result.id,
         }
-
         def _pack(up):
             if isinstance(up, dict):
                 return {
@@ -6013,14 +7130,11 @@ def submit_writing():
                     'key_improvements': up.get('key_improvements', []),
                 }
             return {'upgraded_essay': up or '', 'is_model_essay': False}
-
         if upgraded1:
             response_data['upgraded1'] = _pack(upgraded1)
         if upgraded2:
             response_data['upgraded2'] = _pack(upgraded2)
-
         return jsonify(response_data)
-
     except Exception as e:
         logger.error(f"Writing submit error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -6070,10 +7184,8 @@ def debug_image():
 
 
 # ============================================================
-# RUN THE APP (production: use Gunicorn instead)
+# RUN THE APP
 # ============================================================
-# Development-only entry point. In production, run:
-#   gunicorn --config gunicorn.conf.py app:app
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     debug = os.environ.get('FLASK_ENV') == 'development'

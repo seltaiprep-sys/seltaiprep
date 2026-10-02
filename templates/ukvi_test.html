@@ -5,9 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>UKVI Interview – 3D Avatar</title>
     <style>
-        /* ═══════════════════════════════════════════════════════
-           RESET & BASE
-           ═══════════════════════════════════════════════════════ */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         html, body {
             height: 100%;
@@ -17,470 +14,198 @@
             color: #e6edf3;
             -webkit-font-smoothing: antialiased;
         }
-
-        /* ═══════════════════════════════════════════════════════
-           LAYOUT — Split Screen
-           ═══════════════════════════════════════════════════════ */
-        #app {
-            display: grid;
-            grid-template-columns: 1fr 460px;
-            height: 100vh;
-        }
-
-        /* ─── LEFT: 3D STAGE ────────────────────────────────── */
-        #stage {
-            position: relative;
-            background: radial-gradient(ellipse at 50% 35%, #1a2334 0%, #0a0e17 65%);
-            overflow: hidden;
-        }
-        #three-container {
-            position: absolute;
-            inset: 0;
-            z-index: 1;
-        }
+        #app { display: grid; grid-template-columns: 1fr 460px; height: 100vh; }
+        #stage { position: relative; background: radial-gradient(ellipse at 50% 35%, #1a2334 0%, #0a0e17 65%); overflow: hidden; }
+        #three-container { position: absolute; inset: 0; z-index: 1; }
         #stage-vignette {
-            position: absolute;
-            inset: 0;
-            background:
-                linear-gradient(180deg, rgba(10,14,23,0.6) 0%, transparent 25%, transparent 70%, rgba(10,14,23,0.85) 100%);
-            pointer-events: none;
-            z-index: 2;
+            position: absolute; inset: 0;
+            background: linear-gradient(180deg, rgba(10,14,23,0.6) 0%, transparent 25%, transparent 70%, rgba(10,14,23,0.85) 100%);
+            pointer-events: none; z-index: 2;
         }
-
-        /* Stage top-left chip: progress */
         .stage-chip {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            background: rgba(15,20,31,0.75);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(108,99,255,0.25);
-            border-radius: 10px;
-            padding: 8px 14px;
-            font-size: 12px;
-            letter-spacing: 0.3px;
-            z-index: 5;
-            display: flex;
-            align-items: center;
-            gap: 10px;
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(15,20,31,0.75); backdrop-filter: blur(12px);
+            border: 1px solid rgba(108,99,255,0.25); border-radius: 10px;
+            padding: 8px 14px; font-size: 12px; letter-spacing: 0.3px;
+            z-index: 5; display: flex; align-items: center; gap: 10px;
         }
         .stage-chip .dot {
-            width: 8px; height: 8px;
-            border-radius: 50%;
-            background: #10b981;
-            box-shadow: 0 0 10px #10b981;
+            width: 8px; height: 8px; border-radius: 50%;
+            background: #10b981; box-shadow: 0 0 10px #10b981;
             animation: pulse 1.8s infinite;
         }
         .stage-chip .dot.idle { background: #64748b; box-shadow: none; animation: none; }
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.4; }
-        }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
         #chip-progress { font-weight: 600; color: #a5b4fc; }
 
-        /* Stage top-right chip: timer */
         .stage-timer {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: rgba(15,20,31,0.75);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255,183,77,0.3);
-            border-radius: 10px;
-            padding: 8px 14px;
-            font-size: 14px;
-            font-weight: 700;
-            color: #ffb74d;
-            min-width: 80px;
-            text-align: center;
-            z-index: 5;
-            font-variant-numeric: tabular-nums;
+            position: absolute; top: 20px; right: 20px;
+            background: rgba(15,20,31,0.75); backdrop-filter: blur(12px);
+            border: 1px solid rgba(255,183,77,0.3); border-radius: 10px;
+            padding: 8px 14px; font-size: 14px; font-weight: 700;
+            color: #ffb74d; min-width: 80px; text-align: center;
+            z-index: 5; font-variant-numeric: tabular-nums;
         }
-        .stage-timer.warning {
-            color: #ff6b6b;
-            border-color: rgba(255,107,107,0.5);
-            animation: blink 1s infinite;
-        }
-        @keyframes blink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.45; }
-        }
+        .stage-timer.warning { color: #ff6b6b; border-color: rgba(255,107,107,0.5); animation: blink 1s infinite; }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
 
-        /* ─── SUBTITLE-STYLE QUESTION OVERLAY ──────────────── */
         #caption-overlay {
-            position: absolute;
-            bottom: 32px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: min(720px, 90%);
-            z-index: 6;
-            opacity: 0;
-            transition: opacity 0.35s ease, transform 0.35s ease;
-            pointer-events: none;
+            position: absolute; bottom: 32px; left: 50%; transform: translateX(-50%);
+            width: min(720px, 90%); z-index: 6; opacity: 0;
+            transition: opacity 0.35s ease; pointer-events: none;
         }
-        #caption-overlay.visible {
-            opacity: 1;
-            pointer-events: auto;
-        }
+        #caption-overlay.visible { opacity: 1; pointer-events: auto; }
         #caption-overlay .category {
-            display: inline-block;
-            font-size: 11px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            color: #a5b4fc;
-            background: rgba(108,99,255,0.18);
-            border: 1px solid rgba(108,99,255,0.35);
-            padding: 4px 12px;
-            border-radius: 20px;
-            margin-bottom: 10px;
+            display: inline-block; font-size: 11px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 1.5px; color: #a5b4fc;
+            background: rgba(108,99,255,0.18); border: 1px solid rgba(108,99,255,0.35);
+            padding: 4px 12px; border-radius: 20px; margin-bottom: 10px;
         }
         #caption-overlay .text {
-            background: rgba(10,14,23,0.85);
-            backdrop-filter: blur(16px);
-            border: 1px solid rgba(255,255,255,0.08);
-            border-radius: 16px;
-            padding: 18px 24px;
-            font-size: 19px;
-            line-height: 1.55;
-            font-weight: 500;
-            color: #fff;
-            box-shadow: 0 12px 40px rgba(0,0,0,0.5);
-            text-align: center;
-            min-height: 3em;
+            background: rgba(10,14,23,0.85); backdrop-filter: blur(16px);
+            border: 1px solid rgba(255,255,255,0.08); border-radius: 16px;
+            padding: 18px 24px; font-size: 19px; line-height: 1.55;
+            font-weight: 500; color: #fff; box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+            text-align: center; min-height: 3em;
         }
         #caption-overlay .attempt {
-            display: block;
-            text-align: center;
-            margin-top: 10px;
-            font-size: 13px;
-            color: #ffb74d;
-            font-weight: 600;
+            display: block; text-align: center; margin-top: 10px;
+            font-size: 13px; color: #ffb74d; font-weight: 600;
         }
 
-        /* ─── RIGHT: CONTROL PANEL ─────────────────────────── */
-        #panel {
-            background: #0d121c;
-            border-left: 1px solid rgba(108,99,255,0.12);
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
-
-        /* Header */
+        #panel { background: #0d121c; border-left: 1px solid rgba(108,99,255,0.12); display: flex; flex-direction: column; overflow: hidden; }
         .panel-header {
-            padding: 16px 22px;
-            border-bottom: 1px solid rgba(255,255,255,0.05);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            padding: 16px 22px; border-bottom: 1px solid rgba(255,255,255,0.05);
+            display: flex; justify-content: space-between; align-items: center;
             background: rgba(255,255,255,0.015);
         }
         .logo h1 { font-size: 17px; font-weight: 700; letter-spacing: -0.3px; }
         .logo h1 span { color: #6c63ff; }
         .logo p { font-size: 11px; opacity: 0.5; margin-top: 2px; letter-spacing: 0.5px; }
-        .panel-header .nav {
-            display: flex;
-            gap: 14px;
-        }
-        .panel-header .nav a {
-            color: #94a3b8;
-            text-decoration: none;
-            font-size: 12px;
-            transition: 0.15s;
-        }
+        .panel-header .nav { display: flex; gap: 14px; }
+        .panel-header .nav a { color: #94a3b8; text-decoration: none; font-size: 12px; transition: 0.15s; }
         .panel-header .nav a:hover { color: #fff; }
 
-        /* Scrollable body */
-        .panel-body {
-            flex: 1;
-            overflow-y: auto;
-            padding: 20px 22px 30px;
-        }
+        .panel-body { flex: 1; overflow-y: auto; padding: 20px 22px 30px; }
         .panel-body::-webkit-scrollbar { width: 6px; }
-        .panel-body::-webkit-scrollbar-thumb {
-            background: rgba(108,99,255,0.4);
-            border-radius: 4px;
-        }
-        .panel-body::-webkit-scrollbar-thumb:hover {
-            background: rgba(108,99,255,0.6);
-        }
+        .panel-body::-webkit-scrollbar-thumb { background: rgba(108,99,255,0.4); border-radius: 4px; }
 
-        /* Subscription bar */
         .sub-bar {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 10px;
-            background: rgba(108,99,255,0.08);
-            border: 1px solid rgba(108,99,255,0.15);
-            border-radius: 10px;
-            padding: 10px 14px;
-            margin-bottom: 20px;
-            font-size: 12px;
-            flex-wrap: wrap;
+            display: flex; align-items: center; justify-content: space-between; gap: 10px;
+            background: rgba(108,99,255,0.08); border: 1px solid rgba(108,99,255,0.15);
+            border-radius: 10px; padding: 10px 14px; margin-bottom: 20px;
+            font-size: 12px; flex-wrap: wrap;
         }
         .badge {
-            padding: 3px 10px;
-            border-radius: 20px;
-            font-size: 10px;
-            font-weight: 700;
-            letter-spacing: 0.4px;
-            text-transform: uppercase;
+            padding: 3px 10px; border-radius: 20px; font-size: 10px;
+            font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase;
         }
         .badge-free { background: rgba(245,158,11,0.2); color: #fbbf24; border: 1px solid rgba(245,158,11,0.35); }
         .badge-active { background: rgba(16,185,129,0.18); color: #34d399; border: 1px solid rgba(16,185,129,0.35); }
         .badge-expired { background: rgba(239,68,68,0.18); color: #f87171; border: 1px solid rgba(239,68,68,0.35); }
         .btn-subscribe {
-            background: linear-gradient(135deg, #f093fb, #f5576c);
-            color: #fff;
-            border: none;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-weight: 700;
-            font-size: 10px;
-            cursor: pointer;
-            text-decoration: none;
-            letter-spacing: 0.3px;
-        }
-        .btn-subscribe:hover { transform: scale(1.03); }
-
-        /* Step headings */
-        .step-title {
-            font-size: 18px;
-            font-weight: 700;
-            letter-spacing: -0.3px;
-            margin-bottom: 4px;
-        }
-        .step-sub {
-            font-size: 12px;
-            opacity: 0.55;
-            margin-bottom: 18px;
+            background: linear-gradient(135deg, #f093fb, #f5576c); color: #fff;
+            border: none; padding: 4px 12px; border-radius: 20px;
+            font-weight: 700; font-size: 10px; cursor: pointer;
+            text-decoration: none; letter-spacing: 0.3px;
         }
 
-        /* Section labels */
+        .step-title { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; margin-bottom: 4px; }
+        .step-sub { font-size: 12px; opacity: 0.55; margin-bottom: 18px; }
+
         .section-label {
-            font-size: 10px;
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            color: #6c63ff;
-            font-weight: 700;
-            margin: 16px 0 10px;
-            padding-bottom: 6px;
-            border-bottom: 1px solid rgba(108,99,255,0.15);
+            font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px;
+            color: #6c63ff; font-weight: 700; margin: 16px 0 10px;
+            padding-bottom: 6px; border-bottom: 1px solid rgba(108,99,255,0.15);
         }
         .section-label:first-of-type { margin-top: 4px; }
 
-        /* Form */
         .form-group { margin-bottom: 12px; }
         .form-group label {
-            display: block;
-            font-size: 10px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.8px;
-            opacity: 0.65;
-            margin-bottom: 5px;
+            display: block; font-size: 10px; font-weight: 600;
+            text-transform: uppercase; letter-spacing: 0.8px;
+            opacity: 0.65; margin-bottom: 5px;
         }
         .form-control {
-            width: 100%;
-            padding: 10px 13px;
-            border-radius: 9px;
+            width: 100%; padding: 10px 13px; border-radius: 9px;
             border: 1px solid rgba(255,255,255,0.08);
-            background: rgba(255,255,255,0.03);
-            color: #fff;
-            font-size: 13px;
-            font-family: inherit;
-            transition: 0.15s;
+            background: rgba(255,255,255,0.03); color: #fff;
+            font-size: 13px; font-family: inherit; transition: 0.15s;
         }
         .form-control:focus {
-            outline: none;
-            border-color: #6c63ff;
+            outline: none; border-color: #6c63ff;
             background: rgba(108,99,255,0.06);
             box-shadow: 0 0 0 3px rgba(108,99,255,0.12);
         }
         .form-control::placeholder { color: rgba(255,255,255,0.25); }
         .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
-        /* Buttons */
         .btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-            padding: 9px 18px;
-            border: none;
-            border-radius: 10px;
-            font-family: inherit;
-            font-weight: 600;
-            font-size: 13px;
-            cursor: pointer;
-            transition: 0.15s;
-            letter-spacing: 0.2px;
+            display: inline-flex; align-items: center; justify-content: center;
+            gap: 6px; padding: 9px 18px; border: none; border-radius: 10px;
+            font-family: inherit; font-weight: 600; font-size: 13px;
+            cursor: pointer; transition: 0.15s; letter-spacing: 0.2px;
             white-space: nowrap;
         }
         .btn:disabled { opacity: 0.45; cursor: not-allowed; }
-        .btn-primary {
-            background: linear-gradient(135deg, #6c63ff, #8b7dff);
-            color: #fff;
-        }
-        .btn-primary:hover:not(:disabled) {
-            box-shadow: 0 6px 20px rgba(108,99,255,0.4);
-            transform: translateY(-1px);
-        }
-        .btn-success {
-            background: linear-gradient(135deg, #10b981, #059669);
-            color: #fff;
-        }
-        .btn-success:hover:not(:disabled) {
-            box-shadow: 0 6px 20px rgba(16,185,129,0.4);
-            transform: translateY(-1px);
-        }
-        .btn-ghost {
-            background: rgba(255,255,255,0.04);
-            color: #cbd5e1;
-            border: 1px solid rgba(255,255,255,0.08);
-        }
+        .btn-primary { background: linear-gradient(135deg, #6c63ff, #8b7dff); color: #fff; }
+        .btn-primary:hover:not(:disabled) { box-shadow: 0 6px 20px rgba(108,99,255,0.4); transform: translateY(-1px); }
+        .btn-success { background: linear-gradient(135deg, #10b981, #059669); color: #fff; }
+        .btn-success:hover:not(:disabled) { box-shadow: 0 6px 20px rgba(16,185,129,0.4); transform: translateY(-1px); }
+        .btn-ghost { background: rgba(255,255,255,0.04); color: #cbd5e1; border: 1px solid rgba(255,255,255,0.08); }
         .btn-ghost:hover { background: rgba(255,255,255,0.08); color: #fff; }
-        .btn-danger {
-            background: rgba(239,68,68,0.12);
-            color: #f87171;
-            border: 1px solid rgba(239,68,68,0.3);
-        }
+        .btn-danger { background: rgba(239,68,68,0.12); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
         .btn-danger:hover { background: rgba(239,68,68,0.2); }
         .btn-block { width: 100%; padding: 14px; font-size: 14px; }
 
-        /* Interview panel */
-        .interview-head {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 14px;
-        }
+        .interview-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
         .interview-head .title { font-size: 15px; font-weight: 700; }
         .interview-head .progress {
-            font-size: 11px;
-            font-weight: 700;
-            color: #a5b4fc;
-            background: rgba(108,99,255,0.15);
-            padding: 4px 12px;
-            border-radius: 20px;
-            letter-spacing: 0.4px;
+            font-size: 11px; font-weight: 700; color: #a5b4fc;
+            background: rgba(108,99,255,0.15); padding: 4px 12px;
+            border-radius: 20px; letter-spacing: 0.4px;
         }
+        .status-line { font-size: 12px; color: #94a3b8; margin: 12px 0; min-height: 20px; line-height: 1.5; }
 
-        .status-line {
-            font-size: 12px;
-            color: #94a3b8;
-            margin: 12px 0;
-            min-height: 20px;
-            line-height: 1.5;
-        }
-
-        .answer-area {
-            display: flex;
-            gap: 8px;
-            margin: 12px 0;
-        }
+        .answer-area { display: flex; gap: 8px; margin: 12px 0; }
         .answer-area textarea {
-            flex: 1;
-            padding: 12px 14px;
-            border-radius: 10px;
+            flex: 1; padding: 12px 14px; border-radius: 10px;
             border: 1px solid rgba(255,255,255,0.08);
-            background: rgba(255,255,255,0.03);
-            color: #fff;
-            font-family: inherit;
-            font-size: 13px;
-            resize: vertical;
-            min-height: 70px;
-            line-height: 1.5;
+            background: rgba(255,255,255,0.03); color: #fff;
+            font-family: inherit; font-size: 13px; resize: vertical;
+            min-height: 70px; line-height: 1.5;
         }
-        .answer-area textarea:focus {
-            outline: none;
-            border-color: #6c63ff;
-            background: rgba(108,99,255,0.06);
-        }
+        .answer-area textarea:focus { outline: none; border-color: #6c63ff; background: rgba(108,99,255,0.06); }
         .answer-area textarea::placeholder { color: rgba(255,255,255,0.25); }
 
-        .controls {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-            margin-top: 14px;
-        }
+        .controls { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
 
         .feedback {
-            display: none;
-            background: rgba(16,185,129,0.08);
-            border-left: 3px solid #10b981;
-            padding: 12px 14px;
-            border-radius: 10px;
-            margin-top: 14px;
+            display: none; background: rgba(16,185,129,0.08);
+            border-left: 3px solid #10b981; padding: 12px 14px;
+            border-radius: 10px; margin-top: 14px;
         }
         .feedback.visible { display: block; }
-        .feedback .score {
-            font-size: 15px;
-            font-weight: 700;
-            color: #34d399;
-            margin-bottom: 4px;
-        }
-        .feedback .text {
-            font-size: 12px;
-            color: #cbd5e1;
-            line-height: 1.5;
-        }
+        .feedback .score { font-size: 15px; font-weight: 700; color: #34d399; margin-bottom: 4px; }
+        .feedback .text { font-size: 12px; color: #cbd5e1; line-height: 1.5; }
 
-        /* Results panel */
-        .result-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 10px;
-            margin: 16px 0;
-        }
+        .result-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin: 16px 0; }
         .result-item {
             background: rgba(255,255,255,0.03);
             border: 1px solid rgba(255,255,255,0.06);
-            padding: 16px 10px;
-            border-radius: 12px;
-            text-align: center;
+            padding: 16px 10px; border-radius: 12px; text-align: center;
         }
-        .result-item .value {
-            font-size: 22px;
-            font-weight: 800;
-            letter-spacing: -0.5px;
-            margin-bottom: 4px;
-        }
-        .result-item .label {
-            font-size: 10px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            opacity: 0.55;
-            font-weight: 600;
-        }
-        .rec-list {
-            max-height: 180px;
-            overflow-y: auto;
-            padding-right: 6px;
-            margin-top: 8px;
-        }
-        .rec-list::-webkit-scrollbar { width: 4px; }
-        .rec-list::-webkit-scrollbar-thumb { background: rgba(108,99,255,0.4); border-radius: 2px; }
+        .result-item .value { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 4px; }
+        .result-item .label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.55; font-weight: 600; }
+        .rec-list { max-height: 180px; overflow-y: auto; padding-right: 6px; margin-top: 8px; }
         .rec-list .rec-item {
-            padding: 8px 0;
-            border-bottom: 1px solid rgba(255,255,255,0.04);
-            font-size: 12.5px;
-            color: #cbd5e1;
-            line-height: 1.5;
+            padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.04);
+            font-size: 12.5px; color: #cbd5e1; line-height: 1.5;
         }
         .rec-list .rec-item:last-child { border-bottom: none; }
 
-        /* ═══════════════════════════════════════════════════════
-           RESPONSIVE
-           ═══════════════════════════════════════════════════════ */
         @media (max-width: 900px) {
-            #app {
-                grid-template-columns: 1fr;
-                grid-template-rows: 40vh 60vh;
-            }
+            #app { grid-template-columns: 1fr; grid-template-rows: 40vh 60vh; }
             #stage { border-bottom: 1px solid rgba(108,99,255,0.15); }
             #panel { border-left: none; }
             #caption-overlay { bottom: 16px; width: 92%; }
@@ -492,9 +217,6 @@
 <body>
 <div id="app">
 
-    <!-- ═══════════════════════════════════════════════════════
-         LEFT: 3D STAGE
-         ═══════════════════════════════════════════════════════ -->
     <div id="stage">
         <div id="three-container"></div>
         <div id="stage-vignette"></div>
@@ -507,7 +229,6 @@
 
         <div class="stage-timer" id="stage-timer">— —</div>
 
-        <!-- Subtitle-style question overlay -->
         <div id="caption-overlay">
             <div style="text-align:center;">
                 <span class="category" id="overlay-category"></span>
@@ -517,9 +238,6 @@
         </div>
     </div>
 
-    <!-- ═══════════════════════════════════════════════════════
-         RIGHT: CONTROL PANEL
-         ═══════════════════════════════════════════════════════ -->
     <div id="panel">
         <div class="panel-header">
             <div class="logo">
@@ -535,12 +253,11 @@
         <div class="panel-body">
             <input type="hidden" id="user-id" value="{{ current_user.id }}" />
 
-            <!-- Subscription bar -->
             <div class="sub-bar" id="sub-status-bar">
                 <span style="opacity:0.6;">⏳ Loading subscription...</span>
             </div>
 
-            <!-- ═══ STEP 1: PROFILE ═══ -->
+            <!-- STEP 1: PROFILE -->
             <div id="step-profile">
                 <div class="step-title">📋 Your Profile</div>
                 <div class="step-sub">Fill in your details to generate realistic UKVI questions.</div>
@@ -624,38 +341,33 @@
                 </button>
             </div>
 
-            <!-- ═══ STEP 2: INTERVIEW ═══ -->
+            <!-- STEP 2: INTERVIEW -->
             <div id="step-interview" style="display:none;">
                 <div class="interview-head">
                     <span class="title">🛂 Live Interview</span>
                     <span class="progress" id="progress-text">Q 0/0</span>
                 </div>
-
                 <div class="status-line" id="status-text">🔊 Listening...</div>
-
                 <div class="answer-area">
                     <textarea id="answer-input" placeholder="Your answer will appear here..." readonly></textarea>
                 </div>
                 <button class="btn btn-success" id="manual-submit" style="display:none;width:100%;">
                     ✅ Submit Answer
                 </button>
-
                 <div class="controls">
                     <button class="btn btn-ghost" id="repeat-btn">🔁 Repeat</button>
                     <button class="btn btn-danger" id="exit-btn">🚪 Exit Test</button>
                 </div>
-
                 <div class="feedback" id="feedback-area">
                     <div class="score" id="score-display"></div>
                     <div class="text" id="feedback-text"></div>
                 </div>
             </div>
 
-            <!-- ═══ STEP 3: RESULTS ═══ -->
+            <!-- STEP 3: RESULTS -->
             <div id="step-results" style="display:none;">
                 <div class="step-title">📊 Interview Results</div>
                 <div class="step-sub">Here's how you performed.</div>
-
                 <div class="result-grid">
                     <div class="result-item">
                         <div class="value" id="result-prediction" style="color:#34d399;">--</div>
@@ -670,10 +382,8 @@
                         <div class="label">Credibility</div>
                     </div>
                 </div>
-
                 <div class="section-label">💡 Recommendations</div>
                 <div class="rec-list" id="rec-list"></div>
-
                 <div style="display:flex; gap:10px; margin-top:20px;">
                     <button class="btn btn-primary" id="restart-btn" style="flex:1;">
                         🔄 Another Interview
@@ -683,10 +393,8 @@
                     </a>
                 </div>
             </div>
-
         </div>
     </div>
-
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════════
@@ -696,23 +404,23 @@
 {
     "imports": {
         "three": "/static/js/three/three.module.js",
-        "three/addons/controls/OrbitControls.js": "/static/js/three/OrbitControls.js",
-        "three/addons/loaders/GLTFLoader.js": "/static/js/three/GLTFLoader.js"
+        "three/addons/controls/OrbitControls.js": "/static/js/three/OrbitControls.js"
     }
 }
 </script>
 
 <!-- ═══════════════════════════════════════════════════════════════
-     3D SCENE
+     3D SCENE  —  PRIMITIVES AVATAR (0 MB, no GLB files)
      ═══════════════════════════════════════════════════════════════ -->
 <script type="module">
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-const container = document.getElementById('three-container');
+// ─── CONFIG: CHANGE THIS ONE LINE FOR MALE / FEMALE ─────────────
+const AVATAR_GENDER = 'female';    // 'female'  or  'male'
 
 // ─── SCENE ───────────────────────────────────────────────────────
+const container = document.getElementById('three-container');
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x0a0e17);
 scene.fog = new THREE.Fog(0x0a0e17, 3.5, 9);
@@ -741,7 +449,7 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.0;
 container.appendChild(renderer.domElement);
 
-// ─── CONTROLS (locked-ish orbit) ────────────────────────────────
+// ─── CONTROLS ────────────────────────────────────────────────────
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.target.set(0, 1.15, 0);
 controls.enableDamping = true;
@@ -756,7 +464,7 @@ controls.minAzimuthAngle = -Math.PI / 10;
 controls.maxAzimuthAngle = Math.PI / 10;
 controls.update();
 
-// ─── LIGHTS (3-point studio setup) ──────────────────────────────
+// ─── LIGHTS (3-point studio) ────────────────────────────────────
 const ambient = new THREE.AmbientLight(0x8899bb, 0.35);
 scene.add(ambient);
 
@@ -781,19 +489,14 @@ const rimLight = new THREE.DirectionalLight(0xff9977, 0.9);
 rimLight.position.set(-0.8, 2.2, -2.2);
 scene.add(rimLight);
 
-// Subtle floor bounce
 const bounce = new THREE.HemisphereLight(0x6c63ff, 0x0a0e17, 0.25);
 scene.add(bounce);
 
 // ─── ENVIRONMENT ─────────────────────────────────────────────────
-// Ground reflection circle (soft)
 const groundGeo = new THREE.CircleGeometry(1.2, 32);
 const groundMat = new THREE.MeshStandardMaterial({
-    color: 0x1a2334,
-    roughness: 0.9,
-    metalness: 0.1,
-    transparent: true,
-    opacity: 0.6,
+    color: 0x1a2334, roughness: 0.9, metalness: 0.1,
+    transparent: true, opacity: 0.6,
 });
 const ground = new THREE.Mesh(groundGeo, groundMat);
 ground.rotation.x = -Math.PI / 2;
@@ -801,217 +504,415 @@ ground.position.y = -0.02;
 ground.receiveShadow = true;
 scene.add(ground);
 
-// Subtle grid
 const grid = new THREE.GridHelper(2.4, 12, 0x6c63ff, 0x2a3550);
 grid.position.y = 0;
 grid.material.opacity = 0.25;
 grid.material.transparent = true;
 scene.add(grid);
 
-// ─── AVATAR ──────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════
+// AVATAR — built from Three.js primitives (no GLB file needed)
+// ═══════════════════════════════════════════════════════════════════
 let character = null;
-let mixer = null;
-let headBone = null;
-let jawBone = null;
+let jawMesh = null;
+let headGroup = null;
+let eyesGroup = null;
 let isTalking = false;
 let talkInterval = null;
 let idleInterval = null;
-let modelLoaded = false;
+let thinkInterval = null;
+let blinkInterval = null;
 
-const loader = new GLTFLoader();
-const MODEL_URL = '/static/models/RobotExpressive.glb';
-
-function createFallbackCharacter() {
-    if (character) { scene.remove(character); character = null; mixer = null; }
+function buildAvatar(gender = 'female') {
     const group = new THREE.Group();
+    const isFemale = gender === 'female';
 
-    const bodyMat = new THREE.MeshStandardMaterial({
-        color: 0x4a6fa5, roughness: 0.5, metalness: 0.15,
-    });
+    // ─── Materials ────────────────────────────────────────────
+    const skinColor   = isFemale ? 0xf2cda9 : 0xd9b28a;
+    const hairColor   = isFemale ? 0x1f1410 : 0x1a1008;
+    const shirtColor  = isFemale ? 0x6c63ff : 0x3b5b8c;
+    const lipColor    = isFemale ? 0xc97070 : 0xa85860;
+
     const skinMat = new THREE.MeshStandardMaterial({
-        color: 0xe8c9a0, roughness: 0.6,
+        color: skinColor, roughness: 0.75, metalness: 0.0,
     });
+    const hairMat = new THREE.MeshStandardMaterial({
+        color: hairColor, roughness: 0.55, metalness: 0.05,
+    });
+    const shirtMat = new THREE.MeshStandardMaterial({
+        color: shirtColor, roughness: 0.85, metalness: 0.0,
+    });
+    const eyeWhiteMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4 });
+    const irisMat     = new THREE.MeshStandardMaterial({ color: 0x3a2a1a, roughness: 0.3 });
+    const pupilMat    = new THREE.MeshStandardMaterial({ color: 0x000000, roughness: 0.2 });
+    const browMat     = new THREE.MeshStandardMaterial({ color: 0x1a0f08, roughness: 0.7 });
+    const lipMat      = new THREE.MeshStandardMaterial({ color: lipColor, roughness: 0.6 });
 
-    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.44, 0.85, 12), bodyMat);
-    body.position.y = 0.42;
-    body.castShadow = true;
-    group.add(body);
+    // ═══════════════════════════════════════════════════════════
+    // TORSO / SHOULDERS
+    // ═══════════════════════════════════════════════════════════
+    const shoulderW = isFemale ? 0.38 : 0.44;
+    const torsoGeo = new THREE.CylinderGeometry(
+        shoulderW, shoulderW * 0.95, 0.55, 24, 1
+    );
+    const torso = new THREE.Mesh(torsoGeo, shirtMat);
+    torso.position.y = 0.82;
+    torso.castShadow = true;
+    torso.receiveShadow = true;
+    group.add(torso);
 
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 24, 24), skinMat);
-    head.position.y = 1.0;
-    head.castShadow = true;
-    group.add(head);
-
-    const eyeMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
-    const pupilMat = new THREE.MeshStandardMaterial({ color: 0x1a2334 });
-    for (const side of [-1, 1]) {
-        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.045, 12, 12), eyeMat);
-        eye.position.set(side * 0.085, 1.02, 0.19);
-        group.add(eye);
-        const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.022, 10, 10), pupilMat);
-        pupil.position.set(side * 0.09, 1.02, 0.225);
-        group.add(pupil);
+    // Chest curve (for female)
+    if (isFemale) {
+        const chestGeo = new THREE.SphereGeometry(0.18, 20, 16);
+        for (const side of [-1, 1]) {
+            const chest = new THREE.Mesh(chestGeo, shirtMat);
+            chest.position.set(side * 0.11, 0.98, 0.14);
+            chest.scale.set(0.9, 0.7, 0.7);
+            chest.castShadow = true;
+            group.add(chest);
+        }
     }
 
+    // Shoulders (rounded caps)
+    for (const side of [-1, 1]) {
+        const shoulder = new THREE.Mesh(
+            new THREE.SphereGeometry(0.12, 16, 12),
+            shirtMat
+        );
+        shoulder.position.set(side * shoulderW * 0.95, 1.05, 0);
+        shoulder.castShadow = true;
+        group.add(shoulder);
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // ARMS
+    // ═══════════════════════════════════════════════════════════
+    const armMat = shirtMat;
+    const upperArmLen = 0.42;
     for (const side of [-1, 1]) {
         const arm = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.045, 0.045, 0.5, 8),
-            bodyMat
+            new THREE.CylinderGeometry(0.075, 0.065, upperArmLen, 12),
+            armMat
         );
-        arm.position.set(side * 0.38, 0.65, 0);
-        arm.rotation.z = side * 0.18;
+        arm.position.set(
+            side * (shoulderW + 0.06),
+            0.88,
+            0
+        );
+        arm.rotation.z = side * 0.1;
         arm.castShadow = true;
         group.add(arm);
     }
 
-    scene.add(group);
-    character = group;
-    headBone = null;
-    jawBone = null;
-    modelLoaded = true;
-    startIdleAnimation();
-}
-
-function loadAvatar() {
-    if (character) { scene.remove(character); character = null; mixer = null; }
-    headBone = null; jawBone = null; modelLoaded = false;
-
-    loader.load(
-        MODEL_URL,
-        (gltf) => {
-            const root = gltf.scene;
-            root.scale.set(1, 1, 1);
-            root.position.y = 0;
-            root.traverse((node) => {
-                if (node.isMesh) {
-                    node.castShadow = true;
-                    node.receiveShadow = true;
-                }
-                if (node.isBone) {
-                    const n = node.name.toLowerCase();
-                    if (n.includes('head') || n.includes('mixamorighead')) headBone = node;
-                    if (n.includes('jaw') || n.includes('mixamorigjaw')) jawBone = node;
-                }
-            });
-            scene.add(root);
-            character = root;
-
-            mixer = new THREE.AnimationMixer(root);
-            if (gltf.animations && gltf.animations.length) {
-                const idle =
-                    gltf.animations.find((a) => /idle/i.test(a.name)) ||
-                    gltf.animations[0];
-                const action = mixer.clipAction(idle);
-                action.play();
-            }
-            modelLoaded = true;
-            startIdleAnimation();
-            console.log('✅ 3D avatar loaded');
-        },
-        undefined,
-        (err) => {
-            console.warn('Model load failed, using fallback:', err);
-            createFallbackCharacter();
-        }
+    // ═══════════════════════════════════════════════════════════
+    // NECK
+    // ═══════════════════════════════════════════════════════════
+    const neck = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.062, 0.075, 0.14, 16),
+        skinMat
     );
+    neck.position.y = 1.15;
+    neck.castShadow = true;
+    group.add(neck);
 
-    setTimeout(() => {
-        if (!modelLoaded && !character) createFallbackCharacter();
-    }, 5000);
+    // ═══════════════════════════════════════════════════════════
+    // HEAD GROUP (so we can rotate head separately)
+    // ═══════════════════════════════════════════════════════════
+    headGroup = new THREE.Group();
+    headGroup.position.y = 1.34;
+    group.add(headGroup);
+
+    // Head (slightly squashed sphere)
+    const headGeo = new THREE.SphereGeometry(0.145, 32, 24);
+    const head = new THREE.Mesh(headGeo, skinMat);
+    head.scale.set(0.92, 1.05, 0.95);
+    head.castShadow = true;
+    headGroup.add(head);
+
+    // Jaw line (for male — slightly wider chin)
+    if (!isFemale) {
+        const jaw = new THREE.Mesh(
+            new THREE.SphereGeometry(0.13, 20, 12),
+            skinMat
+        );
+        jaw.position.y = -0.055;
+        jaw.scale.set(1.0, 0.7, 1.0);
+        jaw.castShadow = true;
+        headGroup.add(jaw);
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // HAIR
+    // ═══════════════════════════════════════════════════════════
+    if (isFemale) {
+        // Hair cap (covers top and sides)
+        const capGeo = new THREE.SphereGeometry(0.16, 24, 20);
+        const cap = new THREE.Mesh(capGeo, hairMat);
+        cap.scale.set(1.05, 1.1, 1.05);
+        cap.position.y = 0.02;
+        cap.castShadow = true;
+        headGroup.add(cap);
+
+        // Hair back (long, flowing down)
+        const backHair = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.14, 0.17, 0.30, 20),
+            hairMat
+        );
+        backHair.position.set(0, -0.12, -0.02);
+        backHair.scale.set(1, 1, 0.85);
+        backHair.castShadow = true;
+        headGroup.add(backHair);
+
+        // Side hair (left & right)
+        for (const side of [-1, 1]) {
+            const sideHair = new THREE.Mesh(
+                new THREE.SphereGeometry(0.07, 16, 12),
+                hairMat
+            );
+            sideHair.position.set(side * 0.13, -0.02, 0);
+            sideHair.scale.set(0.8, 1.6, 0.9);
+            sideHair.castShadow = true;
+            headGroup.add(sideHair);
+        }
+
+        // Fringe/bangs
+        const fringe = new THREE.Mesh(
+            new THREE.SphereGeometry(0.135, 20, 16),
+            hairMat
+        );
+        fringe.position.set(0, 0.06, 0.06);
+        fringe.scale.set(1.0, 0.55, 0.6);
+        fringe.castShadow = true;
+        headGroup.add(fringe);
+    } else {
+        // Male — short hair cap only
+        const capGeo = new THREE.SphereGeometry(0.155, 24, 20);
+        const cap = new THREE.Mesh(capGeo, hairMat);
+        cap.scale.set(1.0, 0.85, 1.0);
+        cap.position.y = 0.04;
+        cap.castShadow = true;
+        headGroup.add(cap);
+
+        // Small sideburns
+        for (const side of [-1, 1]) {
+            const burn = new THREE.Mesh(
+                new THREE.SphereGeometry(0.04, 10, 8),
+                hairMat
+            );
+            burn.position.set(side * 0.13, -0.03, 0.01);
+            burn.scale.set(1, 1.8, 0.8);
+            headGroup.add(burn);
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // EARS
+    // ═══════════════════════════════════════════════════════════
+    for (const side of [-1, 1]) {
+        const ear = new THREE.Mesh(
+            new THREE.SphereGeometry(0.035, 12, 10),
+            skinMat
+        );
+        ear.position.set(side * 0.14, 0, 0);
+        ear.scale.set(0.5, 1.1, 0.8);
+        group.add; // no-op to keep linter happy
+        headGroup.add(ear);
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // EYES
+    // ═══════════════════════════════════════════════════════════
+    eyesGroup = new THREE.Group();
+    headGroup.add(eyesGroup);
+
+    const eyeSpacing = 0.058;
+    const eyeY = 0.015;
+    const eyeZ = 0.125;
+
+    for (const side of [-1, 1]) {
+        // Eye white (flattened)
+        const white = new THREE.Mesh(
+            new THREE.SphereGeometry(0.025, 16, 12),
+            eyeWhiteMat
+        );
+        white.position.set(side * eyeSpacing, eyeY, eyeZ);
+        white.scale.set(1, 0.85, 0.4);
+        eyesGroup.add(white);
+
+        // Iris
+        const iris = new THREE.Mesh(
+            new THREE.SphereGeometry(0.013, 12, 10),
+            irisMat
+        );
+        iris.position.set(side * eyeSpacing, eyeY, eyeZ + 0.008);
+        iris.scale.set(1, 1, 0.5);
+        eyesGroup.add(iris);
+
+        // Pupil
+        const pupil = new THREE.Mesh(
+            new THREE.SphereGeometry(0.007, 10, 8),
+            pupilMat
+        );
+        pupil.position.set(side * eyeSpacing, eyeY, eyeZ + 0.012);
+        pupil.scale.set(1, 1, 0.5);
+        eyesGroup.add(pupil);
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // EYEBROWS
+    // ═══════════════════════════════════════════════════════════
+    for (const side of [-1, 1]) {
+        const brow = new THREE.Mesh(
+            new THREE.BoxGeometry(0.055, 0.012, 0.008),
+            browMat
+        );
+        brow.position.set(side * eyeSpacing, eyeY + 0.045, eyeZ + 0.005);
+        brow.rotation.z = side * -0.12;
+        headGroup.add(brow);
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // NOSE
+    // ═══════════════════════════════════════════════════════════
+    const nose = new THREE.Mesh(
+        new THREE.ConeGeometry(0.015, 0.045, 10),
+        skinMat
+    );
+    nose.position.set(0, -0.02, 0.145);
+    nose.rotation.x = Math.PI;
+    nose.scale.set(1, 1, 0.8);
+    headGroup.add(nose);
+
+    // ═══════════════════════════════════════════════════════════
+    // MOUTH (animated for talking)
+    // ═══════════════════════════════════════════════════════════
+    jawMesh = new THREE.Mesh(
+        new THREE.SphereGeometry(0.022, 16, 10),
+        lipMat
+    );
+    jawMesh.position.set(0, -0.06, 0.14);
+    jawMesh.scale.set(1.4, 0.5, 0.6);
+    headGroup.add(jawMesh);
+
+    // ═══════════════════════════════════════════════════════════
+    // FINALIZE
+    // ═══════════════════════════════════════════════════════════
+    scene.add(group);
+    return group;
 }
+
+// ─── BUILD & START ──────────────────────────────────────────────
+character = buildAvatar(AVATAR_GENDER);
+console.log(`✅ 3D avatar built (${AVATAR_GENDER}) — 0 MB download`);
 
 // ─── IDLE BREATHING ─────────────────────────────────────────────
 function startIdleAnimation() {
     if (idleInterval) clearInterval(idleInterval);
-    if (!character) return;
-    let phase = 0;
     const baseY = character.position.y;
+    const baseHeadY = headGroup.position.y;
+    let phase = 0;
     idleInterval = setInterval(() => {
         if (!character) return;
         phase += 0.02;
         character.position.y = baseY + Math.sin(phase) * 0.008;
+        if (headGroup) {
+            headGroup.position.y = baseHeadY + Math.sin(phase * 1.3) * 0.003;
+        }
     }, 50);
 }
 
-// ─── TALKING (jaw/mouth animation) ──────────────────────────────
+// ─── BLINKING (natural eye blinks) ──────────────────────────────
+function startBlinking() {
+    if (blinkInterval) clearInterval(blinkInterval);
+    const doBlink = () => {
+        if (!eyesGroup) return;
+        eyesGroup.scale.y = 0.1;
+        setTimeout(() => {
+            if (eyesGroup) eyesGroup.scale.y = 1;
+        }, 120);
+    };
+    // Random blink every 2-6 seconds
+    const schedule = () => {
+        const delay = 2000 + Math.random() * 4000;
+        setTimeout(() => {
+            doBlink();
+            schedule();
+        }, delay);
+    };
+    schedule();
+}
+
+// ─── TALKING (mouth animation) ──────────────────────────────────
 function startTalking() {
     if (isTalking) return;
     isTalking = true;
     if (talkInterval) clearInterval(talkInterval);
 
-    if (jawBone) {
+    if (jawMesh) {
         talkInterval = setInterval(() => {
             if (!isTalking) return;
-            jawBone.rotation.x = 0.08 + Math.sin(Date.now() / 130) * 0.1;
-        }, 45);
-    } else if (headBone) {
-        talkInterval = setInterval(() => {
-            if (!isTalking) return;
-            headBone.rotation.x = Math.sin(Date.now() / 160) * 0.035;
-        }, 45);
-    } else if (character) {
-        let headMesh = null;
-        character.traverse((n) => {
-            if (n.isMesh && /head/i.test(n.name)) headMesh = n;
-        });
-        const target = headMesh || character;
-        const baseScale = target.scale.y;
-        talkInterval = setInterval(() => {
-            if (!isTalking) return;
-            target.scale.y = baseScale * (1 + Math.sin(Date.now() / 140) * 0.02);
-        }, 45);
+            const openness = 0.5 + Math.abs(Math.sin(Date.now() / 90)) * 0.9;
+            jawMesh.scale.y = openness;
+            jawMesh.scale.x = 1.3 + Math.sin(Date.now() / 150) * 0.15;
+        }, 40);
     }
 }
 
 function stopTalking() {
     isTalking = false;
     if (talkInterval) { clearInterval(talkInterval); talkInterval = null; }
-    if (jawBone) jawBone.rotation.x = 0;
-    if (headBone) headBone.rotation.x = 0;
-    if (character) {
-        character.traverse((n) => {
-            if (n.isMesh && /head/i.test(n.name)) n.scale.y = 1;
-        });
-        character.scale.y = 1;
+    if (jawMesh) {
+        jawMesh.scale.y = 0.5;
+        jawMesh.scale.x = 1.4;
     }
 }
 
 // ─── THINKING (head tilt) ───────────────────────────────────────
-let thinkInterval = null;
 function startThinking() {
     if (thinkInterval) return;
-    if (!character) return;
-    const originalZ = character.rotation.z;
+    if (!headGroup) return;
+    const baseRotZ = headGroup.rotation.z;
+    const baseRotY = headGroup.rotation.y;
     let phase = 0;
     thinkInterval = setInterval(() => {
-        if (!character) return;
+        if (!headGroup) return;
         phase += 0.04;
-        character.rotation.z = originalZ + Math.sin(phase) * 0.025;
+        headGroup.rotation.z = baseRotZ + Math.sin(phase) * 0.05;
+        headGroup.rotation.y = baseY_rotY(headGroup) + Math.sin(phase * 0.7) * 0.04;
     }, 50);
 }
+
+function baseY_rotY(g) { return g.userData._baseRotY ?? 0; }
+
 function stopThinking() {
     if (thinkInterval) {
         clearInterval(thinkInterval);
         thinkInterval = null;
-        if (character) character.rotation.z = 0;
+        if (headGroup) {
+            headGroup.rotation.z = 0;
+            headGroup.rotation.y = 0;
+        }
     }
 }
 
-// Expose to UI script
+// Save baseline rotation for head
+if (headGroup) headGroup.userData._baseRotY = 0;
+
+// Expose to UI
 window.startTalking = startTalking;
 window.stopTalking = stopTalking;
 window.startThinking = startThinking;
 window.stopThinking = stopThinking;
 
-// ─── LOAD ───────────────────────────────────────────────────────
-loadAvatar();
+// ─── START ──────────────────────────────────────────────────────
+startIdleAnimation();
+startBlinking();
 
 // ─── ANIMATION LOOP ─────────────────────────────────────────────
 const clock = new THREE.Clock();
 function animate() {
     requestAnimationFrame(animate);
-    const delta = clock.getDelta();
-    if (mixer) mixer.update(delta);
+    clock.getDelta();
     controls.update();
     renderer.render(scene, camera);
 }
@@ -1027,7 +928,6 @@ function onResize() {
     renderer.setSize(w, h);
 }
 window.addEventListener('resize', onResize);
-// Also observe container size changes (split layout)
 if (window.ResizeObserver) {
     new ResizeObserver(onResize).observe(container);
 }
@@ -1037,7 +937,6 @@ if (window.ResizeObserver) {
      UI LOGIC
      ═══════════════════════════════════════════════════════════════ -->
 <script>
-// ─── GLOBALS ─────────────────────────────────────────────────────
 let sessionId = null;
 let questions = [];
 let responses = {};
@@ -1056,9 +955,7 @@ let isListening = false;
 let questionAttempts = {};
 let isPrepPhase = false;
 
-// ─── DOM REFS ────────────────────────────────────────────────────
 const $ = (id) => document.getElementById(id);
-
 const subStatusBar    = $('sub-status-bar');
 const stepProfile     = $('step-profile');
 const stepInterview   = $('step-interview');
@@ -1078,20 +975,15 @@ const resultPrediction = $('result-prediction');
 const resultScore     = $('result-score');
 const resultCredibility = $('result-credibility');
 const recList         = $('rec-list');
-
-// Stage chips
 const chipStatus   = $('chip-status');
 const chipProgress = $('chip-progress');
 const liveDot      = $('live-dot');
 const stageTimer   = $('stage-timer');
-
-// Caption overlay
 const overlay          = $('caption-overlay');
 const overlayCategory  = $('overlay-category');
 const overlayText      = $('overlay-text');
 const overlayAttempt   = $('overlay-attempt');
 
-// ─── CHIP HELPERS ────────────────────────────────────────────────
 function setChipStatus(text, live = false) {
     chipStatus.textContent = text;
     liveDot.classList.toggle('idle', !live);
@@ -1100,28 +992,14 @@ function setChipProgress(text) {
     chipProgress.textContent = text ? '· ' + text : '';
 }
 
-// ─── CAPTION OVERLAY ─────────────────────────────────────────────
 function showOverlay(category, text, attempt = 0) {
     overlayCategory.textContent = category || '';
     overlayText.textContent = text;
-    if (attempt > 0) {
-        overlayAttempt.textContent = `Attempt ${attempt}/3`;
-    } else {
-        overlayAttempt.textContent = '';
-    }
+    overlayAttempt.textContent = attempt > 0 ? `Attempt ${attempt}/3` : '';
     overlay.classList.add('visible');
 }
-function hideOverlay() {
-    overlay.classList.remove('visible');
-}
-function setOverlayText(text) {
-    overlayText.textContent = text;
-}
-function appendOverlayText(text) {
-    overlayText.textContent += text;
-}
+function hideOverlay() { overlay.classList.remove('visible'); }
 
-// ─── LIVE CAPTION TYPEWRITER ─────────────────────────────────────
 let captionInterval = null;
 let captionWords = [];
 let captionIndex = 0;
@@ -1149,13 +1027,11 @@ function stopCaptions() {
     if (fullCaptionText) overlayText.textContent = fullCaptionText;
 }
 
-// ─── HELPERS ─────────────────────────────────────────────────────
 function getUserId() {
     const el = $('user-id');
     return el ? el.value : null;
 }
 
-// ─── PROFILE ─────────────────────────────────────────────────────
 function collectProfile() {
     return {
         full_name:        $('fullname').value.trim(),
@@ -1198,13 +1074,10 @@ function loadSavedProfile() {
     if (!userId) return;
     fetch(`/api/ukvi/profile?user_id=${userId}`)
         .then(r => r.json())
-        .then(data => {
-            if (data.success && data.profile) applyProfile(data.profile);
-        })
+        .then(data => { if (data.success && data.profile) applyProfile(data.profile); })
         .catch(() => {});
 }
 
-// ─── SUBSCRIPTION STATUS ─────────────────────────────────────────
 function fetchSubscriptionStatus() {
     fetch('/ukvi/subscription/status')
         .then(r => r.json())
@@ -1237,27 +1110,13 @@ function fetchSubscriptionStatus() {
         });
 }
 
-// ─── START INTERVIEW (v3.0 pool + async) ─────────────────────────
 async function startInterview() {
     const profile = collectProfile();
-    if (!profile.full_name || !profile.university) {
-        alert('Full Name and University are required.');
-        return;
-    }
-    if (!profile.course) {
-        alert('Course is required for realistic UKVI questions.');
-        return;
-    }
+    if (!profile.full_name || !profile.university) { alert('Full Name and University are required.'); return; }
+    if (!profile.course) { alert('Course is required.'); return; }
     const userId = getUserId();
-    if (!userId) {
-        alert('User ID not available. Please log in.');
-        return;
-    }
-    if (startBtn.disabled) {
-        alert('Please subscribe to continue.');
-        window.location.href = '/subscription?module=ukvi';
-        return;
-    }
+    if (!userId) { alert('User ID not available.'); return; }
+    if (startBtn.disabled) { alert('Please subscribe to continue.'); window.location.href = '/subscription?module=ukvi'; return; }
 
     startBtn.disabled = true;
     startBtn.textContent = '⏳ Saving profile...';
@@ -1290,26 +1149,13 @@ async function startInterview() {
         if (!startData.success) throw new Error(startData.error || 'Start failed');
 
         if (startData.source === 'cache') {
-            console.log('✅ Pool HIT — instant start');
-            beginInterviewWithQuestions(
-                startData.session_id,
-                startData.questions,
-                startData.total_questions
-            );
+            beginInterviewWithQuestions(startData.session_id, startData.questions, startData.total_questions);
             return;
         }
-
-        if (startData.job_id) {
-            console.log(`⏳ Job ${startData.job_id} (${startData.source}) — polling`);
-            await pollJobStatus(startData.job_id);
-            return;
-        }
-
-        throw new Error('Unexpected response from server');
+        if (startData.job_id) { await pollJobStatus(startData.job_id); return; }
+        throw new Error('Unexpected response');
     } catch (err) {
-        if (err.message !== 'Subscription required') {
-            alert('Error: ' + err.message);
-        }
+        if (err.message !== 'Subscription required') alert('Error: ' + err.message);
         setChipStatus('Error', false);
     } finally {
         if (startBtn && startBtn.textContent !== '🚀 Start Interview') {
@@ -1319,7 +1165,6 @@ async function startInterview() {
     }
 }
 
-// ─── POLL JOB STATUS ─────────────────────────────────────────────
 async function pollJobStatus(jobId) {
     setChipStatus('Preparing…', true);
     statusText.textContent = '⏳ Preparing your questions...';
@@ -1329,30 +1174,19 @@ async function pollJobStatus(jobId) {
     while (attempts < maxAttempts) {
         await new Promise(r => setTimeout(r, 2000));
         attempts++;
-
         try {
             const res = await fetch(`/api/ukvi/job-status/${jobId}`);
             const data = await res.json();
-
             if (data.status === 'complete') {
-                beginInterviewWithQuestions(
-                    data.session_id,
-                    data.questions,
-                    data.total_questions
-                );
+                beginInterviewWithQuestions(data.session_id, data.questions, data.total_questions);
                 return;
             }
-
             if (data.status === 'failed') {
                 alert('Generation failed: ' + (data.error || 'Unknown error'));
                 setChipStatus('Failed', false);
-                if (startBtn) {
-                    startBtn.disabled = false;
-                    startBtn.textContent = '🚀 Start Interview';
-                }
+                if (startBtn) { startBtn.disabled = false; startBtn.textContent = '🚀 Start Interview'; }
                 return;
             }
-
             if (data.status === 'queued') {
                 const pos = data.position || '?';
                 startBtn.textContent = `⏳ Queue #${pos}`;
@@ -1363,20 +1197,13 @@ async function pollJobStatus(jobId) {
                 statusText.textContent = '⏳ AI is generating your questions...';
                 setChipStatus('Generating…', true);
             }
-        } catch (err) {
-            console.warn('Poll error:', err);
-        }
+        } catch (err) { console.warn('Poll error:', err); }
     }
-
-    alert('Timeout — could not generate questions in time. Please try again.');
-    if (startBtn) {
-        startBtn.disabled = false;
-        startBtn.textContent = '🚀 Start Interview';
-    }
+    alert('Timeout — could not generate questions.');
+    if (startBtn) { startBtn.disabled = false; startBtn.textContent = '🚀 Start Interview'; }
     setChipStatus('Timeout', false);
 }
 
-// ─── BEGIN INTERVIEW ─────────────────────────────────────────────
 function beginInterviewWithQuestions(sessionIdVal, questionsArr, total) {
     sessionId = sessionIdVal;
     questions = questionsArr || [];
@@ -1384,30 +1211,21 @@ function beginInterviewWithQuestions(sessionIdVal, questionsArr, total) {
     currentQ = 0;
     responses = {};
     questionAttempts = {};
-
     stepProfile.style.display = 'none';
     stepInterview.style.display = 'block';
     stepResults.style.display = 'none';
-
-    if (startBtn) {
-        startBtn.disabled = false;
-        startBtn.textContent = '🚀 Start Interview';
-    }
-
+    if (startBtn) { startBtn.disabled = false; startBtn.textContent = '🚀 Start Interview'; }
     setChipStatus('Live interview', true);
     showQuestion();
 }
 
-// ─── SHOW QUESTION ───────────────────────────────────────────────
 function showQuestion() {
     if (isSubmitting) return;
     if (currentQ >= totalQ) { finishInterview(); return; }
-
     const q = questions[currentQ];
     currentQuestionText = q.question || 'No question';
     currentCategory = q.category || '';
     questionAttempts[currentQ] = 0;
-
     progressText.textContent = `Q ${currentQ + 1}/${totalQ}`;
     setChipProgress(`Q ${currentQ + 1}/${totalQ}`);
     answerInput.value = '';
@@ -1416,11 +1234,9 @@ function showQuestion() {
     statusText.textContent = '🔊 Speaking question...';
     stageTimer.textContent = '— —';
     stageTimer.classList.remove('warning');
-
     speakQuestion(currentQuestionText, currentCategory, 0);
 }
 
-// ─── SPEAK (TTS) ─────────────────────────────────────────────────
 function speakQuestion(text, category, attempt = 0) {
     stopCurrentAudio();
     if (recognition) recognition.abort();
@@ -1428,7 +1244,6 @@ function speakQuestion(text, category, attempt = 0) {
     clearInterval(timerInterval);
     clearInterval(prepTimerInterval);
     isPrepPhase = false;
-
     showOverlay(category, '', attempt);
     startCaptions(text);
     if (window.startTalking) window.startTalking();
@@ -1443,10 +1258,7 @@ function speakQuestion(text, category, attempt = 0) {
         .then(data => {
             if (data.audio_url) {
                 const audio = new Audio(data.audio_url);
-                audio.onplay = () => {
-                    isPlaying = true;
-                    statusText.textContent = '🔊 Speaking...';
-                };
+                audio.onplay = () => { isPlaying = true; statusText.textContent = '🔊 Speaking...'; };
                 audio.onended = () => {
                     isPlaying = false;
                     if (window.stopTalking) window.stopTalking();
@@ -1506,7 +1318,6 @@ function stopCurrentAudio() {
     hideOverlay();
 }
 
-// ─── PREP PHASE ──────────────────────────────────────────────────
 function startPrepPhase(attempt) {
     isPrepPhase = true;
     let remaining = prepTime;
@@ -1514,7 +1325,6 @@ function startPrepPhase(attempt) {
     statusText.textContent = `⏳ Preparing... ${remaining}s to think.`;
     overlayAttempt.textContent = attempt > 0 ? `Attempt ${attempt}/3` : '';
     setChipStatus('Thinking time', false);
-
     prepTimerInterval = setInterval(() => {
         remaining--;
         stageTimer.textContent = `⏱ ${remaining}s`;
@@ -1527,7 +1337,6 @@ function startPrepPhase(attempt) {
     }, 1000);
 }
 
-// ─── LISTENING PHASE ─────────────────────────────────────────────
 function startListeningPhase(attempt) {
     stageTimer.textContent = `⏱ ${answerTime}s`;
     statusText.textContent = '🎙️ Listening... speak now';
@@ -1538,18 +1347,12 @@ function startListeningPhase(attempt) {
         manualSubmit.style.display = 'block';
         return;
     }
-
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     recognition = new SR();
     recognition.lang = 'en-GB';
     recognition.interimResults = false;
     recognition.continuous = false;
-
-    recognition.onstart = () => {
-        isListening = true;
-        statusText.textContent = '🎙️ Listening... speak now';
-    };
-
+    recognition.onstart = () => { isListening = true; statusText.textContent = '🎙️ Listening... speak now'; };
     recognition.onresult = (event) => {
         const transcript = event.results[0][0].transcript;
         answerInput.value = transcript;
@@ -1557,30 +1360,24 @@ function startListeningPhase(attempt) {
         questionAttempts[currentQ] = 0;
         setTimeout(() => submitManualText(), 1400);
     };
-
     recognition.onerror = (event) => {
         console.warn('Speech error:', event.error);
         if (event.error === 'not-allowed') {
-            alert('Microphone access denied. Please use the text input.');
+            alert('Microphone access denied.');
             manualSubmit.style.display = 'block';
             statusText.textContent = '⛔ Mic denied — type answer';
         }
         isListening = false;
     };
-
     recognition.onend = () => {
         isListening = false;
         if (!isSubmitting && !answerInput.value.trim()) handleNoAnswer(attempt);
     };
-
-    try {
-        recognition.start();
-    } catch (e) {
-        console.warn('Recognition start error:', e);
+    try { recognition.start(); }
+    catch (e) {
         manualSubmit.style.display = 'block';
         statusText.textContent = '⛔ Speech error — type answer';
     }
-
     let timeLeft = answerTime;
     stageTimer.textContent = `⏱ ${timeLeft}s`;
     timerInterval = setInterval(() => {
@@ -1589,29 +1386,23 @@ function startListeningPhase(attempt) {
         if (timeLeft <= 10) stageTimer.classList.add('warning');
         if (timeLeft <= 0) {
             clearInterval(timerInterval);
-            if (isListening && recognition) {
-                recognition.abort();
-                isListening = false;
-            }
+            if (isListening && recognition) { recognition.abort(); isListening = false; }
             if (!answerInput.value.trim()) handleNoAnswer(attempt);
         }
     }, 1000);
 }
 
-// ─── NO ANSWER ───────────────────────────────────────────────────
 function handleNoAnswer(attempt) {
     if (isSubmitting) return;
     const attempts = (questionAttempts[currentQ] || 0) + 1;
     questionAttempts[currentQ] = attempts;
-
     if (attempts >= 3) {
-        statusText.textContent = '❌ Interview stopped — no responses.';
+        statusText.textContent = '❌ Interview stopped.';
         speakWarning('You are not answering questions. The interview is being stopped.');
-        setTimeout(() => forceExit('You did not answer the questions. The interview has been stopped.'), 3000);
+        setTimeout(() => forceExit('You did not answer. Interview stopped.'), 3000);
         return;
     }
-
-    const msg = `You have not answered. Let me repeat the question. Attempt ${attempts} of 3.`;
+    const msg = `You have not answered. Let me repeat. Attempt ${attempts} of 3.`;
     statusText.textContent = `🔄 ${msg}`;
     speakWarning(msg);
     setTimeout(() => speakQuestion(currentQuestionText, currentCategory, attempts), 2000);
@@ -1646,20 +1437,16 @@ function speakWarning(text) {
         body: JSON.stringify({ text }),
     })
         .then(r => r.json())
-        .then(data => {
-            if (data.audio_url) new Audio(data.audio_url).play();
-        })
+        .then(data => { if (data.audio_url) new Audio(data.audio_url).play(); })
         .catch(() => {
             if (window.speechSynthesis) {
                 const u = new SpeechSynthesisUtterance(text);
-                u.lang = 'en-GB';
-                u.rate = 0.9;
+                u.lang = 'en-GB'; u.rate = 0.9;
                 window.speechSynthesis.speak(u);
             }
         });
 }
 
-// ─── REPEAT ──────────────────────────────────────────────────────
 function repeatQuestion() {
     if (isSubmitting) return;
     if (isListening && recognition) recognition.abort();
@@ -1674,13 +1461,9 @@ function repeatQuestion() {
     speakQuestion(currentQuestionText, currentCategory, attempts);
 }
 
-// ─── SUBMIT ANSWER ───────────────────────────────────────────────
 function submitManualText() {
     const txt = answerInput.value.trim();
-    if (!txt) {
-        alert('Please type or speak an answer.');
-        return;
-    }
+    if (!txt) { alert('Please type or speak an answer.'); return; }
     if (isSubmitting) return;
     questionAttempts[currentQ] = 0;
     isSubmitting = true;
@@ -1704,7 +1487,6 @@ function submitManualText() {
             isSubmitting = false;
             if (window.stopThinking) window.stopThinking();
             if (data.error) { alert('Submit error: ' + data.error); return; }
-
             const evalData = data.evaluation || {};
             const nextQ = data.next_question;
             responses[currentQ] = { response: txt, evaluation: evalData };
@@ -1729,17 +1511,15 @@ function showFeedback(evalData) {
     feedbackText.textContent = evalData.feedback || '';
 }
 
-// ─── EXIT ────────────────────────────────────────────────────────
 function exitTest() {
     if (isListening && recognition) recognition.abort();
     if (timerInterval) clearInterval(timerInterval);
     if (prepTimerInterval) clearInterval(prepTimerInterval);
-    if (confirm('Are you sure you want to exit? Your progress will be saved.')) {
+    if (confirm('Are you sure you want to exit?')) {
         window.location.href = '/dashboard';
     }
 }
 
-// ─── FINISH ──────────────────────────────────────────────────────
 function finishInterview() {
     if (isListening && recognition) recognition.abort();
     if (timerInterval) clearInterval(timerInterval);
@@ -1748,7 +1528,6 @@ function finishInterview() {
     stepResults.style.display = 'block';
     setChipStatus('Completed', false);
     setChipProgress('');
-
     fetch('/api/ukvi/finish', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1775,7 +1554,6 @@ function finishInterview() {
         .catch(console.error);
 }
 
-// ─── RESTART ─────────────────────────────────────────────────────
 function restart() {
     if (isListening && recognition) recognition.abort();
     if (timerInterval) clearInterval(timerInterval);
@@ -1783,11 +1561,7 @@ function restart() {
     stepProfile.style.display = 'block';
     stepInterview.style.display = 'none';
     stepResults.style.display = 'none';
-    sessionId = null;
-    questions = [];
-    responses = {};
-    currentQ = 0;
-    totalQ = 0;
+    sessionId = null; questions = []; responses = {}; currentQ = 0; totalQ = 0;
     questionAttempts = {};
     answerInput.value = '';
     feedbackArea.classList.remove('visible');
@@ -1803,19 +1577,17 @@ function restart() {
     setChipProgress('');
 }
 
-// ─── EVENTS ──────────────────────────────────────────────────────
 startBtn.addEventListener('click', startInterview);
 manualSubmit.addEventListener('click', submitManualText);
 repeatBtn.addEventListener('click', repeatQuestion);
 exitBtn.addEventListener('click', exitTest);
 restartBtn.addEventListener('click', restart);
 
-// ─── INIT ────────────────────────────────────────────────────────
 fetchSubscriptionStatus();
 loadSavedProfile();
 if (window.speechSynthesis) window.speechSynthesis.getVoices();
 setChipStatus('Ready', false);
-console.log('✅ UKVI 3D Interview ready (v3.0 — redesigned)');
+console.log('✅ UKVI 3D Interview ready (v4.0 — primitives avatar)');
 </script>
 </body>
 </html>

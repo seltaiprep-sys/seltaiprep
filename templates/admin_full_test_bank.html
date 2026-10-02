@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token }}">
     <title>Full Test Bank — Admin</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -43,26 +44,11 @@
             font-weight: 500;
             border-left: 4px solid;
         }
-        .flash.success {
-            background: #d4edda;
-            color: #155724;
-            border-color: #28a745;
-        }
-        .flash.danger {
-            background: #f8d7da;
-            color: #721c24;
-            border-color: #dc3545;
-        }
-        .flash.info {
-            background: #cce5ff;
-            color: #004085;
-            border-color: #0a2b4a;
-        }
-        .flash.warning {
-            background: #fff3cd;
-            color: #856404;
-            border-color: #ffc107;
-        }
+        .flash.success { background: #d4edda; color: #155724; border-color: #28a745; }
+        .flash.danger  { background: #f8d7da; color: #721c24; border-color: #dc3545; }
+        .flash.error   { background: #f8d7da; color: #721c24; border-color: #dc3545; }
+        .flash.info    { background: #cce5ff; color: #004085; border-color: #0a2b4a; }
+        .flash.warning { background: #fff3cd; color: #856404; border-color: #ffc107; }
 
         /* ─── Cards ─── */
         .card {
@@ -138,7 +124,7 @@
             box-shadow: 0 4px 14px rgba(108,99,255,0.3);
             font-family: inherit;
         }
-        .gen-form button:hover {
+        .gen-form button:hover:not(:disabled) {
             background: linear-gradient(135deg, #5b52d2, #4a43b5);
             transform: translateY(-1px);
             box-shadow: 0 6px 20px rgba(108,99,255,0.4);
@@ -212,6 +198,7 @@
             transition: background 0.2s;
         }
         .btn-danger:hover { background: #b02a37; }
+        .btn-danger:disabled { opacity: 0.6; cursor: not-allowed; }
 
         .btn-preview {
             background: #fff;
@@ -272,8 +259,37 @@
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+            display: inline-block;
         }
         .users-list strong { color: #1a2b4a; }
+
+        /* ─── Generating overlay ─── */
+        .gen-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(10, 43, 74, 0.75);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            color: white;
+            text-align: center;
+            padding: 20px;
+        }
+        .gen-overlay.active { display: flex; }
+        .gen-overlay .spinner {
+            width: 60px;
+            height: 60px;
+            border: 6px solid rgba(255,255,255,0.25);
+            border-top-color: #6c63ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .gen-overlay h3 { font-size: 22px; margin-bottom: 10px; }
+        .gen-overlay p { opacity: 0.9; font-size: 14px; max-width: 420px; }
 
         /* ─── Responsive ─── */
         @media (max-width: 640px) {
@@ -309,14 +325,16 @@
         <div class="hint">
             ⚠️ Each variant takes <strong>1–3 minutes</strong> to generate
             (Listening with audio + Reading + Writing + Speaking).
-            After clicking <strong>Generate</strong>, wait 2–3 minutes and refresh the page —
-            new variant(s) will appear in the table below.
+            Keep this tab open — the page will refresh automatically when done.
         </div>
 
         <form method="POST"
               action="{{ url_for('admin_full_test_bank_generate') }}"
               class="gen-form"
-              onsubmit="onGenerateSubmit(this);">
+              id="gen-form">
+            {# NOTE: यदि Flask-WTF / CSRFProtect प्रयोग गर्नुहुन्छ भने तलको line बदल्नुहोस्:
+               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+               र server तर्फ 'csrf_token' key expect गर्नुहोस् (underscore बिना). #}
             <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
 
             <label>
@@ -392,6 +410,7 @@
                                     {% set used_raw = v.used_by_users %}
                                     {% if used_raw %}
                                         {% if used_raw is string %}
+                                            {# Server ले JSON string pathako छ — safe cleanup #}
                                             {% set cleaned = used_raw
                                                 | replace('[', '')
                                                 | replace(']', '')
@@ -405,9 +424,14 @@
                                                 <em style="color:#aaa;">None yet</em>
                                             {% endif %}
                                         {% else %}
-                                            <span class="users-list">
-                                                <strong>{{ used_raw|length }}</strong> user(s)
-                                            </span>
+                                            {# List / tuple pathako छ #}
+                                            {% if used_raw|length > 0 %}
+                                                <span class="users-list" title="{{ used_raw|join(', ') }}">
+                                                    <strong>{{ used_raw|length }}</strong> user(s)
+                                                </span>
+                                            {% else %}
+                                                <em style="color:#aaa;">None yet</em>
+                                            {% endif %}
                                         {% endif %}
                                     {% else %}
                                         <em style="color:#aaa;">None yet</em>
@@ -426,7 +450,9 @@
                                 </td>
 
                                 <td>
-                                    <a href="{{ url_for('static', filename='full_test_bank/variant_' + '%03d'|format(v.id) + '/snapshot.json') }}"
+                                    {# FIXED: '+' → '~' र format filter ठीक ढङ्गले प्रयोग #}
+                                    {% set variant_dir = 'full_test_bank/variant_%03d/snapshot.json'|format(v.id) %}
+                                    <a href="{{ url_for('static', filename=variant_dir) }}"
                                        target="_blank"
                                        class="btn-preview"
                                        style="margin-right: 6px;">
@@ -478,36 +504,63 @@
         </ul>
     </div>
 
+    <!-- ─── GENERATING OVERLAY ─── -->
+    <div class="gen-overlay" id="gen-overlay">
+        <div class="spinner"></div>
+        <h3>⏳ Generating…</h3>
+        <p>Creating your full-test variant with audio. This takes 1–3 minutes.
+           Please don't close this tab — the page will refresh automatically.</p>
+    </div>
+
     <!-- ─── JS ─── -->
     <script>
-        /**
-         * When the generate form is submitted:
-         *   - Prevent double-clicks
-         *   - Show a "generating..." state
-         *   - Auto-refresh the page after 90 seconds so the new variant appears
-         */
-        function onGenerateSubmit(form) {
-            const btn = document.getElementById('gen-btn');
-            if (!btn) return true;
-
-            btn.disabled = true;
-            btn.textContent = '⏳ Generating…';
-
-            // Re-enable + auto-refresh so the new variant shows up
-            setTimeout(function () {
-                try {
-                    window.location.reload();
-                } catch (e) { /* ignore */ }
-            }, 90000);  // 90 seconds
-
-            return true;
-        }
-
-        // Confirm before leaving if the user just generated a batch
-        // (helps prevent accidental navigation away during the wait)
         (function () {
-            const params = new URLSearchParams(window.location.search);
-            // Nothing to do here for now — placeholder for future UX.
+            const form    = document.getElementById('gen-form');
+            const btn     = document.getElementById('gen-btn');
+            const overlay = document.getElementById('gen-overlay');
+
+            if (!form || !btn) return;
+
+            form.addEventListener('submit', async function (e) {
+                e.preventDefault();
+
+                // Lock UI
+                btn.disabled = true;
+                btn.textContent = '⏳ Generating…';
+                overlay.classList.add('active');
+
+                try {
+                    const res = await fetch(form.action, {
+                        method: 'POST',
+                        body: new FormData(form),
+                        credentials: 'same-origin'
+                    });
+
+                    if (res.ok || res.redirected) {
+                        // Success — show a short "done" state then reload
+                        overlay.querySelector('h3').textContent = '✅ Done!';
+                        overlay.querySelector('p').textContent  = 'Refreshing to show the new variant…';
+                        setTimeout(() => window.location.reload(), 1200);
+                    } else if (res.status === 400) {
+                        // Likely CSRF failure — fall back to a normal form submit
+                        overlay.classList.remove('active');
+                        btn.disabled = false;
+                        btn.textContent = '🚀 Generate';
+                        alert('Request rejected (400). Check CSRF token configuration. Falling back to normal submit.');
+                        form.submit();
+                    } else {
+                        overlay.classList.remove('active');
+                        btn.disabled = false;
+                        btn.textContent = '🚀 Generate';
+                        alert('Generation failed: HTTP ' + res.status);
+                    }
+                } catch (err) {
+                    overlay.classList.remove('active');
+                    btn.disabled = false;
+                    btn.textContent = '🚀 Generate';
+                    alert('Network error: ' + err.message);
+                }
+            });
         })();
     </script>
 

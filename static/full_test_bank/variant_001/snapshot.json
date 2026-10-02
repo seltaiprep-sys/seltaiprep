@@ -1,0 +1,1686 @@
+{
+  "listening": {
+    "sections": [
+      {
+        "section_num": 1,
+        "title": "Conversation",
+        "type": "conversation",
+        "speakers": [
+          "Agent",
+          "Customer"
+        ],
+        "speaker_genders": {
+          "Agent": "female",
+          "Customer": "male"
+        },
+        "context": "A conversation between a customer and an agent.",
+        "questions": [
+          {
+            "question": "Full name: ________",
+            "type": "form_completion",
+            "answer": "Amin Khalil",
+            "options": [],
+            "number": 1,
+            "section": 1,
+            "answer_format": {
+              "max_words": 2,
+              "description": "NO MORE THAN TWO WORDS"
+            }
+          },
+          {
+            "question": "Contact phone number: ________",
+            "type": "form_completion",
+            "answer": "07700 900465",
+            "options": [],
+            "number": 2,
+            "section": 1,
+            "answer_format": {
+              "max_words": 2,
+              "description": "NO MORE THAN TWO WORDS"
+            }
+          },
+          {
+            "question": "Email address: _______",
+            "type": "form_completion",
+            "answer": "amin.khalil@email.com",
+            "text": "Email address: _______",
+            "options": [],
+            "number": 3,
+            "section": 1,
+            "answer_format": {
+              "max_words": 1,
+              "description": "ONE WORD ONLY"
+            }
+          },
+          {
+            "question": "Reference number: ________",
+            "type": "form_completion",
+            "answer": "REF-2847",
+            "text": "Reference number: ________",
+            "options": [],
+            "number": 4,
+            "section": 1,
+            "answer_format": {
+              "max_words": 1,
+              "description": "ONE WORD ONLY"
+            }
+          },
+          {
+            "question": "Opening time on weekdays (except Monday): ________",
+            "type": "form_completion",
+            "answer": "10 am",
+            "options": [],
+            "number": 5,
+            "section": 1,
+            "answer_format": {
+              "max_words": 1,
+              "format": "time",
+              "description": "A TIME"
+            }
+          },
+          {
+            "question": "Entry fee for adults: £________",
+            "type": "form_completion",
+            "answer": "12",
+            "options": [],
+            "number": 6,
+            "section": 1,
+            "answer_format": {
+              "max_words": 1,
+              "format": "money",
+              "description": "A MONEY AMOUNT"
+            }
+          },
+          {
+            "question": "Guided tour times: 11 am and ________",
+            "type": "form_completion",
+            "answer": "2 pm",
+            "options": [],
+            "number": 7,
+            "section": 1,
+            "answer_format": {
+              "max_words": 2,
+              "description": "NO MORE THAN TWO WORDS"
+            }
+          },
+          {
+            "question": "Café closes at: ________",
+            "type": "form_completion",
+            "answer": "5 pm",
+            "options": [],
+            "number": 8,
+            "section": 1,
+            "answer_format": {
+              "max_words": 2,
+              "description": "NO MORE THAN TWO WORDS"
+            }
+          },
+          {
+            "question": "What is the additional cost for a guided tour?",
+            "type": "multiple_choice",
+            "options": [
+              "A: £3",
+              "B: £5",
+              "C: £8"
+            ],
+            "answer": "B",
+            "number": 9,
+            "section": 1,
+            "answer_format": {
+              "max_words": 1,
+              "letters_only": true,
+              "description": "A LETTER"
+            }
+          },
+          {
+            "question": "What does the agent recommend booking in advance?",
+            "type": "multiple_choice",
+            "options": [
+              "A: General admission",
+              "B: Guided tour",
+              "C: Café table"
+            ],
+            "answer": "B",
+            "number": 10,
+            "section": 1,
+            "answer_format": {
+              "max_words": 1,
+              "letters_only": true,
+              "description": "A LETTER"
+            }
+          }
+        ],
+        "word_count": 462,
+        "ai_generated": true,
+        "target_duration": 180,
+        "audio_url": null,
+        "script": "Agent: Good morning, Riverside Art Gallery. This is Emilia speaking. How can I help you today?\nCustomer: Oh, hello. Um, yes, I'm calling to enquire about your art gallery. I'm interested in visiting, and I've heard you have some interesting exhibitions on at the moment.\nAgent: Absolutely, we do. We have a wonderful collection of paintings and sculptures. Could I take a few details from you first, just so I can send you some information?\nCustomer: Yes, of course. My name is Amin. That's A-M-I-N.\nAgent: Sorry, could you spell that again for me? I want to make sure I get it right.\nCustomer: Um, Yes, it's A-M-I-N. Amin.\nAgent: Thank you. And your full name, please? Including your surname.\nCustomer: Oh, right. It's Amin Khalil. That's K-H-A-L-I-L.\nAgent: Got it. Amin Khalil. And a contact phone number, please?\nCustomer: Um, yes, it's 07700 900456. Actually, wait, let me check. Sorry, I mean, it's 07700 900465. I always mix up the last two digits.\nAgent: No problem. 07700 900465. , I mean, And your email address?\nCustomer: It's amin.khalil@email.com. That's all lowercase.\nAgent: Perfect. Now, what would you , I mean, like to know about the gallery?\nCustomer: Well, I'm planning to visit next week. I was wondering what exhibitions you have on.\nAgent: At the moment, we have a special exhibition of contemporary paintings, and also a sculpture garden. The painting exhibition is called 'Urban Perspectives'.\nCustomer: That sounds interesting. And what are your opening times?\nAgent: We open at 10 am every day except Monday, when we're closed. We close at 6 pm, but on Thursdays we have a late opening until 9 pm.\nCustomer: OK, so you're open on Tuesday at 10 am?\nAgent: Yes, that's correct.\nCustomer: And how much is the entry fee?\nAgent: For adults, it's £12. Students and seniors pay £8, and children under 12 go free.\nCustomer: Right. And do you have guided tours?\nAgent: Yes, we have guided tours at 11 am and 2 pm daily. They last about an hour. There's an additional charge of £5 per person for the tour.\nCustomer: I see. And is there a café or somewhere to eat?\nAgent: Yes, we have a café on the ground floor serving snacks and light lunches. It's open from 10:30 am to 5 pm.\nCustomer: Oh, Great. One more thing – do I need to book tickets in advance?\nAgent: For the general admission, no, you can just turn up. But for the guided tour, we recommend booking in advance as places are limited.\nCustomer: OK, I'll do that. So, just to confirm, my , sort of, name is Amin Khalil, phone 07700 900465, and email amin.khalil@email.com.\nAgent: That's correct. And would you like me to send you a brochure?"
+      },
+      {
+        "section_num": 2,
+        "title": "Information Talk: Gardening",
+        "type": "monologue",
+        "speakers": [
+          "Guide"
+        ],
+        "speaker_genders": {
+          "Guide": "male"
+        },
+        "context": "A guide talks about gardening.",
+        "questions": [
+          {
+            "id": "q_2_1",
+            "number": 11,
+            "text": "Where is the visitor centre?",
+            "type": "map_labeling",
+            "map_title": "Rosemoor Community Garden Map",
+            "map_locations": [
+              {
+                "letter": "A",
+                "name": "Main Entrance"
+              },
+              {
+                "letter": "B",
+                "name": "Visitor Centre"
+              },
+              {
+                "letter": "C",
+                "name": "Rose Garden"
+              },
+              {
+                "letter": "D",
+                "name": "Pond"
+              },
+              {
+                "letter": "E",
+                "name": "Woodland"
+              },
+              {
+                "letter": "F",
+                "name": "Compost Site"
+              },
+              {
+                "letter": "G",
+                "name": "Café"
+              },
+              {
+                "letter": "H",
+                "name": "Gift Shop"
+              },
+              {
+                "letter": "I",
+                "name": "Toilets"
+              }
+            ],
+            "correct_answer": "B",
+            "question": "Where is the visitor centre?",
+            "answer": "B",
+            "options": [],
+            "section": 2,
+            "answer_format": {
+              "max_words": 1,
+              "description": "ONE WORD ONLY"
+            }
+          },
+          {
+            "id": "q_2_2",
+            "number": 12,
+            "text": "Where is the rose garden?",
+            "type": "map_labeling",
+            "map_title": "Rosemoor Community Garden Map",
+            "map_locations": [
+              {
+                "letter": "A",
+                "name": "Main Entrance"
+              },
+              {
+                "letter": "B",
+                "name": "Visitor Centre"
+              },
+              {
+                "letter": "C",
+                "name": "Rose Garden"
+              },
+              {
+                "letter": "D",
+                "name": "Pond"
+              },
+              {
+                "letter": "E",
+                "name": "Woodland"
+              },
+              {
+                "letter": "F",
+                "name": "Compost Site"
+              },
+              {
+                "letter": "G",
+                "name": "Café"
+              },
+              {
+                "letter": "H",
+                "name": "Gift Shop"
+              },
+              {
+                "letter": "I",
+                "name": "Toilets"
+              }
+            ],
+            "correct_answer": "C",
+            "question": "Where is the rose garden?",
+            "answer": "C",
+            "options": [],
+            "section": 2,
+            "answer_format": {
+              "max_words": 1,
+              "description": "ONE WORD ONLY"
+            }
+          },
+          {
+            "id": "q_2_3",
+            "number": 13,
+            "text": "Where is the pond?",
+            "type": "map_labeling",
+            "map_title": "Rosemoor Community Garden Map",
+            "map_locations": [
+              {
+                "letter": "A",
+                "name": "Main Entrance"
+              },
+              {
+                "letter": "B",
+                "name": "Visitor Centre"
+              },
+              {
+                "letter": "C",
+                "name": "Rose Garden"
+              },
+              {
+                "letter": "D",
+                "name": "Pond"
+              },
+              {
+                "letter": "E",
+                "name": "Woodland"
+              },
+              {
+                "letter": "F",
+                "name": "Compost Site"
+              },
+              {
+                "letter": "G",
+                "name": "Café"
+              },
+              {
+                "letter": "H",
+                "name": "Gift Shop"
+              },
+              {
+                "letter": "I",
+                "name": "Toilets"
+              }
+            ],
+            "correct_answer": "D",
+            "question": "Where is the pond?",
+            "answer": "D",
+            "options": [],
+            "section": 2,
+            "answer_format": {
+              "max_words": 1,
+              "description": "ONE WORD ONLY"
+            }
+          },
+          {
+            "id": "q_2_4",
+            "number": 14,
+            "text": "Where is the woodland?",
+            "type": "map_labeling",
+            "map_title": "Rosemoor Community Garden Map",
+            "map_locations": [
+              {
+                "letter": "A",
+                "name": "Main Entrance"
+              },
+              {
+                "letter": "B",
+                "name": "Visitor Centre"
+              },
+              {
+                "letter": "C",
+                "name": "Rose Garden"
+              },
+              {
+                "letter": "D",
+                "name": "Pond"
+              },
+              {
+                "letter": "E",
+                "name": "Woodland"
+              },
+              {
+                "letter": "F",
+                "name": "Compost Site"
+              },
+              {
+                "letter": "G",
+                "name": "Café"
+              },
+              {
+                "letter": "H",
+                "name": "Gift Shop"
+              },
+              {
+                "letter": "I",
+                "name": "Toilets"
+              }
+            ],
+            "correct_answer": "E",
+            "question": "Where is the woodland?",
+            "answer": "E",
+            "options": [],
+            "section": 2,
+            "answer_format": {
+              "max_words": 1,
+              "description": "ONE WORD ONLY"
+            }
+          },
+          {
+            "id": "q_2_5",
+            "number": 15,
+            "text": "Where is the compost site?",
+            "type": "map_labeling",
+            "map_title": "Rosemoor Community Garden Map",
+            "map_locations": [
+              {
+                "letter": "A",
+                "name": "Main Entrance"
+              },
+              {
+                "letter": "B",
+                "name": "Visitor Centre"
+              },
+              {
+                "letter": "C",
+                "name": "Rose Garden"
+              },
+              {
+                "letter": "D",
+                "name": "Pond"
+              },
+              {
+                "letter": "E",
+                "name": "Woodland"
+              },
+              {
+                "letter": "F",
+                "name": "Compost Site"
+              },
+              {
+                "letter": "G",
+                "name": "Café"
+              },
+              {
+                "letter": "H",
+                "name": "Gift Shop"
+              },
+              {
+                "letter": "I",
+                "name": "Toilets"
+              }
+            ],
+            "correct_answer": "F",
+            "question": "Where is the compost site?",
+            "answer": "F",
+            "options": [],
+            "section": 2,
+            "answer_format": {
+              "max_words": 1,
+              "description": "ONE WORD ONLY"
+            }
+          },
+          {
+            "id": "q_2_6",
+            "number": 16,
+            "text": "The garden was established in ________.",
+            "type": "form_completion",
+            "correct_answer": "1987",
+            "question": "The garden was established in ________.",
+            "answer": "1987",
+            "options": [],
+            "section": 2,
+            "answer_format": {
+              "max_words": 1,
+              "description": "ONE WORD ONLY"
+            }
+          },
+          {
+            "id": "q_2_7",
+            "number": 17,
+            "text": "The garden covers just over ________ hectares.",
+            "type": "form_completion",
+            "correct_answer": "two",
+            "question": "The garden covers just over ________ hectares.",
+            "answer": "two",
+            "options": [],
+            "section": 2,
+            "answer_format": {
+              "max_words": 1,
+              "description": "ONE WORD ONLY"
+            }
+          },
+          {
+            "id": "q_2_8",
+            "number": 18,
+            "text": "The garden is open daily from 9 am until ________.",
+            "type": "form_completion",
+            "correct_answer": "5 pm",
+            "question": "The garden is open daily from 9 am until ________.",
+            "answer": "5 pm",
+            "options": [],
+            "section": 2,
+            "answer_format": {
+              "max_words": 2,
+              "description": "NO MORE THAN TWO WORDS"
+            }
+          },
+          {
+            "id": "q_2_9",
+            "number": 19,
+            "text": "Guided tours run every Saturday at 11 am and ________.",
+            "type": "form_completion",
+            "correct_answer": "2 pm",
+            "question": "Guided tours run every Saturday at 11 am and ________.",
+            "answer": "2 pm",
+            "options": [],
+            "section": 2,
+            "answer_format": {
+              "max_words": 2,
+              "description": "NO MORE THAN TWO WORDS"
+            }
+          },
+          {
+            "id": "q_2_10",
+            "number": 20,
+            "text": "What should visitors avoid doing at the pond?",
+            "type": "multiple_choice",
+            "options": [
+              "A) Feeding the ducks",
+              "B) Swimming",
+              "C) Fishing",
+              "D) Taking photographs"
+            ],
+            "correct_answer": "A",
+            "question": "What should visitors avoid doing at the pond?",
+            "answer": "A",
+            "section": 2,
+            "answer_format": {
+              "max_words": 1,
+              "letters_only": true,
+              "description": "A LETTER"
+            }
+          }
+        ],
+        "word_count": 450,
+        "ai_generated": true,
+        "target_duration": 210,
+        "audio_url": null,
+        "script": "Good morning, everyone, and welcome to the Rosemoor Community Garden. I'm Sarah, your guide for today, and I'm absolutely delighted to see so many of you here. It's a lovely day for a walk, isn't it? Now, before we set off, let me give you a bit of background. This garden was established in 1987 by a group of local residents who wanted to transform a disused railway yard into a green space. It took them nearly three years to clear the site and plant the first trees. You might be interested to know that the garden now covers just over two hectares and is home to more than 400 species of plants. As you can see, we're standing at the main entrance, facing the information board. Let me draw your attention to the layout. To your left is the visitor centre, which also houses a small café. Opposite that, on your right, you'll find the rose garden – it's particularly fragrant at this time of year. Straight ahead, the path leads down to the pond, which is a haven for frogs and dragonflies. Beyond the pond is the woodland area, where we have a collection of native trees. And just past the woodland, at the far end of the garden, is the compost demonstration site – a favourite with school groups. Now, let's move on to practical matters. The garden is open daily from 9 am until 5 pm, except on Christmas Day and Boxing Day. Admission is free, but donations are very welcome – they help us maintain the facilities. There are toilets near the visitor centre, and a small gift shop next to the café. If you'd like to join a guided tour, we run them every Saturday at 11 am and 2 pm. The tours last about an hour and are led by our knowledgeable volunteers. Before we start walking, I'd like to point out a few key features on the map provided in your leaflet. First, the main entrance is marked with a letter A. That's where we are now. The visitor centre is marked B, just to the left. The rose garden is C, on the right. The pond is D, straight ahead. The woodland is E, beyond the pond. The compost site is F, at the far end. The café is G, inside the visitor centre. The gift shop is H, next to the café. And the toilets are I, also near the visitor centre. Oh, and one more thing – please don't feed the ducks at the pond. It's not good for them. Also, if you have any questions during the tour, feel free to ask. Now, let's begin. Follow me, please."
+      },
+      {
+        "section_num": 3,
+        "title": "Discussion: Management",
+        "type": "discussion",
+        "speakers": [
+          "Dr. Rachel",
+          "Angel",
+          "Ella",
+          "Aurora"
+        ],
+        "speaker_genders": {
+          "Tutor": "female",
+          "Student1": "male",
+          "Student2": "female",
+          "Student3": "female",
+          "Dr. Rachel": "female",
+          "Angel": "male",
+          "Ella": "female",
+          "Aurora": "female"
+        },
+        "context": "A discussion about management.",
+        "questions": [
+          {
+            "question": "The survey by the Chartered Management Institute found that 70% of employees feel their managers don't listen to their ________.",
+            "type": "note_completion",
+            "answer": "concerns",
+            "options": [],
+            "number": 21,
+            "section": 3,
+            "answer_format": {
+              "max_words": 1,
+              "description": "ONE WORD ONLY"
+            }
+          },
+          {
+            "question": "Nokia failed to adapt to smartphone technology because management was too ________.",
+            "type": "note_completion",
+            "answer": "complacent",
+            "options": [],
+            "number": 22,
+            "section": 3,
+            "answer_format": {
+              "max_words": 1,
+              "description": "ONE WORD ONLY"
+            }
+          },
+          {
+            "question": "A 2022 study by Deloitte showed that 60% of managers report feeling burned out at least once a ________.",
+            "type": "note_completion",
+            "answer": "week",
+            "options": [],
+            "number": 23,
+            "section": 3,
+            "answer_format": {
+              "max_words": 1,
+              "description": "ONE WORD ONLY"
+            }
+          },
+          {
+            "question": "Match the speaker to their proposed solution.",
+            "type": "matching",
+            "options": [
+              "A: Angel",
+              "B: Ella",
+              "C: Aurora"
+            ],
+            "answer": "A",
+            "number": 24,
+            "section": 3,
+            "answer_format": {
+              "max_words": 1,
+              "letters_only": true,
+              "description": "A LETTER"
+            }
+          },
+          {
+            "question": "From an employee perspective, poor management often leads to low morale and high ________.",
+            "type": "note_completion",
+            "answer": "turnover",
+            "options": [],
+            "number": 25,
+            "section": 3,
+            "answer_format": {
+              "max_words": 1,
+              "description": "ONE WORD ONLY"
+            }
+          },
+          {
+            "question": "Researchers like Henry Mintzberg argue that management is often too focused on analysis and not enough on intuition and ________.",
+            "type": "note_completion",
+            "answer": "experience",
+            "options": [],
+            "number": 26,
+            "section": 3,
+            "answer_format": {
+              "max_words": 1,
+              "description": "ONE WORD ONLY"
+            }
+          },
+          {
+            "question": "Angel suggests implementing mandatory management training, such as a ________-month course.",
+            "type": "note_completion",
+            "answer": "six",
+            "options": [],
+            "number": 27,
+            "section": 3,
+            "answer_format": {
+              "max_words": 1,
+              "format": "date",
+              "description": "A DATE"
+            }
+          },
+          {
+            "question": "Aurora suggests fostering a culture of continuous feedback, with regular ________ instead of annual reviews.",
+            "type": "note_completion",
+            "answer": "check-ins",
+            "options": [],
+            "number": 28,
+            "section": 3,
+            "answer_format": {
+              "max_words": 1,
+              "description": "ONE WORD ONLY"
+            }
+          },
+          {
+            "question": "Match the future prediction to the speaker.",
+            "type": "matching",
+            "options": [
+              "A: Angel",
+              "B: Ella",
+              "C: Aurora"
+            ],
+            "answer": "B",
+            "number": 29,
+            "section": 3,
+            "answer_format": {
+              "max_words": 1,
+              "letters_only": true,
+              "description": "A LETTER"
+            }
+          },
+          {
+            "question": "If burnout isn't tackled, we might face a ________ crisis.",
+            "type": "note_completion",
+            "answer": "leadership",
+            "options": [],
+            "number": 30,
+            "section": 3,
+            "answer_format": {
+              "max_words": 1,
+              "description": "ONE WORD ONLY"
+            }
+          }
+        ],
+        "word_count": 542,
+        "ai_generated": true,
+        "target_duration": 270,
+        "audio_url": null,
+        "script": "Dr. Rachel: Good morning, everyone. Today we're focusing on contemporary management challenges. Let's start with the key issues. Angel, what do you see as the most pressing problem?\nAngel: Well, I think one major issue is the lack of effective communication between different levels of management. In many organisations, there's a disconnect between senior , actually, leadership and frontline staff. For instance, a survey by the Chartered Management Institute found that 70% of employees feel their managers don't listen to their concerns.\nElla: I'd agree, but I'd also add that resistance to change is a huge barrier. Managers often stick to traditional methods even when they're clearly outdated. Take the case of Nokia—they failed to adapt to smartphone technology because management was too complacent.\nAurora: Hmm, that's interesting, but I think we should also consider the issue of burnout among managers themselves. With constant pressure to meet targets, many managers are overwhelmed. A 2022 study by Deloitte showed that 60% of managers report feeling burned out at least once a week.\nDr. Rachel: Good points. Now, let's think about different perspectives. How do various stakeholders view these issues?\nAngel: From an employee perspective, poor management often leads to low morale and high turnover. But from a shareholder's view, the focus is on profitability and efficiency. There's a real tension there.\nElla: Exactly. And from a government perspective, they might be more concerned with regulations and labour laws. For example, the UK's Employment Rights Act sets minimum standards, but some managers see it as red tape.\nAurora: I'd also add the academic perspective. Researchers like Henry Mintzberg argue that management is often too , like, focused on analysis and not enough on intuition and experience. So, different lenses yield very different priorities.\nDr. Rachel: So, how can society address these challenges? What solutions would you propose?\nAngel: I think implementing mandatory management training could help. If all new managers underwent a , sort of, certified programme, say, a six-month course, they'd be better equipped to handle communication and change.\nElla: That's a good start, but I'd argue for more flexible working arrangements. Allowing employees to choose their hours—where possible—can reduce burnout and improve productivity. It's about trust, really.\nAurora: I'd suggest something different: fostering a culture of continuous feedback. Instead of annual reviews, managers should have regular check-ins with their teams. That way, issues are addressed before they escalate.\nDr. Rachel: Interesting. Now, let's consider future implications. What might happen if these challenges aren't addressed?\nAngel: If communication gaps persist, we could see more industrial action. Already, in 2023, the UK saw significant strikes across various sectors, partly due to management failures.\nElla: And if resistance to change continues, companies will become obsolete. Think of Blockbuster—they refused to adapt and went bankrupt. That could happen to many more firms.\nAurora: Plus, if burnout isn't tackled, we might face a leadership crisis. Fewer , like, people will want to take on management roles, leading to a vacuum.\nDr. Rachel: So, to sum up, we've identified communication, resistance to change, and burnout as key issues. We've heard different perspectives and proposed , I mean, solutions like training, flexible working, and continuous feedback. And the future implications are serious. Thank you all for a lively discussion."
+      },
+      {
+        "section_num": 4,
+        "title": "Lecture: Education System",
+        "type": "lecture",
+        "speakers": [
+          "Lecturer"
+        ],
+        "speaker_genders": {
+          "Lecturer": "female"
+        },
+        "context": "A university lecture on education_system.",
+        "questions": [
+          {
+            "question": "The British government first provided funding for education in the year ________.",
+            "answer": "1833",
+            "type": "sentence_completion",
+            "options": [],
+            "number": 31,
+            "section": 4,
+            "answer_format": {
+              "max_words": 1,
+              "format": "date",
+              "description": "A DATE"
+            }
+          },
+          {
+            "question": "The Elementary Education Act of 1870 is also known as the ________ Act.",
+            "answer": "Forster",
+            "type": "sentence_completion",
+            "options": [],
+            "number": 32,
+            "section": 4,
+            "answer_format": {
+              "max_words": 1,
+              "description": "ONE WORD ONLY"
+            }
+          },
+          {
+            "question": "The term 'hidden curriculum' was coined by ________ in 1968.",
+            "answer": "Philip Jackson",
+            "type": "sentence_completion",
+            "options": [],
+            "number": 33,
+            "section": 4,
+            "answer_format": {
+              "max_words": 2,
+              "description": "NO MORE THAN TWO WORDS"
+            }
+          },
+          {
+            "question": "According to Bourdieu, children from middle-class backgrounds possess ________ that gives them an advantage in schools.",
+            "answer": "cultural capital",
+            "type": "sentence_completion",
+            "options": [],
+            "number": 34,
+            "section": 4,
+            "answer_format": {
+              "max_words": 2,
+              "description": "NO MORE THAN TWO WORDS"
+            }
+          },
+          {
+            "question": "PISA tests 15-year-olds in reading, maths, and science every ________ years.",
+            "answer": "three",
+            "type": "sentence_completion",
+            "options": [],
+            "number": 35,
+            "section": 4,
+            "answer_format": {
+              "max_words": 1,
+              "format": "date",
+              "description": "A DATE"
+            }
+          },
+          {
+            "question": "During the COVID-19 pandemic, an estimated ________ children in the UK lacked adequate access to remote learning.",
+            "answer": "1.3 million",
+            "type": "sentence_completion",
+            "options": [],
+            "number": 36,
+            "section": 4,
+            "answer_format": {
+              "max_words": 2,
+              "description": "NO MORE THAN TWO WORDS"
+            }
+          },
+          {
+            "question": "The OECD's Learning Compass 2030 emphasizes student agency and ________.",
+            "answer": "well-being",
+            "type": "sentence_completion",
+            "options": [],
+            "number": 37,
+            "section": 4,
+            "answer_format": {
+              "max_words": 1,
+              "description": "ONE WORD ONLY"
+            }
+          },
+          {
+            "question": "Micro-credentials are short, focused qualifications that certify specific ________.",
+            "answer": "skills",
+            "type": "sentence_completion",
+            "options": [],
+            "number": 38,
+            "section": 4,
+            "answer_format": {
+              "max_words": 1,
+              "description": "ONE WORD ONLY"
+            }
+          },
+          {
+            "question": "What is the main criticism of the current curriculum according to the lecturer?",
+            "type": "multiple_choice",
+            "options": [
+              "A: It focuses too much on critical thinking",
+              "B: It is outdated and does not prepare students for the 21st-century workforce",
+              "C: It is too personalized"
+            ],
+            "answer": "B",
+            "number": 39,
+            "section": 4,
+            "answer_format": {
+              "max_words": 1,
+              "letters_only": true,
+              "description": "A LETTER"
+            }
+          },
+          {
+            "question": "Which country is mentioned as consistently performing well in PISA due to teacher autonomy?",
+            "type": "multiple_choice",
+            "options": [
+              "A: Finland",
+              "B: Singapore",
+              "C: Shanghai"
+            ],
+            "answer": "A",
+            "number": 40,
+            "section": 4,
+            "answer_format": {
+              "max_words": 1,
+              "letters_only": true,
+              "description": "A LETTER"
+            }
+          }
+        ],
+        "word_count": 633,
+        "ai_generated": true,
+        "target_duration": 330,
+        "audio_url": null,
+        "script": "Good morning, everyone. Today, I want to talk about the evolution of the education system, focusing on how mass schooling emerged and where it's heading. We'll look at the historical roots, key theories, practical applications, and some pressing challenges. So, let's begin. The modern education system, as we know it, is largely a product of the 19th century. Before that, education was mostly informal, delivered within families or through apprenticeships. But with the Industrial Revolution, there was a growing need for a literate workforce. In 1833, the British government allocated its first grant for education—a modest £20,000—to build schools for the poor. This marked the beginning of state involvement. By 1870, the Elementary Education Act, often called the Forster Act, established a framework for universal elementary education in England and Wales. It set up school boards to fill gaps where existing provision was inadequate. Now, this wasn't free or compulsory until 1891, when fees were abolished for elementary schools. So, you can see a gradual shift from voluntary to state-funded schooling. Moving on to key concepts. One central idea is the 'hidden curriculum'—coined by Philip Jackson in 1968. This refers to the unwritten social rules and values that students learn at school, such as punctuality, obedience, and conformity. Another important theory is 'cultural capital', introduced by Pierre Bourdieu. He argued that children from middle-class backgrounds possess certain cultural knowledge, language patterns, and tastes that are valued by schools, giving them an advantage. This helps explain persistent inequalities in educational attainment. Additionally, the concept of 'pedagogy'—the method and practice of teaching—has evolved. From teacher-centred instruction to more student-centred approaches like inquiry-based learning. Now, let's consider applications. Many countries have adopted standardized testing to measure student progress and school performance. For example, the Programme for International Student Assessment, or PISA, conducted by the OECD, tests 15-year-olds in reading, maths, and science every three years. It began in 2000 and now covers over 80 countries. PISA results often influence national policies. Finland, for instance, consistently performs well, partly due to its emphasis on teacher autonomy and less standardized testing. In contrast, East Asian systems like Shanghai and Singapore top the rankings, but they often rely on high-stakes exams and private tutoring. So, there's a trade-off between equity and excellence. However, there are significant challenges. One major issue is the digital divide. While technology can enhance learning, not all students have equal access to devices or reliable internet. During the COVID-19 pandemic, this became glaringly obvious. In the UK, for example, an estimated 1.3 million children lacked adequate access to remote learning. Another challenge is teacher shortages. Many developed countries face recruitment and retention crises, leading to larger class sizes and burnout. Furthermore, the curriculum is often criticized for being outdated, not preparing students for the 21st-century workforce. Skills like critical thinking, creativity, and collaboration are often sidelined in favour of rote memorization. Looking ahead, what are the future directions? There's a growing movement towards personalized learning, aided by artificial intelligence. AI can adapt to individual student needs, providing tailored exercises and feedback. Another trend is micro-credentials—short, focused qualifications that certify specific skills, often delivered online. These could complement or even replace traditional degrees. Also, there's a push for global citizenship education, which aims to foster awareness of global issues and sustainability. The OECD's Learning Compass 2030 is one such framework, emphasizing student agency and well-being. To conclude, the education system has come a long way from its informal beginnings. It has been shaped by industrialization, theories of social reproduction, and international comparisons. Yet, it faces persistent challenges like inequality and resource gaps. The future likely holds more personalized, flexible, and globally minded approaches. But the core goal remains: to equip individuals with the knowledge and skills to thrive. Thank you. I'm happy to take any questions."
+      }
+    ],
+    "total_sections": 4,
+    "generated_sections": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "partial": false,
+    "accent": "british",
+    "difficulty": "medium",
+    "audio_urls": {
+      "1": {
+        "main": "/static/full_test_bank/variant_001/section_1.mp3",
+        "intro": "/audio_cache/intro_section_1_british.mp3",
+        "outro": "/audio_cache/outro_section_1_british.mp3"
+      },
+      "2": {
+        "main": "/static/full_test_bank/variant_001/section_2.mp3",
+        "intro": "/audio_cache/intro_section_2_british.mp3",
+        "outro": "/audio_cache/outro_section_2_british.mp3"
+      },
+      "3": {
+        "main": "/static/full_test_bank/variant_001/section_3.mp3",
+        "intro": "/audio_cache/intro_section_3_british.mp3",
+        "outro": "/audio_cache/outro_section_3_british.mp3"
+      },
+      "4": {
+        "main": "/static/full_test_bank/variant_001/section_4.mp3",
+        "intro": "/audio_cache/intro_section_4_british.mp3",
+        "outro": "/audio_cache/outro_section_4_british.mp3"
+      }
+    },
+    "audio_timings": {
+      "1": {
+        "intro": [
+          0,
+          9.6
+        ],
+        "reading": [
+          9.6,
+          39.6
+        ],
+        "main_audio": [
+          39.6,
+          216.168
+        ],
+        "outro": [
+          216.168,
+          221.66400000000002
+        ],
+        "checking": [
+          221.66400000000002,
+          251.66400000000002
+        ]
+      },
+      "2": {
+        "intro": [
+          0,
+          10.08
+        ],
+        "reading": [
+          10.08,
+          40.08
+        ],
+        "main_audio": [
+          40.08,
+          197.856
+        ],
+        "outro": [
+          197.856,
+          203.4
+        ],
+        "checking": [
+          203.4,
+          233.4
+        ]
+      },
+      "3": {
+        "intro": [
+          0,
+          9.84
+        ],
+        "reading": [
+          9.84,
+          39.84
+        ],
+        "main_audio": [
+          39.84,
+          253.272
+        ],
+        "outro": [
+          253.272,
+          258.888
+        ],
+        "checking": [
+          258.888,
+          288.888
+        ]
+      },
+      "4": {
+        "intro": [
+          0,
+          8.784
+        ],
+        "reading": [
+          8.784,
+          38.784
+        ],
+        "main_audio": [
+          38.784,
+          330.62399999999997
+        ],
+        "outro": [
+          330.62399999999997,
+          336.16799999999995
+        ],
+        "checking": [
+          336.16799999999995,
+          366.16799999999995
+        ]
+      }
+    }
+  },
+  "reading": {
+    "id": "a666fafd-5fef-4cfa-b3c6-3207c79cfa0f",
+    "title": "IELTS Reading Practice Test - Medium",
+    "passages": [
+      {
+        "id": "5e77fc5f-d50c-44fd-b1e5-d8c02549173f",
+        "title": "Reading Passage 1",
+        "content": "The integration of trees and associated vegetation into urban environments, a practice known as urban forestry, has emerged as a significant strategy for enhancing the liveability of cities worldwide. As global populations become increasingly concentrated in metropolitan areas, the management of these green infrastructures is no longer viewed merely as an aesthetic pursuit but as a critical component of public health and environmental sustainability. Consequently, municipal governments are investing heavily in the expansion and maintenance of their arboreal assets. The central thesis of this discussion is that while urban forests provide indispensable ecological and social benefits, their successful implementation is frequently hindered by economic constraints and complex land-use conflicts, necessitating innovative policy solutions to ensure their equitable distribution.\n\nThe primary justification for extensive urban forestry programmes lies in their capacity to mitigate the adverse effects of urbanisation. Research conducted by Dr. Elena Vance of the Institute for Sustainable Cities has demonstrated a direct correlation between canopy cover and temperature regulation. Her 2019 study, which analysed thermal imaging across twelve major metropolitan regions, revealed that neighbourhoods with a tree canopy exceeding thirty per cent experienced average summer temperatures up to four degrees Celsius lower than those with minimal vegetation. This phenomenon, often termed the urban heat island effect, is significantly ameliorated by the shade provided by mature trees and the evaporative cooling from their leaves. Furthermore, these green spaces act as natural filtration systems, removing particulate matter and gaseous pollutants from the atmosphere. A separate investigation by the Global Health and Environment Council estimated that increased tree cover in urban areas could lead to a fifteen per cent reduction in respiratory ailments linked to air pollution, underscoring the profound impact of urban forestry on public health outcomes.\n\nBeyond these environmental and health advantages, the social and psychological benefits of urban forests are increasingly recognised. Access to green spaces within city limits has been linked to reduced stress levels, improved mental well-being, and stronger community cohesion. A longitudinal study tracking residents in a densely populated European capital found that those living within three hundred metres of a park or tree-lined street reported significantly higher life satisfaction scores. This effect is thought to stem from the restorative quality of natural environments, which offer a respite from the cognitive fatigue associated with urban living. Moreover, these areas often serve as focal points for community interaction, hosting local markets, recreational activities, and social gatherings. Therefore, the presence of trees contributes not only to the physical health of a city but also to its social fabric, fostering a sense of place and belonging among inhabitants.\n\nHowever, the widespread adoption of urban forestry is not without its challenges and critics. A prominent counterargument focuses on the substantial economic burden and potential hazards associated with maintaining a dense urban canopy. Dr. Marcus Thorne, an economist at the Metropolitan Policy Institute, argues that the initial planting costs, coupled with ongoing maintenance expenses such as pruning, irrigation, and pest control, can place an unsustainable strain on municipal budgets. He posits that funds allocated to tree planting might yield greater returns if directed towards other public services, such as healthcare or education. Additionally, concerns are frequently raised regarding infrastructure damage caused by invasive root systems, which can buckle pavements and block drainage systems, leading to costly repairs. There is also the issue of allergens; the pollen from certain tree species can exacerbate respiratory conditions for a significant portion of the population, creating a paradox where a health-promoting intervention may cause harm to a vulnerable subset of citizens.\n\nGiven these competing interests, the future of urban forestry necessitates a strategic and nuanced approach rather than a simple expansion of planting initiatives. The implications for policymakers are clear: they must move beyond a one-size-fits-all model and instead develop frameworks that are economically viable, socially equitable, and ecologically sound. This involves selecting species that are low-allergen and non-invasive, prioritising planting in underserved communities where the benefits are most needed, and exploring innovative funding mechanisms such as public-private partnerships. Ultimately, the successful integration of nature into the urban landscape requires a long-term commitment. By balancing the undeniable benefits against the legitimate concerns of cost and maintenance, cities can cultivate resilient green infrastructures that will serve as a vital legacy for future generations, ensuring that the concrete jungle does not entirely eclipse the natural world upon which its inhabitants depend.",
+        "difficulty": "easy",
+        "topic": "urban_forestry",
+        "word_count": 724,
+        "questions": [
+          {
+            "id": "q1",
+            "type": "true_false_not_given",
+            "text": "Dr. Elena Vance's 2019 study analysed thermal imaging across twelve major metropolitan regions.",
+            "options": [],
+            "correct_answer": "TRUE",
+            "explanation": "The passage directly states her study 'analysed thermal imaging across twelve major metropolitan regions'.",
+            "paragraph_reference": "Paragraph 2",
+            "number": 1
+          },
+          {
+            "id": "q2",
+            "type": "true_false_not_given",
+            "text": "The Global Health and Environment Council found that increased tree cover could reduce respiratory ailments by thirty per cent.",
+            "options": [],
+            "correct_answer": "FALSE",
+            "explanation": "The passage states a 'fifteen per cent reduction', not thirty per cent.",
+            "paragraph_reference": "Paragraph 2",
+            "number": 2
+          },
+          {
+            "id": "q3",
+            "type": "true_false_not_given",
+            "text": "Dr. Marcus Thorne believes that tree planting funds would be better spent on public transportation.",
+            "options": [],
+            "correct_answer": "NOT GIVEN",
+            "explanation": "Thorne mentions healthcare or education, not public transportation.",
+            "paragraph_reference": "Paragraph 4",
+            "number": 3
+          },
+          {
+            "id": "q4",
+            "type": "true_false_not_given",
+            "text": "The pollen from certain tree species can worsen respiratory conditions for some citizens.",
+            "options": [],
+            "correct_answer": "TRUE",
+            "explanation": "The passage states pollen 'can exacerbate respiratory conditions for a significant portion of the population'.",
+            "paragraph_reference": "Paragraph 4",
+            "number": 4
+          },
+          {
+            "id": "q5",
+            "type": "multiple_choice",
+            "text": "According to Dr. Elena Vance's research, neighbourhoods with a tree canopy exceeding thirty per cent experienced summer temperatures lower by up to:",
+            "options": [
+              "two degrees Celsius",
+              "three degrees Celsius",
+              "four degrees Celsius",
+              "five degrees Celsius"
+            ],
+            "correct_answer": "four degrees Celsius",
+            "explanation": "The passage states temperatures were 'up to four degrees Celsius lower'.",
+            "paragraph_reference": "Paragraph 2",
+            "number": 5
+          },
+          {
+            "id": "q6",
+            "type": "multiple_choice",
+            "text": "What is the main concern raised by Dr. Marcus Thorne regarding urban forestry?",
+            "options": [
+              "The aesthetic impact on city landscapes",
+              "The unsustainable strain on municipal budgets",
+              "The reduction in property values",
+              "The decline in community cohesion"
+            ],
+            "correct_answer": "The unsustainable strain on municipal budgets",
+            "explanation": "Thorne argues costs 'can place an unsustainable strain on municipal budgets'.",
+            "paragraph_reference": "Paragraph 4",
+            "number": 6
+          },
+          {
+            "id": "q7",
+            "type": "multiple_choice",
+            "text": "According to the passage, what effect does access to green spaces have on residents in a densely populated European capital?",
+            "options": [
+              "Lower levels of physical fitness",
+              "Higher life satisfaction scores",
+              "Increased cognitive fatigue",
+              "Reduced community interaction"
+            ],
+            "correct_answer": "Higher life satisfaction scores",
+            "explanation": "The passage states residents 'reported significantly higher life satisfaction scores'.",
+            "paragraph_reference": "Paragraph 3",
+            "number": 7
+          },
+          {
+            "id": "q8",
+            "type": "sentence_completion",
+            "text": "Urban forests act as natural filtration systems, removing particulate matter and gaseous pollutants from the __________.",
+            "options": [],
+            "correct_answer": "atmosphere",
+            "explanation": "The passage states trees remove pollutants 'from the atmosphere'.",
+            "paragraph_reference": "Paragraph 2",
+            "number": 8
+          },
+          {
+            "id": "q9",
+            "type": "sentence_completion",
+            "text": "The restorative quality of natural environments offers a respite from the cognitive fatigue associated with __________ living.",
+            "options": [],
+            "correct_answer": "urban",
+            "explanation": "The passage refers to 'cognitive fatigue associated with urban living'.",
+            "paragraph_reference": "Paragraph 3",
+            "number": 9
+          },
+          {
+            "id": "q10",
+            "type": "sentence_completion",
+            "text": "Invasive root systems can buckle pavements and block __________ systems, leading to costly repairs.",
+            "options": [],
+            "correct_answer": "drainage",
+            "explanation": "The passage states roots 'block drainage systems'.",
+            "paragraph_reference": "Paragraph 4",
+            "number": 10
+          },
+          {
+            "id": "q11",
+            "type": "short_answer",
+            "text": "What term is used to describe the phenomenon where urban areas experience higher temperatures than surrounding areas?",
+            "options": [],
+            "correct_answer": "urban heat island effect",
+            "explanation": "The passage refers to 'the urban heat island effect'.",
+            "paragraph_reference": "Paragraph 2",
+            "number": 11
+          },
+          {
+            "id": "q12",
+            "type": "short_answer",
+            "text": "What type of study tracked residents in a densely populated European capital?",
+            "options": [],
+            "correct_answer": "longitudinal study",
+            "explanation": "The passage mentions 'A longitudinal study tracking residents'.",
+            "paragraph_reference": "Paragraph 3",
+            "number": 12
+          },
+          {
+            "id": "q13",
+            "type": "short_answer",
+            "text": "What funding mechanisms does the passage suggest exploring for urban forestry?",
+            "options": [],
+            "correct_answer": "public-private partnerships",
+            "explanation": "The passage suggests 'exploring innovative funding mechanisms such as public-private partnerships'.",
+            "paragraph_reference": "Paragraph 5",
+            "number": 13
+          }
+        ],
+        "passage_number": 1,
+        "estimated_time": 20
+      },
+      {
+        "id": "9e191cba-0208-43d2-a969-201536c00625",
+        "title": "Reading Passage 2",
+        "content": "The capacity of computer systems to improve their performance on a specific task through experience, without being explicitly reprogrammed for every eventuality, is known as machine learning. This field, which sits at the intersection of computer science and statistics, has transitioned from a niche academic pursuit to a foundational technology underpinning numerous aspects of modern life. Its central premise is that algorithms can be designed to identify patterns within vast datasets, and subsequently use those patterns to make predictions or decisions on new, unseen data. Consequently, machine learning is not merely about automating existing processes; it represents a fundamental shift in how complex problems are approached, enabling the discovery of solutions that might be counter-intuitive or entirely inaccessible to human analysis alone. The influence of this technological paradigm is now so pervasive that it is reshaping industries, scientific inquiry, and social interaction, prompting both significant optimism and considerable apprehension regarding its long-term consequences for society.\n\nThe practical application of machine learning is perhaps most visible in the domain of natural language processing. Systems trained on immense corpora of text and speech can now perform tasks that were once the exclusive domain of human cognition. For instance, in 2022, researchers at the Meridian Institute of Technology announced that their latest linguistic model could translate between 150 languages with an accuracy rate of 94.7%, surpassing the average performance of professional human translators in a controlled study. This is achieved through complex neural networks, which are computational structures loosely inspired by the biological connections in the human brain. These networks learn the statistical relationships between words and phrases, allowing them to generate coherent and contextually appropriate text, answer questions, and even compose original prose. As a result, the barriers to cross-cultural communication are being lowered, and the way information is accessed and disseminated is being fundamentally altered.\n\nBeyond language, machine learning has become an indispensable tool in scientific research, particularly in fields overwhelmed by data. In genomics, for example, algorithms are used to sift through billions of genetic base pairs to identify mutations linked to specific diseases. A landmark study led by Dr. Alistair Finch at the University of Cambridge in 2018 demonstrated that a machine learning model could predict the likelihood of a patient developing a particular type of cancer from their genetic profile with 88% accuracy, a significant improvement over traditional statistical methods. This predictive power accelerates the drug discovery process, as potential therapeutic targets can be identified and validated far more rapidly. The ability of these systems to integrate and analyse disparate data types—from genetic sequences to clinical imaging—is catalysing a new era of personalised medicine, where treatments can be tailored to an individual's unique biological makeup.\n\nHowever, the proliferation of machine learning is not without its detractors, who raise profound ethical and practical concerns. A primary criticism centres on the issue of algorithmic bias. Because these systems learn from historical data, they can inadvertently perpetuate and even amplify existing societal prejudices. For example, if a machine learning model is trained on hiring data from a company with a history of discriminatory practices, it may learn to associate certain demographic characteristics with successful candidates, thereby automating and exacerbating inequality. Furthermore, the \"black box\" nature of many sophisticated models means that even their creators cannot always explain how a specific decision was reached. This lack of transparency poses a significant challenge in high-stakes domains such as criminal justice or loan applications, where the right to an explanation is considered fundamental. Critics argue that without robust oversight, these technologies risk eroding accountability and entrenching social divisions.\n\nIn response to these challenges, a concerted effort is emerging to develop more transparent, fair, and accountable systems, a movement broadly termed \"ethical AI.\" Researchers are exploring methods for creating \"explainable AI\" (XAI), which aims to make the decision-making processes of algorithms comprehensible to humans. Concurrently, regulatory bodies and governments are beginning to draft legislation to govern the use of these technologies. The European Union's AI Act, proposed in 2021, represents one of the first comprehensive attempts to classify and regulate AI applications based on their potential risk. The future trajectory of machine learning will therefore depend not only on continued technological innovation but also on a parallel evolution in ethical frameworks and governance. The ultimate goal is to harness the immense potential of this technology while mitigating its risks, ensuring that its benefits are distributed equitably across society.",
+        "difficulty": "medium",
+        "topic": "machine_learning",
+        "word_count": 733,
+        "questions": [
+          {
+            "id": "q14",
+            "type": "matching_headings",
+            "text": "Choose the correct heading for Paragraph 1 from the list of headings below.",
+            "options": [
+              "i. A new technological paradigm",
+              "ii. The limitations of human analysis",
+              "iii. Defining machine learning and its impact",
+              "iv. The history of computer science",
+              "v. Public optimism and apprehension",
+              "vi. How algorithms identify patterns"
+            ],
+            "correct_answer": "iii",
+            "explanation": "Paragraph 1 defines machine learning and discusses its broad impact on society.",
+            "paragraph_reference": "Paragraph 1",
+            "number": 14
+          },
+          {
+            "id": "q15",
+            "type": "matching_headings",
+            "text": "Choose the correct heading for Paragraph 2 from the list of headings below.",
+            "options": [
+              "i. A new technological paradigm",
+              "ii. The limitations of human analysis",
+              "iii. Defining machine learning and its impact",
+              "iv. Advances in language technology",
+              "v. Public optimism and apprehension",
+              "vi. How algorithms identify patterns"
+            ],
+            "correct_answer": "iv",
+            "explanation": "Paragraph 2 focuses on natural language processing and translation achievements.",
+            "paragraph_reference": "Paragraph 2",
+            "number": 15
+          },
+          {
+            "id": "q16",
+            "type": "matching_headings",
+            "text": "Choose the correct heading for Paragraph 3 from the list of headings below.",
+            "options": [
+              "i. A new technological paradigm",
+              "ii. Machine learning in scientific research",
+              "iii. Defining machine learning and its impact",
+              "iv. Advances in language technology",
+              "v. Public optimism and apprehension",
+              "vi. How algorithms identify patterns"
+            ],
+            "correct_answer": "ii",
+            "explanation": "Paragraph 3 discusses applications in genomics and medical research.",
+            "paragraph_reference": "Paragraph 3",
+            "number": 16
+          },
+          {
+            "id": "q17",
+            "type": "matching_headings",
+            "text": "Choose the correct heading for Paragraph 4 from the list of headings below.",
+            "options": [
+              "i. A new technological paradigm",
+              "ii. Machine learning in scientific research",
+              "iii. Ethical concerns and criticism",
+              "iv. Advances in language technology",
+              "v. Public optimism and apprehension",
+              "vi. How algorithms identify patterns"
+            ],
+            "correct_answer": "iii",
+            "explanation": "Paragraph 4 addresses ethical concerns including bias and lack of transparency.",
+            "paragraph_reference": "Paragraph 4",
+            "number": 17
+          },
+          {
+            "id": "q18",
+            "type": "matching_headings",
+            "text": "Choose the correct heading for Paragraph 5 from the list of headings below.",
+            "options": [
+              "i. A new technological paradigm",
+              "ii. Machine learning in scientific research",
+              "iii. Ethical concerns and criticism",
+              "iv. Advances in language technology",
+              "v. Towards ethical AI and regulation",
+              "vi. How algorithms identify patterns"
+            ],
+            "correct_answer": "v",
+            "explanation": "Paragraph 5 discusses ethical AI, explainable AI, and regulatory efforts.",
+            "paragraph_reference": "Paragraph 5",
+            "number": 18
+          },
+          {
+            "id": "q19",
+            "type": "true_false_not_given",
+            "text": "The Meridian Institute's linguistic model achieved a translation accuracy rate of 94.7% across 150 languages.",
+            "options": [],
+            "correct_answer": "TRUE",
+            "explanation": "Passage states the model could translate between 150 languages with an accuracy rate of 94.7%.",
+            "paragraph_reference": "Paragraph 2",
+            "number": 19
+          },
+          {
+            "id": "q20",
+            "type": "true_false_not_given",
+            "text": "Dr. Alistair Finch's machine learning model was more accurate than traditional statistical methods at predicting cancer risk.",
+            "options": [],
+            "correct_answer": "TRUE",
+            "explanation": "Passage states 88% accuracy was a significant improvement over traditional statistical methods.",
+            "paragraph_reference": "Paragraph 3",
+            "number": 20
+          },
+          {
+            "id": "q21",
+            "type": "true_false_not_given",
+            "text": "The European Union's AI Act was the first legislation in the world to regulate artificial intelligence.",
+            "options": [],
+            "correct_answer": "NOT GIVEN",
+            "explanation": "Passage describes it as 'one of the first comprehensive attempts' but does not claim it was the first in the world.",
+            "paragraph_reference": "Paragraph 5",
+            "number": 21
+          },
+          {
+            "id": "q22",
+            "type": "multiple_choice",
+            "text": "According to Paragraph 4, why is algorithmic bias a significant concern?",
+            "options": [
+              "A. It makes machine learning models too expensive to develop.",
+              "B. It can perpetuate and amplify existing societal prejudices.",
+              "C. It prevents researchers from improving model accuracy.",
+              "D. It reduces the speed at which algorithms process data."
+            ],
+            "correct_answer": "B",
+            "explanation": "Passage states systems 'can inadvertently perpetuate and even amplify existing societal prejudices.'",
+            "paragraph_reference": "Paragraph 4",
+            "number": 22
+          },
+          {
+            "id": "q23",
+            "type": "multiple_choice",
+            "text": "What does the term 'explainable AI' (XAI) refer to, according to Paragraph 5?",
+            "options": [
+              "A. AI systems that can explain their decisions to humans.",
+              "B. AI systems that replace human decision-makers entirely.",
+              "C. AI systems that are cheaper to build and maintain.",
+              "D. AI systems that only operate in low-risk domains."
+            ],
+            "correct_answer": "A",
+            "explanation": "Passage states XAI 'aims to make the decision-making processes of algorithms comprehensible to humans.'",
+            "paragraph_reference": "Paragraph 5",
+            "number": 23
+          },
+          {
+            "id": "q24",
+            "type": "summary_completion",
+            "text": "Machine learning enables algorithms to identify patterns within vast datasets and use them to make predictions on new, ______ data.",
+            "options": [],
+            "correct_answer": "unseen",
+            "explanation": "Passage states 'make predictions or decisions on new, unseen data.'",
+            "paragraph_reference": "Paragraph 1",
+            "number": 24
+          },
+          {
+            "id": "q25",
+            "type": "summary_completion",
+            "text": "Neural networks learn the statistical relationships between words and phrases, allowing them to generate coherent and contextually appropriate ______.",
+            "options": [],
+            "correct_answer": "text",
+            "explanation": "Passage states networks can 'generate coherent and contextually appropriate text.'",
+            "paragraph_reference": "Paragraph 2",
+            "number": 25
+          },
+          {
+            "id": "q26",
+            "type": "summary_completion",
+            "text": "The 'black box' nature of many sophisticated models means that even their creators cannot always explain how a specific ______ was reached.",
+            "options": [],
+            "correct_answer": "decision",
+            "explanation": "Passage states 'even their creators cannot always explain how a specific decision was reached.'",
+            "paragraph_reference": "Paragraph 4",
+            "number": 26
+          }
+        ],
+        "passage_number": 2,
+        "estimated_time": 20
+      },
+      {
+        "id": "74bcf731-ebc9-4970-982c-4c6b819e01e2",
+        "title": "Reading Passage 3",
+        "content": "The expansion of global trade over recent centuries has been widely regarded as a principal engine of economic growth, technological diffusion, and poverty reduction. Since the establishment of the General Agreement on Tariffs and Trade in 1947, successive rounds of multilateral negotiations have progressively lowered tariff barriers, while advances in container shipping and digital communications have dramatically reduced the costs of moving goods and information across borders. Consequently, the value of world merchandise exports has risen from approximately 60 billion US dollars in 1950 to more than 19 trillion dollars by the early 2020s, a transformation that has reshaped the productive structures of virtually every national economy. Proponents argue that this deepening integration has permitted countries to specialise according to comparative advantage, thereby raising aggregate productivity and enabling consumers to access a far broader range of affordable products. Nevertheless, the distribution of these gains has become the subject of intense scholarly and political debate, and it is this contested distribution, rather than the aggregate expansion itself, that now dominates contemporary discussion of the global trading system.\n\nEmpirical research has consistently identified substantial aggregate benefits from trade liberalisation. A landmark study by economists at the Institute for Global Economic Studies estimated that the multilateral tariff reductions implemented between 1980 and 2015 added approximately 1.8 percentage points to average annual growth in developing economies, lifting an estimated 400 million people above the extreme poverty line. Similarly, research conducted by Dr Helena Vasquez and her colleagues at the Centre for International Commerce has demonstrated that firms participating in export markets exhibit productivity levels roughly 25 per cent higher than otherwise comparable domestic-oriented enterprises, a phenomenon frequently attributed to exposure to foreign competition and the adoption of imported technologies. Such findings have been instrumental in persuading governments to pursue further liberalisation, particularly in sectors such as telecommunications and financial services, where cross-border competition has been shown to reduce prices and stimulate innovation.\n\nThe geographical fragmentation of production has intensified these effects. Whereas manufactured goods were once produced predominantly within a single country, contemporary supply chains frequently span a dozen or more jurisdictions, with components crossing borders multiple times before final assembly. This pattern, often termed global value chain integration, has enabled smaller economies to participate in international commerce without possessing complete industrial ecosystems. Vietnam, for instance, increased its share of global manufacturing exports from 0.5 per cent in 2000 to over 2.5 per cent by 2020, largely through participation in electronics and textile supply networks orchestrated by multinational corporations. However, such integration also transmits shocks rapidly across borders, as demonstrated during the 2008 financial crisis and, more recently, by pandemic-related disruptions, which revealed the vulnerability of concentrated production nodes to sudden interruptions.\n\nA contrasting body of opinion contends that the aggregate statistics conceal significant and persistent distributional harms. Critics, including Professor Martin Ashworth of the University of Westbrook, argue that although trade raises national income in aggregate, it frequently depresses wages for less-skilled workers in import-competing sectors while concentrating gains among capital owners and highly educated professionals. According to this perspective, the adjustment costs borne by displaced workers are neither transient nor evenly shared, and conventional compensation mechanisms have proven inadequate. Furthermore, some analysts maintain that the pursuit of trade agreements has constrained national autonomy over labour standards, environmental regulation, and public health policy, as governments become reluctant to impose rules that might be challenged by trading partners. These concerns have fuelled rising protectionist sentiment in several advanced economies since 2016, prompting tariffs and export controls that had previously been considered inconsistent with established multilateral norms.\n\nThe implications of these competing assessments are considerable for policymakers. If the benefits of trade are genuine but unevenly distributed, then the appropriate response may involve strengthened domestic adjustment programmes, progressive taxation, and enforceable labour and environmental provisions within trade agreements, rather than retreat from integration itself. Evidence from the Nordic economies, which combine high levels of trade openness with extensive social protection, suggests that such reconciliation is feasible, though it depends upon robust institutions and sustained political commitment. Conversely, if the critics are correct that integration systematically undermines domestic regulatory capacity, more fundamental restructuring of the multilateral framework may be required. What remains clear is that the trajectory of global trade will depend less upon the technical mechanics of tariff schedules than upon whether governments can construct institutional arrangements capable of rendering its benefits broadly shared and its disruptions adequately managed.",
+        "difficulty": "hard",
+        "topic": "global_trade",
+        "word_count": 734,
+        "questions": [
+          {
+            "id": "q27",
+            "type": "yes_no_not_given",
+            "text": "The author believes that strengthening domestic adjustment programmes is a more appropriate response to unevenly distributed trade benefits than abandoning economic integration.",
+            "options": [],
+            "correct_answer": "YES",
+            "explanation": "The author states that 'the appropriate response may involve strengthened domestic adjustment programmes... rather than retreat from integration itself', indicating support for this position.",
+            "paragraph_reference": "Paragraph 5",
+            "number": 27
+          },
+          {
+            "id": "q28",
+            "type": "yes_no_not_given",
+            "text": "The author claims that the aggregate expansion of global trade is now the most important topic in contemporary discussions of the trading system.",
+            "options": [],
+            "correct_answer": "NO",
+            "explanation": "The passage states it is 'this contested distribution, rather than the aggregate expansion itself, that now dominates contemporary discussion', directly contradicting the statement.",
+            "paragraph_reference": "Paragraph 1",
+            "number": 28
+          },
+          {
+            "id": "q29",
+            "type": "yes_no_not_given",
+            "text": "The author suggests that the Nordic economies demonstrate that combining trade openness with social protection is achievable.",
+            "options": [],
+            "correct_answer": "YES",
+            "explanation": "The author states that evidence from Nordic economies 'suggests that such reconciliation is feasible', supporting the claim.",
+            "paragraph_reference": "Paragraph 5",
+            "number": 29
+          },
+          {
+            "id": "q30",
+            "type": "yes_no_not_given",
+            "text": "The author maintains that the technical mechanics of tariff schedules will be the primary determinant of the future trajectory of global trade.",
+            "options": [],
+            "correct_answer": "NO",
+            "explanation": "The passage states the trajectory 'will depend less upon the technical mechanics of tariff schedules than upon whether governments can construct institutional arrangements', contradicting the statement.",
+            "paragraph_reference": "Paragraph 5",
+            "number": 30
+          },
+          {
+            "id": "q31",
+            "type": "yes_no_not_given",
+            "text": "The author considers the concerns raised by critics about trade agreements constraining national autonomy to be entirely without foundation.",
+            "options": [],
+            "correct_answer": "NO",
+            "explanation": "The author presents these concerns neutrally as 'a contrasting body of opinion' and 'some analysts maintain', without dismissing them as unfounded, and later treats them as a serious possibility in paragraph 5.",
+            "paragraph_reference": "Paragraph 4",
+            "number": 31
+          },
+          {
+            "id": "q32",
+            "type": "matching_information",
+            "text": "Which paragraph contains information about a specific country's increased share of global manufacturing exports?",
+            "options": [
+              "Paragraph 1",
+              "Paragraph 2",
+              "Paragraph 3",
+              "Paragraph 4",
+              "Paragraph 5"
+            ],
+            "correct_answer": "Paragraph 3",
+            "explanation": "Paragraph 3 mentions Vietnam increasing its share of global manufacturing exports from 0.5 per cent in 2000 to over 2.5 per cent by 2020.",
+            "paragraph_reference": "Paragraph 3",
+            "number": 32
+          },
+          {
+            "id": "q33",
+            "type": "matching_information",
+            "text": "Which paragraph contains a reference to the establishment of an international trade agreement in the 1940s?",
+            "options": [
+              "Paragraph 1",
+              "Paragraph 2",
+              "Paragraph 3",
+              "Paragraph 4",
+              "Paragraph 5"
+            ],
+            "correct_answer": "Paragraph 1",
+            "explanation": "Paragraph 1 mentions the establishment of the General Agreement on Tariffs and Trade in 1947.",
+            "paragraph_reference": "Paragraph 1",
+            "number": 33
+          },
+          {
+            "id": "q34",
+            "type": "matching_information",
+            "text": "Which paragraph contains an estimate of the number of people lifted above the extreme poverty line due to tariff reductions?",
+            "options": [
+              "Paragraph 1",
+              "Paragraph 2",
+              "Paragraph 3",
+              "Paragraph 4",
+              "Paragraph 5"
+            ],
+            "correct_answer": "Paragraph 2",
+            "explanation": "Paragraph 2 states that tariff reductions lifted 'an estimated 400 million people above the extreme poverty line'.",
+            "paragraph_reference": "Paragraph 2",
+            "number": 34
+          },
+          {
+            "id": "q35",
+            "type": "matching_information",
+            "text": "Which paragraph contains a reference to rising protectionist sentiment in advanced economies since 2016?",
+            "options": [
+              "Paragraph 1",
+              "Paragraph 2",
+              "Paragraph 3",
+              "Paragraph 4",
+              "Paragraph 5"
+            ],
+            "correct_answer": "Paragraph 4",
+            "explanation": "Paragraph 4 mentions 'rising protectionist sentiment in several advanced economies since 2016'.",
+            "paragraph_reference": "Paragraph 4",
+            "number": 35
+          },
+          {
+            "id": "q36",
+            "type": "sentence_completion",
+            "text": "The value of world merchandise exports rose from approximately 60 billion US dollars in 1950 to more than __________ dollars by the early 2020s.",
+            "options": [],
+            "correct_answer": "19 trillion",
+            "explanation": "Paragraph 1 states exports rose 'to more than 19 trillion dollars by the early 2020s'.",
+            "paragraph_reference": "Paragraph 1",
+            "number": 36
+          },
+          {
+            "id": "q37",
+            "type": "sentence_completion",
+            "text": "Firms participating in export markets exhibit productivity levels roughly __________ per cent higher than comparable domestic-oriented enterprises.",
+            "options": [],
+            "correct_answer": "25",
+            "explanation": "Paragraph 2 states export firms have 'productivity levels roughly 25 per cent higher'.",
+            "paragraph_reference": "Paragraph 2",
+            "number": 37
+          },
+          {
+            "id": "q38",
+            "type": "sentence_completion",
+            "text": "The 2008 financial crisis and pandemic-related disruptions revealed the vulnerability of concentrated production nodes to sudden __________.",
+            "options": [],
+            "correct_answer": "interruptions",
+            "explanation": "Paragraph 3 states these events 'revealed the vulnerability of concentrated production nodes to sudden interruptions'.",
+            "paragraph_reference": "Paragraph 3",
+            "number": 38
+          },
+          {
+            "id": "q39",
+            "type": "multiple_choice",
+            "text": "According to paragraph 2, what has been instrumental in persuading governments to pursue further liberalisation?",
+            "options": [
+              "A. The establishment of the General Agreement on Tariffs and Trade",
+              "B. Empirical findings on the aggregate benefits of trade liberalisation",
+              "C. Rising protectionist sentiment in advanced economies",
+              "D. The geographical fragmentation of production across borders"
+            ],
+            "correct_answer": "B",
+            "explanation": "Paragraph 2 states 'Such findings have been instrumental in persuading governments to pursue further liberalisation', referring to empirical research on trade benefits.",
+            "paragraph_reference": "Paragraph 2",
+            "number": 39
+          },
+          {
+            "id": "q40",
+            "type": "multiple_choice",
+            "text": "According to Professor Martin Ashworth in paragraph 4, what is a consequence of trade raising national income in aggregate?",
+            "options": [
+              "A. It eliminates adjustment costs for displaced workers",
+              "B. It equally distributes gains among all workers",
+              "C. It frequently depresses wages for less-skilled workers in import-competing sectors",
+              "D. It strengthens national autonomy over labour standards"
+            ],
+            "correct_answer": "C",
+            "explanation": "Paragraph 4 states Ashworth argues trade 'frequently depresses wages for less-skilled workers in import-competing sectors while concentrating gains among capital owners and highly educated professionals'.",
+            "paragraph_reference": "Paragraph 4",
+            "number": 40
+          }
+        ],
+        "passage_number": 3,
+        "estimated_time": 20
+      }
+    ],
+    "total_questions": 40,
+    "time_limit": 60
+  },
+  "writing": {
+    "task1": {
+      "task": 1,
+      "chart_type": "diagram",
+      "topic": "the rock cycle",
+      "prompt": "The diagram below shows the process of the rock cycle. Summarise the information by selecting and reporting the main features.",
+      "chart_data": {
+        "title": "The rock cycle",
+        "steps": [
+          "Magma cooling and crystallization",
+          "Igneous rock formation",
+          "Weathering and erosion",
+          "Sediment transport and deposition",
+          "Compaction and cementation",
+          "Metamorphism and melting"
+        ],
+        "descriptions": [
+          "Molten magma or lava cools and solidifies, crystallizing into igneous rock. This process can occur beneath the surface or on the surface after a volcanic eruption.",
+          "Igneous rocks form as magma or lava cools and hardens. Examples include granite and basalt, which are common in the Earth's crust.",
+          "Igneous rocks are broken down by weathering and eroded by wind, water, or ice. This produces loose sediments such as sand, silt, and clay.",
+          "Eroded sediments are transported by agents like rivers, wind, or glaciers and eventually deposited in layers. These deposits accumulate over time in basins or on the seafloor.",
+          "Over time, deposited sediments are buried and subjected to pressure and chemical processes. Compaction and cementation bind the grains together, forming sedimentary rock.",
+          "Sedimentary or igneous rocks can be altered by heat and pressure to form metamorphic rock. If subjected to extreme heat, they melt back into magma, restarting the cycle."
+        ],
+        "chart_type": "diagram",
+        "diagram_key": "rock_cycle",
+        "num_labels": 6
+      },
+      "chart_base64": "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AIoiEAIAAACAogiEAAAAAKAoAiEAAAAAKIpACAAAAACKIhACAAAAgKIIhAAAAACgKAIhAAAAACiKQAgAAAAAiiIQAgAAAICiCIQAAAAAoCgCIQAAAAAoikAIAAAAAIoiEAIAAACAogiEAAAAAKAoAiEAAAAAKIpACAAAAACKIhACAAAAgKIIhAAAAACgKAIhAAAAACiKQAgAAAAAiiIQAgAAAICiCIQAAAAAoCgCIQAAAAAoikAIAAAAAIoiEAIAAACAogiEAAAAAKAoAiEAAAAAKIpACAAAAACKIhACAAAAgKIIhAAAAACgKAIhAAAAACiKQAgAAAAAiiIQAgAAAICiCIQAAAAAoCgCIQAAAAAoikAIAAAAAIoiEAIAAACAogiEAAAAAKAoAiEAAAAAKIpACAAAAACKIhACAAAAgKIIhAAAAACgKAIhAAAAACiKQAgAAAAAiiIQAgAAAICiCIQAAAAAoCgCIQAAAAAoikAIAAAAAIoiEAIAAACAogiEAAAAAKAoAiEAAAAAKIpACAAAAACKIhACAAAAgKIIhAAAAACgKAIhAAAAACiKQAgAAAAAiiIQAgAAAICiCIQAAAAAoCgCIQAAAAAoikAIAAAAAIoiEAIAAACAogiEAAAAAKAoAiEAAAAAKIpACAAAAACKIhACAAAAgKIIhAAAAACgKAIhAAAAACiKQAgAAAAAiiIQAgAAAICiCIQAAAAAoCgCIQAAAAAoikAIAAAAAIoiEAIAAACAogiEAAAAAKAoAiEAAAAAKIpACAAAAACKIhACAAAAgKIIhAAAAACgKAIhAAAAACiKQAgAAAAAiiIQAgAAAICiCIQAAAAAoCgCIQAAAAAoikAIAAAAAIoiEAIAAACAogiEAAAAAKAoAiEAAAAAKIpACAAAAACKIhACAAAAgKIIhAAAAACgKAIhAAAAACiKQAgAAAAAiiIQAgAAAICiCIQAAAAAoCgCIQAAAAAoikAIAAAAAIoiEAIAAACAogiEAAAAAKAoAiEAAAAAKIpACAAAAACKIhACAAAAgKIIhAAAAACgKAIhAAAAACiKQAgAAAAAiiIQAgAAAICiCIQAAAAAoCgCIQAAAAAoikAIAAAAAIoiEAIAAACAogiEAAAAAKAoAiEAAAAAKIpACAAAAACKIhACAAAAgKIIhAAAAACgKAIhAAAAACiKQAgAAAAAiiIQAgAAAICiCIQAAAAAoCgCIQAAAAAoikAIAAAAAIoiEAIAAACAogiEAAAAAKAoAiEAAAAAKIpACAAAAACKIhACAAAAgKIIhAAAAACgKAIhAAAAACiKQAgAAAAAiiIQAgAAAICiCIQAAAAAoCgCIQAAAAAoikAIAAAAAIoiEAIAAACAogiEAAAAAKAoAiEAAAAAKIpACAAAAACKIhACAAAAgKIIhAAAAACgKAIhAAAAACiKQAgAAAAAiiIQAgAAAICiCIQAAAAAoCgCIQAAAAAoikAIAAAAAIoiEAIAAACAogiEAAAAAKAoAiEAAAAAKIpACAAAAACKIhACAAAAgKIIhAAAAACgKAIhAAAAACiKQAgAAAAAiiIQAgAAAICiCIQAAAAAoCgCIQAAAAAoikAIAAAAAIoiEAIAAACAogiEAAAAAKAoAiEAAAAAKIpACAAAAACKIhACAAAAgKIIhAAAAACgKAIhAAAAACiKQAgAAAAAiiIQAgAAAICiCIQAAAAAoCgCIQAAAAAoikAIAAAAAIoiEAIAAACAogiEAAAAAKAoAiEAAAAAKIpACAAAAACKIhACAAAAgKIIhAAAAACgKAIhAAAAACiKQAgAAAAAiiIQAgAAAICiCIQAAAAAoCgCIQAAAAAoikAIAAAAAIoiEAIAAACAogiEAAAAAKAoAiEAAAAAKIpACAAAAACKIhACAAAAgKIIhAAAAACgKAIhAAAAACiKQAgAAAAAiiIQAgAAAICiCIQAAAAAoCgCIQAAAAAoikAIAAAAAIoiEAIAAACAogiEAAAAAKAoAiEAAAAAKIpACAAAAACKIhACAAAAgKIIhAAAAACgKAIhAAAAACiKQAgAAAAAiiIQAgAAAICiCIQAAAAAoCgCIQAAAAAoikAIAAAAAIoiEAIAAACAogiEAAAAAKAoAiEAAAAAKIpACAAAAACKIhACAAAAgKIIhAAAAACgKAIhAAAAACiKQAgAAAAAiiIQAgAAAICiCIQAAAAAoCgCIQAAAAAoikAIAAAAAIoiEAIAAACAogiEAAAAAKAoAiEAAAAAKIpACAAAAACKIhACAAAAgKIIhAAAAACgKAIhAAAAACiKQAgAAAAAiiIQAgAAAICiCIQAAAAAoCgCIQAAAAAoikAIAAAAAIoiEAIAAACAogiEAAAAAKAoAiEAAAAAKIpACAAAAACKIhACAAAAgKL+PwAAAP//kedDvAAAAAZJREFUAwDSCnLGWKbjWwAAAABJRU5ErkJggg==",
+      "expected_features": [
+        "The process has 6 stages",
+        "Begins with: Magma cooling and crystallization",
+        "Ends with: Metamorphism and melting",
+        "Key detail: Igneous rocks form as magma or lava cools and hardens. Examples include granite and basalt, which are common in the Eart"
+      ],
+      "diagram_key": "rock_cycle",
+      "num_labels": 6,
+      "word_limit": 150,
+      "time_minutes": 20,
+      "difficulty": "medium",
+      "source": "ai"
+    },
+    "task2": {
+      "task": 2,
+      "topic": "Online shopping pros cons",
+      "prompt": "Online shopping has become increasingly popular in recent years. While it offers convenience and a wider range of products, concerns exist regarding its impact on local businesses and the environment. Do the advantages outweigh the disadvantages?",
+      "word_limit": 250,
+      "time_minutes": 40,
+      "difficulty": "medium",
+      "source": "ai"
+    },
+    "difficulty": "medium",
+    "exam_type": "ielts",
+    "total_time_minutes": 60,
+    "total_word_limit": 400,
+    "generated_at": "2026-10-01T19:27:14.892489+00:00",
+    "serial": "44a63ecb",
+    "session_id": "w_f570fbdc02f0",
+    "test_id": 1,
+    "source": "on_demand"
+  },
+  "speaking": {
+    "title": "IELTS Speaking Test",
+    "difficulty": "medium",
+    "exam_type": "ielts",
+    "total_duration": "11-14 minutes",
+    "test_title": "IELTS Speaking Test",
+    "part1_topic": "sports",
+    "part1": {
+      "examiner_greeting": "Good morning/afternoon. My name is Sarah Mitchell. Can you tell me your full name, please?",
+      "examiner_name_follow_up": "What would you like me to call you?",
+      "examiner_id_check": "Could you show me your identification, please?",
+      "examiner_thank_you": "Thank you. That's perfect.",
+      "examiner_test_explanation": "Now, before we begin the test, let me explain how it works. I will ask you questions in three parts. Part 1 is about yourself and familiar topics. Part 2 is a long turn where you will speak for 1-2 minutes on a given topic. Part 3 is a discussion of more abstract ideas. Are you ready?",
+      "examiner_begin": "Excellent. Let's begin.",
+      "warmup_section": {
+        "examiner_transition": "Now, I'd like to ask you some questions about yourself.",
+        "questions": [
+          {
+            "question": "Where are you from originally?",
+            "type": "description"
+          },
+          {
+            "question": "Do you work or are you studying at the moment?",
+            "type": "work_study"
+          },
+          {
+            "question": "What do you enjoy most about your work or studies?",
+            "type": "opinion"
+          }
+        ]
+      },
+      "topic_section": {
+        "examiner_transition": "Now, let's talk about sports.",
+        "questions": [
+          {
+            "question": "Do you like playing sports? Why or why not?",
+            "type": "opinion"
+          },
+          {
+            "question": "What sports are popular in your country?",
+            "type": "description"
+          },
+          {
+            "question": "Which do you prefer: watching sports or playing them? Why?",
+            "type": "comparison"
+          },
+          {
+            "question": "Have you ever taken part in a sports competition? What was it like?",
+            "type": "experience"
+          },
+          {
+            "question": "Would you rather do individual sports or team sports? Why?",
+            "type": "preference"
+          }
+        ]
+      },
+      "examiner_part1_closing": "Thank you. That's the end of Part 1. Now we'll move to Part 2."
+    },
+    "part2": {
+      "examiner_intro": "Now, I'm going to give you a topic and I'd like you to talk about it for one to two minutes.",
+      "examiner_instructions": "Before you speak, you'll have one minute to think about what you're going to say. You can make some notes if you wish.",
+      "examiner_card_presentation": "Here is your topic card.",
+      "topic_card": {
+        "title": "Describe a memorable journey you have taken.",
+        "prompts": [
+          "Where you went",
+          "When you went there",
+          "Who you went with",
+          "And explain why this journey was memorable for you."
+        ]
+      },
+      "examiner_preparation_start": "Alright? You have one minute to prepare.",
+      "examiner_preparation_end": "OK. Your preparation time is up.",
+      "examiner_speaking_start": "Please start speaking now.",
+      "examiner_speaking_end": "Thank you. Can I have the topic card back, please?",
+      "examiner_follow_up_question": "Just one quick question: Would you like to take a similar journey again in the future?",
+      "preparation_time": 60,
+      "speaking_time": 120
+    },
+    "part3": {
+      "examiner_intro": "Let's discuss some more general questions related to this topic.",
+      "examiner_transition": "I'd like to ask you a few more abstract questions now.",
+      "theme": "Travel and journeys",
+      "questions": [
+        {
+          "question": "Why do you think people enjoy travelling to new places?",
+          "type": "analysis"
+        },
+        {
+          "question": "How has travel changed compared to the past?",
+          "type": "comparison"
+        },
+        {
+          "question": "What are the benefits and drawbacks of tourism for local communities?",
+          "type": "evaluation"
+        },
+        {
+          "question": "In the future, do you think people will travel more or less? Why?",
+          "type": "prediction"
+        },
+        {
+          "question": "Some people say that travel broadens the mind. To what extent do you agree?",
+          "type": "opinion"
+        },
+        {
+          "question": "Should governments limit the number of tourists visiting certain areas? Why or why not?",
+          "type": "critical"
+        }
+      ],
+      "examiner_closing": "Thank you. That is the end of the speaking test.",
+      "examiner_final": "You can relax now. Your results will be available shortly."
+    },
+    "total_questions": 15,
+    "ai_generated": true,
+    "success": true,
+    "has_audio": false,
+    "parts_included": [
+      "part1",
+      "part2",
+      "part3"
+    ]
+  },
+  "_published_at": "2026-10-01T19:27:25.115743+00:00"
+}

@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <title>My Profile – SELTAI PREP</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        /* ─── RESET & BASE ─── */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+            line-height: 1.6;
+        }
+        .container { max-width: 900px; margin: 0 auto; }
+
+        /* ─── HEADER ─── */
+        .header {
+            display: flex; justify-content: space-between; align-items: center;
+            color: white; margin-bottom: 24px; padding: 12px 0;
+            flex-wrap: wrap; gap: 12px;
+        }
+        .header h1 {
+            font-size: 1.8em; font-weight: 700;
+            display: flex; align-items: center; gap: 10px;
+        }
+        .header .nav-links {
+            display: flex; gap: 10px; flex-wrap: wrap;
+        }
+        .header a {
+            color: white; text-decoration: none; font-weight: 600;
+            background: rgba(255,255,255,0.15); padding: 8px 18px;
+            border-radius: 30px; transition: background 0.2s;
+            font-size: 0.9em; display: inline-flex; align-items: center; gap: 6px;
+        }
+        .header a:hover { background: rgba(255,255,255,0.25); }
+
+        /* ─── CARD ─── */
+        .card {
+            background: white; border-radius: 20px;
+            padding: 30px 34px; margin-bottom: 20px;
+            box-shadow: 0 15px 45px rgba(0,0,0,0.2);
+            transition: transform 0.2s;
+        }
+        .card:hover { transform: translateY(-2px); }
+        .card h2 {
+            font-size: 1.3em; margin-bottom: 20px;
+            padding-bottom: 12px; border-bottom: 2px solid #f0f0f0;
+            color: #333; display: flex; align-items: center; gap: 10px;
+        }
+        .card h2 i { color: #667eea; }
+
+        /* ─── AVATAR SECTION ─── */
+        .avatar-section {
+            display: flex; align-items: center; gap: 20px;
+            margin-bottom: 24px; padding-bottom: 20px;
+            border-bottom: 2px solid #f0f0f0;
+            flex-wrap: wrap;
+        }
+        .avatar {
+            width: 80px; height: 80px; border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            display: flex; align-items: center; justify-content: center;
+            color: white; font-size: 2.2em; font-weight: 700;
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.35);
+            flex-shrink: 0;
+        }
+        .avatar-info h3 {
+            font-size: 1.4em; color: #333; margin-bottom: 4px;
+        }
+        .avatar-info p { color: #888; font-size: 0.9em; word-break: break-all; }
+        .avatar-info .badge {
+            display: inline-block; background: #667eea; color: white;
+            padding: 3px 12px; border-radius: 20px;
+            font-size: 0.75em; font-weight: 600; text-transform: uppercase;
+            margin-top: 6px; letter-spacing: 0.5px;
+        }
+
+        /* ─── FORM ─── */
+        .form-row {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+        }
+        @media (max-width: 600px) {
+            .form-row { grid-template-columns: 1fr; }
+        }
+
+        .form-group { margin-bottom: 18px; }
+        .form-group label {
+            display: block; margin-bottom: 6px;
+            font-weight: 600; color: #444; font-size: 0.9em;
+        }
+        .form-group input {
+            width: 100%; padding: 11px 14px;
+            border: 1px solid #ddd; border-radius: 10px;
+            font-size: 15px; background: #fafbfc;
+            font-family: inherit;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .form-group input:focus {
+            outline: none; border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            background: white;
+        }
+        .form-group input:disabled {
+            background: #f5f5f5; color: #888;
+            cursor: not-allowed;
+        }
+        .form-hint {
+            font-size: 0.78em; color: #888;
+            margin-top: 4px; display: block;
+        }
+
+        /* ─── BUTTONS ─── */
+        .btn {
+            padding: 12px 26px; border: none; border-radius: 10px;
+            font-size: 15px; font-weight: 600; cursor: pointer;
+            transition: all 0.2s; display: inline-flex;
+            align-items: center; gap: 8px;
+            font-family: inherit;
+        }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            box-shadow: 0 4px 14px rgba(102, 126, 234, 0.35);
+        }
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+        .btn-secondary {
+            background: #f1f3f5; color: #444;
+            border: 1px solid #ddd;
+        }
+        .btn-secondary:hover:not(:disabled) {
+            background: #e5e8eb;
+        }
+
+        /* ─── STATS GRID ─── */
+        .stats-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr);
+            gap: 16px; margin-bottom: 20px;
+        }
+        @media (max-width: 600px) {
+            .stats-grid { grid-template-columns: 1fr; }
+        }
+        .stat-box {
+            text-align: center; padding: 20px;
+            background: #f8f9fc; border-radius: 14px;
+            transition: transform 0.2s, background 0.2s;
+        }
+        .stat-box:hover {
+            transform: translateY(-3px);
+            background: #f1f3ff;
+        }
+        .stat-box .value {
+            font-size: 2em; font-weight: 700;
+            color: #667eea; display: block;
+            margin-bottom: 4px; line-height: 1.2;
+        }
+        .stat-box .label {
+            font-size: 0.82em; color: #666;
+            text-transform: uppercase; letter-spacing: 0.5px;
+            font-weight: 600;
+        }
+        .stat-box .sublabel {
+            font-size: 0.75em; color: #999;
+            margin-top: 2px;
+        }
+
+        /* ─── ALERTS ─── */
+        .alert {
+            padding: 12px 16px; border-radius: 10px;
+            margin-bottom: 16px; font-weight: 500;
+            display: none; align-items: center; gap: 8px;
+        }
+        .alert.success {
+            background: #efe; color: #2a7a2a;
+            border-left: 4px solid #3c3;
+            display: flex;
+        }
+        .alert.error {
+            background: #fee; color: #c33;
+            border-left: 4px solid #c33;
+            display: flex;
+        }
+
+        /* ─── SPINNER ─── */
+        .spinner-sm {
+            display: inline-block; width: 16px; height: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%; border-top-color: #fff;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ─── SUBSCRIPTION BANNER ─── */
+        .sub-banner {
+            padding: 14px 18px; border-radius: 12px;
+            margin-bottom: 16px;
+            display: flex; justify-content: space-between;
+            align-items: center; flex-wrap: wrap; gap: 12px;
+        }
+        .sub-banner.active {
+            background: #dcfce7; border-left: 4px solid #16a34a;
+        }
+        .sub-banner.free {
+            background: #fef3c7; border-left: 4px solid #d97706;
+        }
+        .sub-banner .info {
+            font-size: 0.92em; color: #333;
+        }
+        .sub-banner .info strong { color: #111; }
+        .sub-banner a {
+            padding: 6px 16px; border-radius: 20px;
+            text-decoration: none; font-weight: 600;
+            font-size: 0.85em; transition: 0.2s;
+        }
+        .sub-banner.active a {
+            background: #16a34a; color: white;
+        }
+        .sub-banner.free a {
+            background: #d97706; color: white;
+        }
+        .sub-banner a:hover { transform: scale(1.05); }
+
+        /* ─── BACK TO DASHBOARD (mobile) ─── */
+        @media (max-width: 480px) {
+            .card { padding: 22px 18px; }
+            .header h1 { font-size: 1.4em; }
+            .avatar { width: 60px; height: 60px; font-size: 1.6em; }
+            .avatar-info h3 { font-size: 1.15em; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- ─── HEADER ─── -->
+        <div class="header">
+            <h1><i class="fas fa-user-circle"></i> My Profile</h1>
+            <div class="nav-links">
+                <a href="/dashboard"><i class="fas fa-home"></i> Dashboard</a>
+                <a href="/my-bills"><i class="fas fa-receipt"></i> My Bills</a>
+                <a href="/logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+            </div>
+        </div>
+
+        <!-- Global alert box -->
+        <div id="global-alert" class="alert"></div>
+
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!-- Profile Card                                            -->
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <div class="card">
+            <div class="avatar-section">
+                <div class="avatar">{{ (user.full_name or user.username)[0]|upper }}</div>
+                <div class="avatar-info">
+                    <h3>{{ user.full_name or user.username }}</h3>
+                    <p>{{ user.email }}</p>
+                    <span class="badge">{{ module|upper }} User</span>
+                    {% if user.is_admin %}
+                    <span class="badge" style="background:#dc2626;">ADMIN</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <h2><i class="fas fa-id-card"></i> Personal Information</h2>
+            <form id="profile-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Username</label>
+                        <input type="text" value="{{ user.username }}" disabled>
+                        <span class="form-hint">Username cannot be changed</span>
+                    </div>
+                    <div class="form-group">
+                        <label>Email Address</label>
+                        <input type="email" value="{{ user.email }}" disabled>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Full Name</label>
+                        <input type="text" name="full_name" id="full_name"
+                               value="{{ user.full_name or '' }}"
+                               placeholder="Your full name"
+                               maxlength="120"
+                               autocomplete="name">
+                        <span class="form-hint">Optional — used for display purposes</span>
+                    </div>
+                    <div class="form-group">
+                        <label>Target Band Score</label>
+                        <input type="number" name="target_band" id="target_band"
+                               value="{{ user.target_band if user.target_band else '' }}"
+                               placeholder="e.g. 7.5"
+                               step="0.5" min="0" max="9">
+                        <span class="form-hint">Between 0 and 9 (e.g., 6.5, 7.0, 8.5)</span>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary" id="save-profile-btn">
+                    <i class="fas fa-save"></i> <span>Save Changes</span>
+                </button>
+            </form>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!-- Stats Card                                              -->
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <div class="card">
+            <h2><i class="fas fa-chart-line"></i> Account Statistics</h2>
+
+            <!-- Subscription banner -->
+            {% if subscription %}
+                {% if subscription.status == 'active' and subscription.plan != 'free' %}
+                <div class="sub-banner active">
+                    <div class="info">
+                        ✅ <strong>{{ subscription.plan|upper }}</strong> plan active ·
+                        <strong>{{ subscription.tests_remaining or 0 }}</strong> tests remaining
+                        {% if subscription.subscription_end %}
+                        · expires {{ subscription.subscription_end.strftime('%b %d, %Y') }}
+                        {% endif %}
+                    </div>
+                    <a href="/subscription?module={{ module }}">Manage Plan</a>
+                </div>
+                {% else %}
+                <div class="sub-banner free">
+                    <div class="info">
+                        ⚡ <strong>Free Plan</strong> ·
+                        <strong>{{ subscription.tests_remaining or 0 }}</strong> free tests left
+                    </div>
+                    <a href="/subscription?module={{ module }}">Subscribe Now →</a>
+                </div>
+                {% endif %}
+            {% endif %}
+
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <span class="value">{{ total_tests }}</span>
+                    <span class="label">Tests Taken</span>
+                    <div class="sublabel">all time</div>
+                </div>
+                <div class="stat-box">
+                    <span class="value">
+                        {% if subscription %}
+                            {{ subscription.tests_remaining if subscription.tests_remaining is not none else '—' }}
+                        {% else %}—{% endif %}
+                    </span>
+                    <span class="label">Tests Remaining</span>
+                    <div class="sublabel">current plan</div>
+                </div>
+                <div class="stat-box">
+                    <span class="value">
+                        {% if user.last_login %}
+                            {{ user.last_login.strftime('%b %d') }}
+                        {% else %}—{% endif %}
+                    </span>
+                    <span class="label">Last Login</span>
+                    <div class="sublabel">
+                        {% if user.last_login %}
+                            {{ user.last_login.strftime('%I:%M %p') }}
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="stats-grid" style="margin-bottom:0;">
+                <div class="stat-box">
+                    <span class="value">
+                        {% if user.target_band %}{{ "%.1f"|format(user.target_band) }}{% else %}—{% endif %}
+                    </span>
+                    <span class="label">Target Band</span>
+                </div>
+                <div class="stat-box">
+                    <span class="value">
+                        {% if user.created_at %}
+                            {{ user.created_at.strftime('%b %Y') }}
+                        {% else %}—{% endif %}
+                    </span>
+                    <span class="label">Member Since</span>
+                </div>
+                <div class="stat-box">
+                    <span class="value" style="font-size:1.3em;">
+                        {{ module|upper }}
+                    </span>
+                    <span class="label">Current Module</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!-- Change Password Card                                    -->
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <div class="card">
+            <h2><i class="fas fa-lock"></i> Change Password</h2>
+            <form id="password-form">
+                <div class="form-group">
+                    <label>Current Password</label>
+                    <input type="password" name="current_password" id="current_password"
+                           required autocomplete="current-password"
+                           placeholder="Enter your current password">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>New Password</label>
+                        <input type="password" name="new_password" id="new_password"
+                               required minlength="8"
+                               autocomplete="new-password"
+                               placeholder="At least 8 characters">
+                        <span class="form-hint">Minimum 8 characters</span>
+                    </div>
+                    <div class="form-group">
+                        <label>Confirm New Password</label>
+                        <input type="password" name="confirm_password" id="confirm_password"
+                               required minlength="8"
+                               autocomplete="new-password"
+                               placeholder="Repeat new password">
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary" id="change-pw-btn">
+                    <i class="fas fa-key"></i> <span>Change Password</span>
+                </button>
+            </form>
+        </div>
+
+        <!-- Back to Dashboard (bottom) -->
+        <div style="text-align:center; padding-bottom:30px;">
+            <a href="/dashboard" class="btn btn-secondary"
+               style="text-decoration:none; color:#444;">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- ─── SCRIPTS ─── -->
+    <script>
+        (function() {
+            "use strict";
+
+            // ─── CSRF Token ───
+            function getCsrfToken() {
+                const meta = document.querySelector('meta[name="csrf-token"]');
+                return meta ? meta.getAttribute('content') : '';
+            }
+
+            // ─── Alert helper ───
+            var alertTimeout = null;
+            function showAlert(msg, type) {
+                var el = document.getElementById('global-alert');
+                var icon = type === 'success'
+                    ? '<i class="fas fa-check-circle"></i>'
+                    : '<i class="fas fa-exclamation-circle"></i>';
+                el.innerHTML = icon + ' ' + msg;
+                el.className = 'alert ' + (type || 'success');
+                el.style.display = 'flex';
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+
+                if (alertTimeout) clearTimeout(alertTimeout);
+                alertTimeout = setTimeout(function() {
+                    el.style.display = 'none';
+                }, 5000);
+            }
+
+            // ═══════════════════════════════════════════════════════
+            // Profile Form (Full name + Target band)
+            // ═══════════════════════════════════════════════════════
+            var profileForm = document.getElementById('profile-form');
+            var saveBtn = document.getElementById('save-profile-btn');
+
+            profileForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+
+                var fullName = document.getElementById('full_name').value.trim();
+                var targetBand = document.getElementById('target_band').value.trim();
+
+                // Client-side validation for target_band
+                if (targetBand !== '') {
+                    var tb = parseFloat(targetBand);
+                    if (isNaN(tb) || tb < 0 || tb > 9) {
+                        showAlert('Target band must be between 0 and 9', 'error');
+                        return;
+                    }
+                }
+
+                saveBtn.disabled = true;
+                var origHtml = saveBtn.innerHTML;
+                saveBtn.innerHTML = '<span class="spinner-sm"></span> Saving...';
+
+                var payload = new URLSearchParams();
+                payload.append('full_name', fullName);
+                payload.append('target_band', targetBand);
+
+                fetch('/profile/update', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-CSRF-Token': getCsrfToken()
+                    },
+                    body: payload.toString()
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    saveBtn.disabled = false;
+                    saveBtn.innerHTML = origHtml;
+                    if (data.success) {
+                        showAlert(data.message || 'Profile updated successfully!', 'success');
+                    } else {
+                        showAlert(data.error || 'Update failed', 'error');
+                    }
+                })
+                .catch(function(err) {
+                    saveBtn.disabled = false;
+                    saveBtn.innerHTML = origHtml;
+                    showAlert('Network error: ' + err.message, 'error');
+                });
+            });
+
+            // ═══════════════════════════════════════════════════════
+            // Change Password Form
+            // ═══════════════════════════════════════════════════════
+            var passwordForm = document.getElementById('password-form');
+            var changeBtn = document.getElementById('change-pw-btn');
+
+            passwordForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+
+                var cp = document.getElementById('current_password').value;
+                var np = document.getElementById('new_password').value;
+                var cf = document.getElementById('confirm_password').value;
+
+                if (!cp) {
+                    showAlert('Please enter your current password', 'error');
+                    return;
+                }
+                if (np.length < 8) {
+                    showAlert('New password must be at least 8 characters', 'error');
+                    return;
+                }
+                if (np !== cf) {
+                    showAlert('New passwords do not match', 'error');
+                    return;
+                }
+                if (np === cp) {
+                    showAlert('New password must be different from current password', 'error');
+                    return;
+                }
+
+                changeBtn.disabled = true;
+                var origHtml = changeBtn.innerHTML;
+                changeBtn.innerHTML = '<span class="spinner-sm"></span> Changing...';
+
+                var payload = new URLSearchParams();
+                payload.append('current_password', cp);
+                payload.append('new_password', np);
+                payload.append('confirm_password', cf);
+
+                fetch('/profile/change-password', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-CSRF-Token': getCsrfToken()
+                    },
+                    body: payload.toString()
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    changeBtn.disabled = false;
+                    changeBtn.innerHTML = origHtml;
+                    if (data.success) {
+                        showAlert(data.message || 'Password changed successfully!', 'success');
+                        passwordForm.reset();
+                    } else {
+                        showAlert(data.error || 'Failed to change password', 'error');
+                    }
+                })
+                .catch(function(err) {
+                    changeBtn.disabled = false;
+                    changeBtn.innerHTML = origHtml;
+                    showAlert('Network error: ' + err.message, 'error');
+                });
+            });
+
+        })();
+    </script>
+</body>
+</html>

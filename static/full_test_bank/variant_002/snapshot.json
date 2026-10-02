@@ -1,0 +1,1665 @@
+{
+  "listening": {
+    "sections": [
+      {
+        "section_num": 1,
+        "title": "Conversation",
+        "type": "conversation",
+        "speakers": [
+          "Agent",
+          "Customer"
+        ],
+        "speaker_genders": {
+          "Agent": "male",
+          "Customer": "female"
+        },
+        "context": "A conversation between a customer and an agent.",
+        "questions": [
+          {
+            "question": "Full name: ________",
+            "type": "form_completion",
+            "answer": "Sofia Martinez",
+            "options": [],
+            "number": 1,
+            "section": 1,
+            "answer_format": {
+              "max_words": 2,
+              "description": "NO MORE THAN TWO WORDS"
+            }
+          },
+          {
+            "question": "Contact phone number: ________",
+            "type": "form_completion",
+            "answer": "07700 900567",
+            "options": [],
+            "number": 2,
+            "section": 1,
+            "answer_format": {
+              "max_words": 2,
+              "description": "NO MORE THAN TWO WORDS"
+            }
+          },
+          {
+            "question": "Email address: _______",
+            "type": "form_completion",
+            "answer": "sofia.martinez@email.com",
+            "text": "Email address: _______",
+            "options": [],
+            "number": 3,
+            "section": 1,
+            "answer_format": {
+              "max_words": 1,
+              "description": "ONE WORD ONLY"
+            }
+          },
+          {
+            "question": "Festival start date: ________",
+            "type": "form_completion",
+            "answer": "15 July",
+            "options": [],
+            "number": 4,
+            "section": 1,
+            "answer_format": {
+              "max_words": 1,
+              "format": "date",
+              "description": "A DATE"
+            }
+          },
+          {
+            "question": "Type of ticket requested: ________",
+            "type": "form_completion",
+            "answer": "weekend pass",
+            "options": [],
+            "number": 5,
+            "section": 1,
+            "answer_format": {
+              "max_words": 2,
+              "description": "NO MORE THAN TWO WORDS"
+            }
+          },
+          {
+            "question": "Number of tickets: ________",
+            "type": "form_completion",
+            "answer": "2",
+            "options": [],
+            "number": 6,
+            "section": 1,
+            "answer_format": {
+              "max_words": 1,
+              "description": "ONE WORD ONLY"
+            }
+          },
+          {
+            "question": "Total cost: £________",
+            "type": "form_completion",
+            "answer": "255",
+            "options": [],
+            "number": 7,
+            "section": 1,
+            "answer_format": {
+              "max_words": 1,
+              "format": "money",
+              "description": "A MONEY AMOUNT"
+            }
+          },
+          {
+            "question": "Payment method: ________",
+            "type": "form_completion",
+            "answer": "credit card",
+            "options": [],
+            "number": 8,
+            "section": 1,
+            "answer_format": {
+              "max_words": 2,
+              "description": "NO MORE THAN TWO WORDS"
+            }
+          },
+          {
+            "question": "What is the name of the headline band on Saturday?",
+            "type": "multiple_choice",
+            "options": [
+              "A: The Rolling Tides",
+              "B: The Jazz Collective",
+              "C: The Folk Revival"
+            ],
+            "answer": "A",
+            "number": 9,
+            "section": 1,
+            "answer_format": {
+              "max_words": 1,
+              "letters_only": true,
+              "description": "A LETTER"
+            }
+          },
+          {
+            "question": "What is the booking reference number?",
+            "type": "multiple_choice",
+            "options": [
+              "A: FEST-4821",
+              "B: FEST-4812",
+              "C: FEST-8421"
+            ],
+            "answer": "A",
+            "number": 10,
+            "section": 1,
+            "answer_format": {
+              "max_words": 1,
+              "letters_only": true,
+              "description": "A LETTER"
+            }
+          }
+        ],
+        "word_count": 462,
+        "ai_generated": true,
+        "target_duration": 180,
+        "audio_url": null,
+        "script": "Agent: Good morning, thank you for calling the Riverside Music Festival box , I mean, office. My name is Noah. How can I help you today?\nCustomer: Oh, hello. Um, yes, I'd like to enquire about tickets for the music festival, please. I heard it's happening next month.\nAgent: Certainly. I can help you with that. Could I start by taking your full name, please?\nCustomer: Um, Yes, it's Sofia.. er, Sofia Martinez. That's S-O-F-I-A, and Martinez, M-A-R-T-I-N-E-Z. I am not sure\nAgent: Thank you, Sofia. And could I get a contact phone number, please?\nCustomer: Yes, it's 07700 900456. Oh, wait, sorry, that's my old number. The correct one is 07700 900567.\nAgent: Got it, 07700 900567. And an email address for confirmation?\nCustomer: Hmm, Yes, it's sofia.martinez@email.com. That's all lowercase.\nAgent: Perfect. Now, what would you like to know about the festival?\nCustomer: Well, I'm interested in the date , sort of, and the lineup. When exactly is it?\nAgent: The festival runs from the 15th to the 17th , you know, of July. The main concert is on the Saturday evening.\nCustomer: Right. And which bands are playing? I've heard there's a really good rock band.\nAgent: Yes, the headline act on Saturday is The Rolling Tides. There's also a jazz band on Friday and a folk group on Sunday.\nCustomer: The Rolling Tides? I love them! Um, so how much are the tickets?\nAgent: A weekend pass is £120, but if you only want a day ticket, it's £50 per day.\nCustomer: I see. I think I'll go for the weekend pass. Oh, but I might only attend two days. Er, can I decide later?\nAgent: I'm afraid the weekend pass is fixed, but you can buy individual day tickets now and add more later if available.\nCustomer: Hmm, Okay, I'll take the weekend pass then. And how many people can I bring? I mean, is there a group discount?\nAgent: Yes, for groups of four or more, we offer a 10% discount. How many tickets would you like?\nCustomer: Just two, please. For me and my friend.\nAgent: Alright. So that's two weekend passes at £120 , like, each, total £240. How would you like to pay?\nCustomer: By credit card, please. Visa.\nAgent: Fine. And would you like to add any special requests? Like camping or parking?\nCustomer: Oh, yes, parking please. Is that extra?\nAgent: Yes, parking is £15 for the weekend. So that brings your total to £255.\nCustomer: Okay, that's fine. Um, can I get a reference number for my booking?\nAgent: Of course. Your reference is FEST-4821. Let me confirm your details: Sofia Martinez, phone 07700 900567, email sofia.martinez@email.com, two weekend passes with parking, total £255, paid by Visa. Is that correct?"
+      },
+      {
+        "section_num": 2,
+        "title": "Information Talk: University",
+        "type": "monologue",
+        "speakers": [
+          "Guide"
+        ],
+        "speaker_genders": {
+          "Guide": "male"
+        },
+        "context": "A guide talks about university.",
+        "questions": [
+          {
+            "id": "q_2_1",
+            "number": 11,
+            "text": "Where is the library?",
+            "type": "map_labeling",
+            "map_title": "University Campus Map",
+            "map_locations": [
+              {
+                "letter": "A",
+                "name": "Main Entrance"
+              },
+              {
+                "letter": "B",
+                "name": "Clock Tower"
+              },
+              {
+                "letter": "C",
+                "name": "Library"
+              },
+              {
+                "letter": "D",
+                "name": "Student Union Building"
+              },
+              {
+                "letter": "E",
+                "name": "Sports Centre"
+              },
+              {
+                "letter": "F",
+                "name": "Medical Centre"
+              },
+              {
+                "letter": "G",
+                "name": "Admin Building"
+              },
+              {
+                "letter": "H",
+                "name": "Cafeteria"
+              }
+            ],
+            "correct_answer": "C",
+            "question": "Where is the library?",
+            "answer": "C",
+            "options": [],
+            "section": 2,
+            "answer_format": {
+              "max_words": 1,
+              "description": "ONE WORD ONLY"
+            }
+          },
+          {
+            "id": "q_2_2",
+            "number": 12,
+            "text": "Where is the sports centre?",
+            "type": "map_labeling",
+            "map_title": "University Campus Map",
+            "map_locations": [
+              {
+                "letter": "A",
+                "name": "Main Entrance"
+              },
+              {
+                "letter": "B",
+                "name": "Clock Tower"
+              },
+              {
+                "letter": "C",
+                "name": "Library"
+              },
+              {
+                "letter": "D",
+                "name": "Student Union Building"
+              },
+              {
+                "letter": "E",
+                "name": "Sports Centre"
+              },
+              {
+                "letter": "F",
+                "name": "Medical Centre"
+              },
+              {
+                "letter": "G",
+                "name": "Admin Building"
+              },
+              {
+                "letter": "H",
+                "name": "Cafeteria"
+              }
+            ],
+            "correct_answer": "E",
+            "question": "Where is the sports centre?",
+            "answer": "E",
+            "options": [],
+            "section": 2,
+            "answer_format": {
+              "max_words": 1,
+              "description": "ONE WORD ONLY"
+            }
+          },
+          {
+            "id": "q_2_3",
+            "number": 13,
+            "text": "Where is the medical centre?",
+            "type": "map_labeling",
+            "map_title": "University Campus Map",
+            "map_locations": [
+              {
+                "letter": "A",
+                "name": "Main Entrance"
+              },
+              {
+                "letter": "B",
+                "name": "Clock Tower"
+              },
+              {
+                "letter": "C",
+                "name": "Library"
+              },
+              {
+                "letter": "D",
+                "name": "Student Union Building"
+              },
+              {
+                "letter": "E",
+                "name": "Sports Centre"
+              },
+              {
+                "letter": "F",
+                "name": "Medical Centre"
+              },
+              {
+                "letter": "G",
+                "name": "Admin Building"
+              },
+              {
+                "letter": "H",
+                "name": "Cafeteria"
+              }
+            ],
+            "correct_answer": "F",
+            "question": "Where is the medical centre?",
+            "answer": "F",
+            "options": [],
+            "section": 2,
+            "answer_format": {
+              "max_words": 1,
+              "description": "ONE WORD ONLY"
+            }
+          },
+          {
+            "id": "q_2_4",
+            "number": 14,
+            "text": "Where is the careers office?",
+            "type": "map_labeling",
+            "map_title": "University Campus Map",
+            "map_locations": [
+              {
+                "letter": "A",
+                "name": "Main Entrance"
+              },
+              {
+                "letter": "B",
+                "name": "Clock Tower"
+              },
+              {
+                "letter": "C",
+                "name": "Library"
+              },
+              {
+                "letter": "D",
+                "name": "Student Union Building"
+              },
+              {
+                "letter": "E",
+                "name": "Sports Centre"
+              },
+              {
+                "letter": "F",
+                "name": "Medical Centre"
+              },
+              {
+                "letter": "G",
+                "name": "Admin Building"
+              },
+              {
+                "letter": "H",
+                "name": "Cafeteria"
+              }
+            ],
+            "correct_answer": "G",
+            "question": "Where is the careers office?",
+            "answer": "G",
+            "options": [],
+            "section": 2,
+            "answer_format": {
+              "max_words": 1,
+              "description": "ONE WORD ONLY"
+            }
+          },
+          {
+            "id": "q_2_5",
+            "number": 15,
+            "text": "Where is the cafeteria?",
+            "type": "map_labeling",
+            "map_title": "University Campus Map",
+            "map_locations": [
+              {
+                "letter": "A",
+                "name": "Main Entrance"
+              },
+              {
+                "letter": "B",
+                "name": "Clock Tower"
+              },
+              {
+                "letter": "C",
+                "name": "Library"
+              },
+              {
+                "letter": "D",
+                "name": "Student Union Building"
+              },
+              {
+                "letter": "E",
+                "name": "Sports Centre"
+              },
+              {
+                "letter": "F",
+                "name": "Medical Centre"
+              },
+              {
+                "letter": "G",
+                "name": "Admin Building"
+              },
+              {
+                "letter": "H",
+                "name": "Cafeteria"
+              }
+            ],
+            "correct_answer": "H",
+            "question": "Where is the cafeteria?",
+            "answer": "H",
+            "options": [],
+            "section": 2,
+            "answer_format": {
+              "max_words": 1,
+              "description": "ONE WORD ONLY"
+            }
+          },
+          {
+            "id": "q_2_6",
+            "number": 16,
+            "text": "The university was founded in ________.",
+            "type": "form_completion",
+            "correct_answer": "1924",
+            "question": "The university was founded in ________.",
+            "answer": "1924",
+            "options": [],
+            "section": 2,
+            "answer_format": {
+              "max_words": 1,
+              "description": "ONE WORD ONLY"
+            }
+          },
+          {
+            "id": "q_2_7",
+            "number": 17,
+            "text": "The campus bus runs every ________ minutes.",
+            "type": "form_completion",
+            "correct_answer": "15",
+            "question": "The campus bus runs every ________ minutes.",
+            "answer": "15",
+            "options": [],
+            "section": 2,
+            "answer_format": {
+              "max_words": 1,
+              "description": "ONE WORD ONLY"
+            }
+          },
+          {
+            "id": "q_2_8",
+            "number": 18,
+            "text": "The weekly bus pass costs £________.",
+            "type": "form_completion",
+            "correct_answer": "12",
+            "question": "The weekly bus pass costs £________.",
+            "answer": "12",
+            "options": [],
+            "section": 2,
+            "answer_format": {
+              "max_words": 1,
+              "description": "ONE WORD ONLY"
+            }
+          },
+          {
+            "id": "q_2_9",
+            "number": 19,
+            "text": "The orientation fair is on ________.",
+            "type": "form_completion",
+            "correct_answer": "September 20th",
+            "question": "The orientation fair is on ________.",
+            "answer": "September 20th",
+            "options": [],
+            "section": 2,
+            "answer_format": {
+              "max_words": 2,
+              "description": "NO MORE THAN TWO WORDS"
+            }
+          },
+          {
+            "id": "q_2_10",
+            "number": 20,
+            "text": "The first term starts on ________.",
+            "type": "form_completion",
+            "correct_answer": "October 5th",
+            "question": "The first term starts on ________.",
+            "answer": "October 5th",
+            "options": [],
+            "section": 2,
+            "answer_format": {
+              "max_words": 2,
+              "description": "NO MORE THAN TWO WORDS"
+            }
+          }
+        ],
+        "word_count": 528,
+        "ai_generated": true,
+        "target_duration": 210,
+        "audio_url": null,
+        "script": "Hello everyone, and a very warm welcome to the University of Bredon. I'm Sarah, your guide for this morning's orientation tour, and I'm delighted to see so many of you here. Now, before we set off, let me give you a little bit of background. The university was founded in 1924, originally as a teacher training college with just sixty students. It became a full university in 1965, and today we have over eighteen thousand students from more than a hundred countries. As you can see, the campus has grown quite a bit since those early days. In fact, the site now covers more than seventy acres, and there are plans to open a brand-new science park on the eastern edge of campus next year. Now, let's talk about the layout. We're standing at the main entrance, and directly ahead is the clock tower. That's the oldest building on campus. To the left of the clock tower, you'll find the library – a modern glass structure that's open twenty-four hours during term time. To the right is the student union building, which houses the café, the shop, and the advice centre. I'd like to draw your attention to the map I've handed out. You'll see several numbered locations. Let me point out a few key ones. The sports centre is located at the north end of campus, just beyond the student union. It has a swimming pool, a gym, and outdoor tennis courts. The pool is open from six in the morning until ten at night, and membership is included in your student fees. If you head south from the main entrance, you'll come to the medical centre, which offers free appointments for all registered students. It's a small building, easy to miss, so look out for the blue sign beside the car park. Now, let's move on to student services. The careers office is on the second floor of the admin building – that's the red brick building next to the clock tower. They offer CV workshops, interview practice, and job fairs throughout the year. Last year, more than three thousand students used the service, and over eighty per cent of them found work within six months of graduating. The counselling service is in the same building, but on the ground floor. You might be interested to know that all appointments are confidential and free of charge. For practical information: the campus bus runs every fifteen minutes from 7 am to 11 pm, Monday to Friday. A single ticket costs two pounds fifty, but you can buy a weekly pass for twelve pounds. The main cafeteria is in the student union, and it serves hot meals from noon until 8 pm. Wi-Fi is available everywhere on campus – just log in with your student ID and password. Finally, a few dates for your diary. The orientation fair is on September 20th in the great hall. The first term starts on October 5th. And if you have any questions, my office is in room 214 of the admin building. I'm usually there from 9 to 5. Right, let's begin the tour. Please stay together and watch your step."
+      },
+      {
+        "section_num": 3,
+        "title": "Discussion: Digital Marketing",
+        "type": "discussion",
+        "speakers": [
+          "Dr. Amy",
+          "Paisley",
+          "Audrey",
+          "Gary"
+        ],
+        "speaker_genders": {
+          "Tutor": "female",
+          "Student1": "female",
+          "Student2": "female",
+          "Student3": "male",
+          "Dr. Amy": "female",
+          "Paisley": "female",
+          "Audrey": "female",
+          "Gary": "male"
+        },
+        "context": "A discussion about digital_marketing.",
+        "questions": [
+          {
+            "question": "One major issue in digital marketing is ________.",
+            "type": "note_completion",
+            "answer": "data privacy",
+            "options": [],
+            "number": 21,
+            "section": 3,
+            "answer_format": {
+              "max_words": 2,
+              "description": "NO MORE THAN TWO WORDS"
+            }
+          },
+          {
+            "question": "The GDPR was introduced in ________.",
+            "type": "note_completion",
+            "answer": "2018",
+            "options": [],
+            "number": 22,
+            "section": 3,
+            "answer_format": {
+              "max_words": 1,
+              "description": "ONE WORD ONLY"
+            }
+          },
+          {
+            "question": "Companies use ________ to trick users into consenting.",
+            "type": "note_completion",
+            "answer": "dark patterns",
+            "options": [],
+            "number": 23,
+            "section": 3,
+            "answer_format": {
+              "max_words": 2,
+              "description": "NO MORE THAN TWO WORDS"
+            }
+          },
+          {
+            "question": "Match the speaker to their proposed solution.",
+            "type": "matching",
+            "options": [
+              "A: Paisley",
+              "B: Audrey",
+              "C: Gary"
+            ],
+            "answer": "A",
+            "number": 24,
+            "section": 3,
+            "answer_format": {
+              "max_words": 1,
+              "letters_only": true,
+              "description": "A LETTER"
+            }
+          },
+          {
+            "question": "Algorithmic bias can reinforce ________.",
+            "type": "note_completion",
+            "answer": "stereotypes",
+            "options": [],
+            "number": 25,
+            "section": 3,
+            "answer_format": {
+              "max_words": 1,
+              "description": "ONE WORD ONLY"
+            }
+          },
+          {
+            "question": "Filter bubbles limit exposure to ________.",
+            "type": "note_completion",
+            "answer": "opposing views",
+            "options": [],
+            "number": 26,
+            "section": 3,
+            "answer_format": {
+              "max_words": 2,
+              "description": "NO MORE THAN TWO WORDS"
+            }
+          },
+          {
+            "question": "The EU's Digital Services Act aims to make platforms more transparent about their ________.",
+            "type": "note_completion",
+            "answer": "algorithms",
+            "options": [],
+            "number": 27,
+            "section": 3,
+            "answer_format": {
+              "max_words": 1,
+              "description": "ONE WORD ONLY"
+            }
+          },
+          {
+            "question": "Audrey suggests that companies could adopt voluntary ________.",
+            "type": "note_completion",
+            "answer": "codes of conduct",
+            "options": [],
+            "number": 28,
+            "section": 3,
+            "answer_format": {
+              "max_words": 3,
+              "description": "NO MORE THAN THREE WORDS"
+            }
+          },
+          {
+            "question": "Match the future prediction to the speaker.",
+            "type": "matching",
+            "options": [
+              "A: Paisley",
+              "B: Audrey",
+              "C: Gary"
+            ],
+            "answer": "B",
+            "number": 29,
+            "section": 3,
+            "answer_format": {
+              "max_words": 1,
+              "letters_only": true,
+              "description": "A LETTER"
+            }
+          },
+          {
+            "question": "Paisley believes that ________ will be the biggest battleground.",
+            "type": "note_completion",
+            "answer": "privacy",
+            "options": [],
+            "number": 30,
+            "section": 3,
+            "answer_format": {
+              "max_words": 1,
+              "description": "ONE WORD ONLY"
+            }
+          }
+        ],
+        "word_count": 521,
+        "ai_generated": true,
+        "target_duration": 270,
+        "audio_url": null,
+        "script": "Dr. Amy: Good morning, everyone. Today we're focusing on digital marketing. I'd like us to explore the key issues, different perspectives, and how society might address the challenges. Paisley, could you start us off? Paisley: Yes, sure. One major issue is data privacy. With the GDPR introduced in 2018, companies have to be much more careful about how they collect and use personal data. But many still use dark patterns to trick users into consenting. That's a big ethical problem. Audrey: I agree, but I think we should also consider the positive side. Digital marketing allows small businesses to reach global audiences at a fraction of the cost of traditional advertising. For example, a local bakery in Manchester can now target customers in Japan. That's empowering. Gary: Hmm, but that's a bit idealistic, Audrey. The reality is that big tech platforms like Google and Facebook dominate the market. They control the algorithms, so smaller players often can't compete unless they pay for ads. It's a pay-to-play system. Dr. Amy: Interesting points. Gary, you mentioned algorithms. Could you elaborate on the specific challenges there? Gary: Well, algorithmic bias is a huge issue. If the AI is trained on biased data, it can reinforce stereotypes. For instance, a job ad for a tech role might be shown more to men than women, perpetuating inequality. And there's also the problem of filter bubbles, where people only see content that confirms their existing views. Paisley: That's true, but I'd argue that regulation can help. The EU's Digital Services Act, for example, aims to make platforms more transparent about their algorithms. If companies are forced to explain how their AI works, it could reduce bias. Audrey: But regulation can be slow and cumbersome. By the time laws pass, technology has moved on. Maybe we need more self-regulation and ethical guidelines from within the industry. Like, companies could adopt voluntary codes of conduct. Dr. Amy: So we have a tension between regulation and self-regulation. How can society address these challenges effectively? Paisley: I think a combination is needed. Governments should set minimum standards, but also incentivise companies to go beyond them. For example, tax breaks for firms that invest in ethical AI. And education is key—teaching digital literacy in schools so consumers can make informed choices. Gary: I'd add that we need more whistleblower protections. Employees who expose unethical practices should be safeguarded. That would deter companies from cutting corners. Audrey: Also, we should support independent watchdogs and journalists who investigate digital marketing abuses. They play a crucial role in holding power to account. Dr. Amy: Good. Now, let's think about future implications. What might digital marketing look like in ten years? Paisley: I predict that AI will become even more integrated. We'll see hyper-personalised ads that adapt in real time based on our emotions and environment. That could be convenient but also creepy. Privacy will be the biggest battleground. Audrey: I think we'll see a shift towards more ethical and sustainable marketing. Consumers are increasingly demanding transparency, so brands that don't comply will lose trust. So, I'm optimistic that the market will self-correct to some extent."
+      },
+      {
+        "section_num": 4,
+        "title": "Lecture: Smart Homes",
+        "type": "lecture",
+        "speakers": [
+          "Lecturer"
+        ],
+        "speaker_genders": {
+          "Lecturer": "male"
+        },
+        "context": "A university lecture on smart_homes.",
+        "questions": [
+          {
+            "question": "The first practical home automation system was introduced in the year ________.",
+            "type": "sentence_completion",
+            "answer": "1984",
+            "options": [],
+            "number": 31,
+            "section": 4,
+            "answer_format": {
+              "max_words": 1,
+              "format": "date",
+              "description": "A DATE"
+            }
+          },
+          {
+            "question": "The company that introduced the X10 system was called ________.",
+            "type": "sentence_completion",
+            "answer": "X10",
+            "options": [],
+            "number": 32,
+            "section": 4,
+            "answer_format": {
+              "max_words": 1,
+              "description": "ONE WORD ONLY"
+            }
+          },
+          {
+            "question": "The Internet of Things allowed devices to communicate over the ________.",
+            "type": "sentence_completion",
+            "answer": "internet",
+            "options": [],
+            "number": 33,
+            "section": 4,
+            "answer_format": {
+              "max_words": 1,
+              "description": "ONE WORD ONLY"
+            }
+          },
+          {
+            "question": "Voice recognition uses ________ language processing to understand commands.",
+            "type": "sentence_completion",
+            "answer": "natural",
+            "options": [],
+            "number": 34,
+            "section": 4,
+            "answer_format": {
+              "max_words": 1,
+              "description": "ONE WORD ONLY"
+            }
+          },
+          {
+            "question": "Smart thermostats can reduce heating bills by up to ________ percent.",
+            "type": "sentence_completion",
+            "answer": "15",
+            "options": [],
+            "number": 35,
+            "section": 4,
+            "answer_format": {
+              "max_words": 1,
+              "description": "ONE WORD ONLY"
+            }
+          },
+          {
+            "question": "One major challenge is ________, as devices collect personal data.",
+            "type": "sentence_completion",
+            "answer": "data privacy",
+            "options": [],
+            "number": 36,
+            "section": 4,
+            "answer_format": {
+              "max_words": 2,
+              "description": "NO MORE THAN TWO WORDS"
+            }
+          },
+          {
+            "question": "Different brands often use different ________, causing interoperability issues.",
+            "type": "sentence_completion",
+            "answer": "protocols",
+            "options": [],
+            "number": 37,
+            "section": 4,
+            "answer_format": {
+              "max_words": 1,
+              "description": "ONE WORD ONLY"
+            }
+          },
+          {
+            "question": "In the future, homes will use artificial intelligence to ________ your needs.",
+            "type": "sentence_completion",
+            "answer": "anticipate",
+            "options": [],
+            "number": 38,
+            "section": 4,
+            "answer_format": {
+              "max_words": 1,
+              "description": "ONE WORD ONLY"
+            }
+          },
+          {
+            "question": "What is the main benefit of smart thermostats mentioned in the lecture?",
+            "type": "multiple_choice",
+            "options": [
+              "A: They can reduce heating bills.",
+              "B: They can play music.",
+              "C: They can lock doors."
+            ],
+            "answer": "A",
+            "number": 39,
+            "section": 4,
+            "answer_format": {
+              "max_words": 1,
+              "letters_only": true,
+              "description": "A LETTER"
+            }
+          },
+          {
+            "question": "According to the lecture, what is a future trend in smart home technology?",
+            "type": "multiple_choice",
+            "options": [
+              "A: Decreased use of sensors.",
+              "B: Integration with healthcare.",
+              "C: Lower cost for all households."
+            ],
+            "answer": "B",
+            "number": 40,
+            "section": 4,
+            "answer_format": {
+              "max_words": 1,
+              "letters_only": true,
+              "description": "A LETTER"
+            }
+          }
+        ],
+        "word_count": 910,
+        "ai_generated": true,
+        "target_duration": 330,
+        "audio_url": null,
+        "script": "Good morning, everyone. Today, we're going to explore the evolution of smart home technology. Now, this is a topic that has moved from science fiction to everyday reality rather quickly, and I think it's fair to say it's transforming how we live. So, let's begin with a bit of historical context. Before we dive into the timeline, though, it's worth pausing to consider just how deeply the concept of the home has changed over the centuries. For most of human history, a home was simply a shelter, a static structure that offered protection from the elements and very little else. Even the word automation would have seemed absurd to our ancestors, who relied entirely on manual labour and human attention to keep a household running. What we are witnessing today, then, is not merely the invention of new gadgets but a fundamental shift in the relationship between people and the spaces they inhabit. It is, in many ways, the most personal technological revolution we have ever experienced, because it happens inside the one place where we expect privacy and control. The idea of home automation actually dates back to the early 20th century, but it was really in the 1980s that we saw the first practical systems. For instance, in 1984, a company called X10 introduced a system that allowed appliances to be controlled via existing electrical wiring. But these early systems were crude and expensive. The real breakthrough came with the advent of the Internet of Things, or IoT, in the late 1990s. This allowed devices to communicate with each other over the internet, paving the way for the smart homes we know today. To put the pace of change in perspective, consider that in 1999, fewer than one in ten households in developed countries even had a broadband connection, whereas today the average smart home contains more than twenty connected devices. In 2011, Google launched its first smart thermostat, and by 2014, Amazon had introduced the first Echo speaker, a device that would go on to sell more than one hundred million units worldwide within a decade. Now, let's look at some key technologies that make smart homes possible. First, there's voice recognition. You're probably familiar with assistants like Alexa or Siri. These use natural language processing to understand commands. Then there's the IoT itself, which connects sensors, cameras, and appliances. Another crucial technology is energy efficiency. Smart thermostats, for example, can learn your schedule and adjust heating or cooling accordingly, saving energy. And we mustn't forget data privacy, which is a growing concern. Behind all of these, of course, sits machine learning, the engine that allows a home to improve over time. Every time you correct a voice command or override an automatic setting, the system records that information and refines its future behaviour. It is this capacity for continuous learning, rather than any single device, that truly distinguishes a smart home from a merely automated one. So, what are the benefits? Well, convenience is the most obvious. You can control lights, locks, and entertainment systems from your phone. Security is another big plus. Smart cameras and sensors can alert you to intruders. Energy savings can be significant. Studies show that smart thermostats can reduce heating bills by up to 15 percent. And for elderly or disabled individuals, smart homes can provide independence through automated reminders and emergency alerts. Take, for example, a study conducted in 2022 by a research team in Sweden, which found that motion-activated lighting reduced the number of falls among elderly residents by nearly 30 percent. Similarly, a pilot programme in Japan in 2021 equipped one thousand apartments with remote health-monitoring sensors, and the participants reported a 40 percent drop in unnecessary hospital visits. These are not trivial figures; they represent real improvements in quality of life. However, there are challenges. The biggest one is data privacy. All these devices collect data about your habits, and if not properly secured, that data can be misused. There have been cases of hackers accessing baby monitors and security cameras. Another challenge is interoperability. Different brands often use different protocols, so devices don't always work together. And then there's the cost. A fully smart home can be expensive, which limits access for lower-income households. A further concern, which is often overlooked, is the environmental footprint of the devices themselves. Each smart speaker, sensor, and camera requires rare-earth metals and continuous electricity, and the average device is replaced every three to four years. When you multiply that by billions of units worldwide, the electronic waste problem becomes considerable. Looking ahead, what future trends can we expect? Well, artificial intelligence will play a bigger role. Homes will anticipate your needs rather than just respond to commands. For example, your home might adjust lighting based on your mood. We'll also see more integration with healthcare, with sensors monitoring vital signs and alerting doctors. And sustainability will drive innovation, with homes generating their own energy through solar panels and managing it intelligently. Some researchers even predict that by 2035, more than half of new homes in Europe will be built with integrated smart systems as standard, rather than as optional extras. To sum up, smart home technology has come a long way from the X10 system of the 1980s. It offers convenience, security, and energy savings, but also raises concerns about privacy and cost. As we move forward, the key will be to balance innovation with ethical considerations. Thank you."
+      }
+    ],
+    "total_sections": 4,
+    "generated_sections": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "partial": false,
+    "accent": "british",
+    "difficulty": "medium",
+    "audio_urls": {
+      "1": {
+        "main": "/static/full_test_bank/variant_002/section_1.mp3",
+        "intro": "/audio_cache/intro_section_1_british.mp3",
+        "outro": "/audio_cache/outro_section_1_british.mp3"
+      },
+      "2": {
+        "main": "/static/full_test_bank/variant_002/section_2.mp3",
+        "intro": "/audio_cache/intro_section_2_british.mp3",
+        "outro": "/audio_cache/outro_section_2_british.mp3"
+      },
+      "3": {
+        "main": "/static/full_test_bank/variant_002/section_3.mp3",
+        "intro": "/audio_cache/intro_section_3_british.mp3",
+        "outro": "/audio_cache/outro_section_3_british.mp3"
+      },
+      "4": {
+        "main": "/static/full_test_bank/variant_002/section_4.mp3",
+        "intro": "/audio_cache/intro_section_4_british.mp3",
+        "outro": "/audio_cache/outro_section_4_british.mp3"
+      }
+    },
+    "audio_timings": {
+      "1": {
+        "intro": [
+          0,
+          9.6
+        ],
+        "reading": [
+          9.6,
+          39.6
+        ],
+        "main_audio": [
+          39.6,
+          224.136
+        ],
+        "outro": [
+          224.136,
+          229.632
+        ],
+        "checking": [
+          229.632,
+          259.632
+        ]
+      },
+      "2": {
+        "intro": [
+          0,
+          10.08
+        ],
+        "reading": [
+          10.08,
+          40.08
+        ],
+        "main_audio": [
+          40.08,
+          224.06400000000002
+        ],
+        "outro": [
+          224.06400000000002,
+          229.60800000000003
+        ],
+        "checking": [
+          229.60800000000003,
+          259.60800000000006
+        ]
+      },
+      "3": {
+        "intro": [
+          0,
+          9.84
+        ],
+        "reading": [
+          9.84,
+          39.84
+        ],
+        "main_audio": [
+          39.84,
+          245.976
+        ],
+        "outro": [
+          245.976,
+          251.59199999999998
+        ],
+        "checking": [
+          251.59199999999998,
+          281.592
+        ]
+      },
+      "4": {
+        "intro": [
+          0,
+          8.784
+        ],
+        "reading": [
+          8.784,
+          38.784
+        ],
+        "main_audio": [
+          38.784,
+          398.616
+        ],
+        "outro": [
+          398.616,
+          404.15999999999997
+        ],
+        "checking": [
+          404.15999999999997,
+          434.15999999999997
+        ]
+      }
+    }
+  },
+  "reading": {
+    "id": "d91ec46d-b665-4d22-a072-bba64543ab38",
+    "title": "IELTS Reading Practice Test - Medium",
+    "passages": [
+      {
+        "id": "8b04b514-42d7-4ac9-acd2-9320d372f78d",
+        "title": "Reading Passage 1",
+        "content": "The ways in which individuals obtain information about current events have undergone a profound transformation over the past three decades. Whereas previous generations relied almost exclusively on printed newspapers and scheduled television broadcasts, contemporary audiences are now presented with a continuous stream of updates delivered through digital platforms. This shift has been driven largely by the proliferation of smartphones and the expansion of internet access, which together have altered not only when news is consumed but also how it is interpreted. Consequently, the traditional relationship between journalists and their audiences has been fundamentally restructured. The central argument of this passage is that while digital technology has democratised access to information, it has simultaneously introduced significant challenges relating to accuracy, fragmentation, and the concentration of public attention.\n\nThe scale of this transformation is illustrated by recent statistical evidence. According to a comprehensive study conducted by the Reuters Institute for the Study of Journalism in 2023, approximately 68 per cent of adults in developed nations reported that they accessed news primarily through online sources, compared with just 21 per cent who relied mainly on printed materials. Furthermore, the same research indicated that individuals under the age of thirty spent an average of only four minutes per day reading or watching news content, a figure that has declined steadily since 2018. These findings suggest that although information is more readily available than at any point in human history, the depth of engagement with that information may be diminishing. The consequences of such superficial consumption are considerable, as citizens who possess only a fragmentary understanding of complex issues may struggle to participate meaningfully in democratic processes.\n\nA further dimension of this phenomenon concerns the mechanisms by which news is selected and distributed. Algorithmic recommendation systems, which are employed by most major social media platforms, determine the content that users encounter based on their previous behaviour. Professor Elena Marchetti of the University of Amsterdam has argued that such systems create so-called filter bubbles, in which individuals are exposed predominantly to viewpoints that reinforce their existing beliefs. Her research, published in 2022, found that participants who obtained news exclusively through social media were 47 per cent less likely to encounter opposing political opinions than those who consulted multiple traditional outlets. This filtering effect is not merely a technical curiosity; it has measurable social consequences, including increased polarisation and a reduced willingness to engage with those holding different perspectives.\n\nNevertheless, an alternative interpretation of these developments has been advanced by several scholars, who contend that the benefits of digital news consumption outweigh its apparent drawbacks. Dr. Samuel Okonkwo of the Nairobi Centre for Media Studies has emphasised that online platforms have enabled marginalised communities to access information that was previously unavailable to them. According to his analysis, citizen journalism has exposed corruption and human rights abuses in regions where traditional media operated under severe restrictions. From this perspective, the fragmentation of audiences is a price worth paying for the broadening of public discourse. It should be acknowledged, however, that this more optimistic account tends to underestimate the difficulty that ordinary readers face in distinguishing reliable reporting from misinformation, a problem that has become increasingly acute since the rapid growth of unregulated content-sharing platforms.\n\nThe historical context of news consumption provides a useful framework for evaluating these competing claims. The emergence of the penny press in the 1830s, for instance, demonstrated that lowering the cost of information could dramatically expand readership while also encouraging sensationalism. Similar tensions between accessibility and accuracy were observed following the introduction of television news in the mid-twentieth century. What distinguishes the present situation is the sheer velocity at which content is produced and circulated, leaving audiences with little opportunity for reflection. It follows that educational institutions and policymakers bear a responsibility to promote media literacy, equipping individuals with the critical skills necessary to evaluate sources. Without such intervention, the promise of an informed and engaged public may remain unfulfilled, and the very foundations of rational debate could be eroded.\n\nIn conclusion, the transformation of news consumption represents one of the most significant cultural shifts of the modern era. The evidence reviewed above indicates that digital platforms have expanded access to information while simultaneously encouraging shallower engagement and greater ideological division. Whether these developments ultimately strengthen or weaken democratic societies will depend largely on the capacity of individuals and institutions to adapt. If media literacy is treated as an essential component of education rather than an optional supplement, the advantages of the digital age may be realised without sacrificing the quality of public understanding. The challenge, therefore, is not to resist technological change but to ensure that it serves the long-term interests of society as a whole.",
+        "difficulty": "easy",
+        "topic": "news_consumption",
+        "word_count": 783,
+        "questions": [
+          {
+            "id": "q1",
+            "type": "true_false_not_given",
+            "text": "Approximately 68 per cent of adults in developed nations reported accessing news primarily through online sources.",
+            "options": [],
+            "correct_answer": "TRUE",
+            "explanation": "Passage states 'approximately 68 per cent of adults in developed nations reported that they accessed news primarily through online sources'.",
+            "paragraph_reference": "Paragraph 2",
+            "number": 1
+          },
+          {
+            "id": "q2",
+            "type": "true_false_not_given",
+            "text": "The Reuters Institute study found that individuals over thirty spend more time reading news than those under thirty.",
+            "options": [],
+            "correct_answer": "NOT GIVEN",
+            "explanation": "Passage only mentions under-thirty individuals spending four minutes per day; no comparison with over-thirty group is provided.",
+            "paragraph_reference": "Paragraph 2",
+            "number": 2
+          },
+          {
+            "id": "q3",
+            "type": "true_false_not_given",
+            "text": "Professor Marchetti's research found that participants who used only social media were 47 per cent less likely to encounter opposing political opinions.",
+            "options": [],
+            "correct_answer": "TRUE",
+            "explanation": "Passage directly states this finding from her 2022 research.",
+            "paragraph_reference": "Paragraph 3",
+            "number": 3
+          },
+          {
+            "id": "q4",
+            "type": "true_false_not_given",
+            "text": "Dr. Okonkwo believes that traditional media in some regions operated without any government restrictions.",
+            "options": [],
+            "correct_answer": "FALSE",
+            "explanation": "Passage states traditional media 'operated under severe restrictions' in some regions, contradicting the statement.",
+            "paragraph_reference": "Paragraph 4",
+            "number": 4
+          },
+          {
+            "id": "q5",
+            "type": "multiple_choice",
+            "text": "According to the passage, what is the central argument regarding digital technology?",
+            "options": [
+              "It has completely replaced traditional news sources",
+              "It has democratised access to information but introduced challenges relating to accuracy, fragmentation, and concentration of attention",
+              "It has improved the quality of journalism worldwide",
+              "It has eliminated the need for media literacy education"
+            ],
+            "correct_answer": "It has democratised access to information but introduced challenges relating to accuracy, fragmentation, and concentration of attention",
+            "explanation": "Passage states 'while digital technology has democratised access to information, it has simultaneously introduced significant challenges relating to accuracy, fragmentation, and the concentration of public attention'.",
+            "paragraph_reference": "Paragraph 1",
+            "number": 5
+          },
+          {
+            "id": "q6",
+            "type": "multiple_choice",
+            "text": "What does the passage suggest about the depth of engagement with news content?",
+            "options": [
+              "It has increased significantly since 2018",
+              "It remains unchanged compared to previous generations",
+              "It may be diminishing despite greater availability of information",
+              "It is highest among individuals under thirty"
+            ],
+            "correct_answer": "It may be diminishing despite greater availability of information",
+            "explanation": "Passage states 'although information is more readily available than at any point in human history, the depth of engagement with that information may be diminishing'.",
+            "paragraph_reference": "Paragraph 2",
+            "number": 6
+          },
+          {
+            "id": "q7",
+            "type": "multiple_choice",
+            "text": "What historical example does the passage use to illustrate tensions between accessibility and accuracy?",
+            "options": [
+              "The invention of the printing press",
+              "The emergence of the penny press in the 1830s",
+              "The rise of citizen journalism in the 21st century",
+              "The introduction of radio news in the 1920s"
+            ],
+            "correct_answer": "The emergence of the penny press in the 1830s",
+            "explanation": "Passage states 'The emergence of the penny press in the 1830s, for instance, demonstrated that lowering the cost of information could dramatically expand readership while also encouraging sensationalism'.",
+            "paragraph_reference": "Paragraph 5",
+            "number": 7
+          },
+          {
+            "id": "q8",
+            "type": "sentence_completion",
+            "text": "Algorithmic recommendation systems determine content based on users' previous __________.",
+            "options": [],
+            "correct_answer": "behaviour",
+            "explanation": "Passage states systems 'determine the content that users encounter based on their previous behaviour'.",
+            "paragraph_reference": "Paragraph 3",
+            "number": 8
+          },
+          {
+            "id": "q9",
+            "type": "sentence_completion",
+            "text": "According to Dr. Okonkwo, citizen journalism has exposed corruption and __________ in regions with restricted media.",
+            "options": [],
+            "correct_answer": "human rights abuses",
+            "explanation": "Passage states 'citizen journalism has exposed corruption and human rights abuses in regions where traditional media operated under severe restrictions'.",
+            "paragraph_reference": "Paragraph 4",
+            "number": 9
+          },
+          {
+            "id": "q10",
+            "type": "sentence_completion",
+            "text": "The passage argues that educational institutions and policymakers should promote __________ to equip individuals with critical evaluation skills.",
+            "options": [],
+            "correct_answer": "media literacy",
+            "explanation": "Passage states 'educational institutions and policymakers bear a responsibility to promote media literacy'.",
+            "paragraph_reference": "Paragraph 5",
+            "number": 10
+          },
+          {
+            "id": "q11",
+            "type": "short_answer",
+            "text": "What percentage of adults in developed nations relied mainly on printed materials according to the 2023 study?",
+            "options": [],
+            "correct_answer": "21 per cent",
+            "explanation": "Passage states 'just 21 per cent who relied mainly on printed materials'.",
+            "paragraph_reference": "Paragraph 2",
+            "number": 11
+          },
+          {
+            "id": "q12",
+            "type": "short_answer",
+            "text": "How many minutes per day did individuals under thirty spend on news content on average?",
+            "options": [],
+            "correct_answer": "four minutes",
+            "explanation": "Passage states 'individuals under the age of thirty spent an average of only four minutes per day reading or watching news content'.",
+            "paragraph_reference": "Paragraph 2",
+            "number": 12
+          },
+          {
+            "id": "q13",
+            "type": "short_answer",
+            "text": "What term does Professor Marchetti use to describe environments where individuals only encounter reinforcing viewpoints?",
+            "options": [],
+            "correct_answer": "filter bubbles",
+            "explanation": "Passage states 'such systems create so-called filter bubbles, in which individuals are exposed predominantly to viewpoints that reinforce their existing beliefs'.",
+            "paragraph_reference": "Paragraph 3",
+            "number": 13
+          }
+        ],
+        "passage_number": 1,
+        "estimated_time": 20
+      },
+      {
+        "id": "a6f31f74-a762-4104-be7a-39942d47ed61",
+        "title": "Reading Passage 2",
+        "content": "The proliferation of digital technologies has fundamentally altered the ways in which individuals access, evaluate, and disseminate information. Whereas literacy once referred almost exclusively to the ability to read and write printed text, the contemporary landscape demands a broader set of competencies collectively termed digital literacy. This concept encompasses the capacity to operate digital devices, to navigate online environments critically, and to produce content responsibly across a range of platforms. Consequently, governments, educators, and employers have increasingly recognised that digital literacy is no longer an optional advantage but a prerequisite for full participation in modern society. Nevertheless, considerable disagreement persists regarding how such skills should be defined, measured, and taught. This passage examines the evolution of digital literacy, the evidence linking it to socioeconomic outcomes, and the debates surrounding its role in education and employment.\n\nThe emergence of digital literacy as a distinct field of study can be traced to the rapid expansion of internet access during the 1990s. In 1997, the Organisation for Economic Co-operation and Development convened a panel of specialists to consider how industrialised nations might prepare their populations for an increasingly networked economy. That meeting is widely regarded as a pivotal moment, since it shifted attention from mere technical proficiency towards the cognitive and ethical dimensions of online engagement. Subsequent research has reinforced this broader conception. A longitudinal study conducted by Dr Helena Marsh of the University of Adelaide, which tracked 4,200 adults over a five-year period, found that individuals possessing advanced digital literacy skills earned approximately 18 per cent more than their less proficient counterparts. Such findings suggest that the consequences of digital exclusion extend well beyond inconvenience, affecting employment prospects and social mobility.\n\nFurther evidence indicates that digital literacy influences civic participation and health outcomes. Research undertaken by the Institute for Media and Society in Helsinki reported that citizens who regularly evaluated the credibility of online sources were 27 per cent more likely to engage in community activities and to access preventative healthcare services. The mechanism underlying this relationship appears to be twofold. Firstly, digitally literate individuals are better equipped to distinguish reliable information from misinformation, which enables them to make informed decisions. Secondly, the confidence gained through successful navigation of digital systems encourages further exploration of online resources, thereby creating a virtuous cycle of engagement. Conversely, those who lack such skills frequently withdraw from digital platforms altogether, a phenomenon that researchers have labelled \"digital resignation\". Because this withdrawal tends to correlate with lower income and reduced educational attainment, the gap between the digitally skilled and the digitally excluded may widen over time.\n\nNot all commentators, however, regard the expansion of digital literacy as an unequivocal benefit. Professor Alan Whitfield of the University of Bristol has argued that the relentless emphasis on digital competencies risks devaluing traditional forms of knowledge, including deep reading and sustained analytical reasoning. According to Whitfield, students who spend excessive periods interacting with short-form online content demonstrate measurably reduced concentration spans, a trend that may undermine academic achievement. A similar scepticism has been expressed by the Campaign for Balanced Childhood, which contends that early and intensive exposure to digital environments can impair social development and emotional regulation. These critics do not deny the importance of technological competence; rather, they question whether digital literacy should occupy the central position it has acquired within educational policy, particularly when resources allocated to it are diverted from libraries, arts programmes, and outdoor learning.\n\nIn light of these competing perspectives, a balanced approach appears most defensible. Digital literacy ought to be regarded not as a replacement for conventional literacy but as a complementary set of capabilities that enables individuals to function effectively in a technologically saturated world. Educational institutions therefore bear a responsibility to integrate digital skills across the curriculum while preserving opportunities for deep, reflective reading. Moreover, governments should ensure that training programmes reach older adults and marginalised communities, since evidence suggests that targeted interventions can substantially reduce exclusion. If such measures are implemented thoughtfully, the benefits of digital literacy, including improved employment outcomes, enhanced civic engagement, and greater resilience against misinformation, may be distributed more equitably. Should policymakers neglect these considerations, however, the digital divide is likely to persist, entrenching existing inequalities for generations to come.",
+        "difficulty": "medium",
+        "topic": "digital_literacy",
+        "word_count": 703,
+        "questions": [
+          {
+            "id": "q14",
+            "type": "matching_headings",
+            "text": "Choose the correct heading for Paragraph 1 from the list of headings below.",
+            "options": [
+              "i. Defining digital literacy today",
+              "ii. The origins of a new discipline",
+              "iii. Evidence from longitudinal research",
+              "iv. Criticisms of digital competence",
+              "v. A balanced educational response",
+              "vi. Digital skills and civic life"
+            ],
+            "correct_answer": "i. Defining digital literacy today",
+            "explanation": "Paragraph 1 introduces the broader set of competencies termed digital literacy and notes disagreement over its definition.",
+            "paragraph_reference": "Paragraph 1",
+            "number": 14
+          },
+          {
+            "id": "q15",
+            "type": "matching_headings",
+            "text": "Choose the correct heading for Paragraph 2 from the list of headings below.",
+            "options": [
+              "i. Defining digital literacy today",
+              "ii. The origins of a new discipline",
+              "iii. Evidence from longitudinal research",
+              "iv. Criticisms of digital competence",
+              "v. A balanced educational response",
+              "vi. Digital skills and civic life"
+            ],
+            "correct_answer": "ii. The origins of a new discipline",
+            "explanation": "Paragraph 2 traces the emergence of digital literacy as a distinct field to the 1990s and the 1997 OECD meeting.",
+            "paragraph_reference": "Paragraph 2",
+            "number": 15
+          },
+          {
+            "id": "q16",
+            "type": "matching_headings",
+            "text": "Choose the correct heading for Paragraph 3 from the list of headings below.",
+            "options": [
+              "i. Defining digital literacy today",
+              "ii. The origins of a new discipline",
+              "iii. Evidence from longitudinal research",
+              "iv. Criticisms of digital competence",
+              "v. A balanced educational response",
+              "vi. Digital skills and civic life"
+            ],
+            "correct_answer": "vi. Digital skills and civic life",
+            "explanation": "Paragraph 3 discusses civic participation and health outcomes linked to evaluating online sources.",
+            "paragraph_reference": "Paragraph 3",
+            "number": 16
+          },
+          {
+            "id": "q17",
+            "type": "matching_headings",
+            "text": "Choose the correct heading for Paragraph 4 from the list of headings below.",
+            "options": [
+              "i. Defining digital literacy today",
+              "ii. The origins of a new discipline",
+              "iii. Evidence from longitudinal research",
+              "iv. Criticisms of digital competence",
+              "v. A balanced educational response",
+              "vi. Digital skills and civic life"
+            ],
+            "correct_answer": "iv. Criticisms of digital competence",
+            "explanation": "Paragraph 4 presents sceptical views from Professor Whitfield and the Campaign for Balanced Childhood.",
+            "paragraph_reference": "Paragraph 4",
+            "number": 17
+          },
+          {
+            "id": "q18",
+            "type": "matching_headings",
+            "text": "Choose the correct heading for Paragraph 5 from the list of headings below.",
+            "options": [
+              "i. Defining digital literacy today",
+              "ii. The origins of a new discipline",
+              "iii. Evidence from longitudinal research",
+              "iv. Criticisms of digital competence",
+              "v. A balanced educational response",
+              "vi. Digital skills and civic life"
+            ],
+            "correct_answer": "v. A balanced educational response",
+            "explanation": "Paragraph 5 argues for a balanced approach integrating digital skills while preserving deep reading.",
+            "paragraph_reference": "Paragraph 5",
+            "number": 18
+          },
+          {
+            "id": "q19",
+            "type": "true_false_not_given",
+            "text": "The 1997 OECD meeting focused attention on the cognitive and ethical aspects of online engagement rather than only technical skills.",
+            "options": [],
+            "correct_answer": "TRUE",
+            "explanation": "The passage states the meeting shifted attention from mere technical proficiency towards cognitive and ethical dimensions.",
+            "paragraph_reference": "Paragraph 2",
+            "number": 19
+          },
+          {
+            "id": "q20",
+            "type": "true_false_not_given",
+            "text": "Dr Helena Marsh's study found that digitally literate adults earned approximately 18 per cent more than less proficient peers.",
+            "options": [],
+            "correct_answer": "TRUE",
+            "explanation": "The passage directly reports the 18 per cent earnings difference from Marsh's longitudinal study.",
+            "paragraph_reference": "Paragraph 2",
+            "number": 20
+          },
+          {
+            "id": "q21",
+            "type": "true_false_not_given",
+            "text": "Professor Whitfield believes digital literacy should completely replace traditional forms of knowledge in schools.",
+            "options": [],
+            "correct_answer": "FALSE",
+            "explanation": "Whitfield argues the emphasis on digital competencies risks devaluing traditional knowledge; he does not advocate replacement.",
+            "paragraph_reference": "Paragraph 4",
+            "number": 21
+          },
+          {
+            "id": "q22",
+            "type": "multiple_choice",
+            "text": "According to the passage, what did the Institute for Media and Society in Helsinki find about citizens who regularly evaluated the credibility of online sources?",
+            "options": [
+              "A. They were 27 per cent more likely to engage in community activities and access preventative healthcare.",
+              "B. They earned approximately 18 per cent more than less proficient counterparts.",
+              "C. They demonstrated reduced concentration spans compared with other citizens.",
+              "D. They were more likely to withdraw from digital platforms altogether."
+            ],
+            "correct_answer": "A",
+            "explanation": "Paragraph 3 states they were 27 per cent more likely to engage in community activities and access preventative healthcare.",
+            "paragraph_reference": "Paragraph 3",
+            "number": 22
+          },
+          {
+            "id": "q23",
+            "type": "multiple_choice",
+            "text": "What concern does the Campaign for Balanced Childhood raise regarding digital environments?",
+            "options": [
+              "A. That digital literacy training diverts resources from libraries and arts programmes.",
+              "B. That early and intensive exposure can impair social development and emotional regulation.",
+              "C. That students who use short-form content develop reduced concentration spans.",
+              "D. That older adults and marginalised communities are excluded from training."
+            ],
+            "correct_answer": "B",
+            "explanation": "Paragraph 4 states the Campaign contends early and intensive exposure can impair social development and emotional regulation.",
+            "paragraph_reference": "Paragraph 4",
+            "number": 23
+          },
+          {
+            "id": "q24",
+            "type": "summary_completion",
+            "text": "Complete the summary below. Choose ONE WORD ONLY from the passage for each answer. Digital literacy is now seen as a prerequisite for full participation in modern society, yet disagreement persists about how such skills should be defined, measured, and ______.",
+            "options": [],
+            "correct_answer": "taught",
+            "explanation": "Paragraph 1 states disagreement persists regarding how such skills should be defined, measured, and taught.",
+            "paragraph_reference": "Paragraph 1",
+            "number": 24
+          },
+          {
+            "id": "q25",
+            "type": "summary_completion",
+            "text": "Complete the summary below. Choose ONE WORD ONLY from the passage for each answer. Researchers have labelled the phenomenon whereby those lacking digital skills withdraw from digital platforms altogether as 'digital ______'.",
+            "options": [],
+            "correct_answer": "resignation",
+            "explanation": "Paragraph 3 states researchers have labelled this phenomenon 'digital resignation'.",
+            "paragraph_reference": "Paragraph 3",
+            "number": 25
+          },
+          {
+            "id": "q26",
+            "type": "summary_completion",
+            "text": "Complete the summary below. Choose ONE WORD ONLY from the passage for each answer. Critics question whether digital literacy should occupy the central position it has acquired within educational ______.",
+            "options": [],
+            "correct_answer": "policy",
+            "explanation": "Paragraph 4 states critics question whether digital literacy should occupy the central position it has acquired within educational policy.",
+            "paragraph_reference": "Paragraph 4",
+            "number": 26
+          }
+        ],
+        "passage_number": 2,
+        "estimated_time": 20
+      },
+      {
+        "id": "cbabb01a-1a28-473f-b855-84456924d387",
+        "title": "Reading Passage 3",
+        "content": "The concentration of media ownership in the hands of a relatively small number of corporations has become one of the most significant developments in modern democratic societies, fundamentally altering how information is produced, distributed, and consumed. Over the past four decades, successive waves of deregulation, technological convergence, and corporate consolidation have transformed what was once a diverse landscape of independent newspapers, broadcasters, and publishers into an increasingly homogenised system dominated by a handful of transnational conglomerates. This phenomenon raises profound questions about the relationship between ownership structures and the diversity of public discourse, since the entities that control the means of communication inevitably exercise considerable influence over which stories are told, which perspectives are legitimised, and which voices are marginalised. Consequently, scholars across media studies, political science, and economics have devoted considerable attention to understanding whether concentrated ownership necessarily undermines the pluralism that democratic governance ostensibly requires. While some analysts contend that consolidation threatens the very foundations of informed citizenship, others maintain that the digital era has created unprecedented opportunities for alternative and independent media to flourish, thereby mitigating the risks associated with corporate dominance.\n\nThe scale of contemporary media consolidation is perhaps best illustrated by the figures compiled by the Meridian Institute for Communication Policy, which reported in 2019 that the ten largest media corporations worldwide collectively controlled approximately 68 per cent of global advertising revenue, a figure that had risen from just 42 per cent in 1995. Such statistics suggest a dramatic acceleration in the concentration of communicative power, particularly when one considers that these corporations frequently hold interests spanning television, radio, print, publishing, and digital platforms simultaneously. This cross-sector integration enables conglomerates to achieve economies of scale that smaller competitors cannot match, and it also permits them to cross-promote content across multiple outlets, thereby amplifying particular narratives while diminishing others. According to research conducted by Professor Elena Vasquez of the University of Leiden, audiences exposed to news drawn predominantly from a single corporate source demonstrated measurably lower awareness of alternative policy positions than those who consumed information from a more varied range of providers. Her longitudinal study, which tracked media consumption patterns across five European countries over a seven-year period, concluded that ownership concentration exerts a statistically significant, albeit gradual, homogenising effect on public opinion formation.\n\nHistorical precedents further illuminate the trajectory of media consolidation. In 1983, the American journalist Ben Bagdikian published a landmark study demonstrating that fifty corporations controlled the majority of media output in the United States; by the time the sixth edition of his work appeared in 2004, that number had dwindled to just five. This remarkable contraction occurred against a backdrop of legislative changes, most notably the Telecommunications Act of 1996, which relaxed longstanding restrictions on the number of radio and television stations a single entity could own. The consequence was a rapid series of mergers and acquisitions that reshaped the broadcasting industry within a remarkably short period. Similar patterns emerged in Australia, the United Kingdom, and parts of Latin America, where family-owned media dynasties gradually yielded to global conglomerates. What these developments collectively demonstrate is that regulatory frameworks, rather than technological imperatives alone, have played a decisive role in determining the structure of media markets, and that once concentration reaches a certain threshold, reversing it becomes extraordinarily difficult because incumbents possess both the financial resources and the political connections necessary to resist reform.\n\nNevertheless, a substantial body of scholarship challenges the assumption that concentrated ownership inevitably produces uniform or impoverished public discourse. Professor Henrik Lindqvist of the Stockholm School of Economics has argued that digital technologies have fundamentally disrupted traditional gatekeeping mechanisms, enabling independent journalists, citizen reporters, and niche publications to reach audiences that would have been unimaginable in the pre-internet era. He contends, moreover, that large conglomerates often maintain diverse editorial teams precisely because they seek to appeal to broad demographic segments, and that internal competition between subsidiaries can generate genuine pluralism. Critics of regulation further warn that aggressive antitrust intervention may inadvertently harm consumers by reducing investment in high-quality journalism, since consolidation frequently provides the financial stability necessary to sustain costly investigative reporting. These contrasting perspectives suggest that the relationship between ownership and diversity is considerably more nuanced than either enthusiastic deregulators or alarmed pluralists typically acknowledge, and that empirical evidence remains contested.\n\nThe implications of these debates extend well beyond academic circles, touching upon the fundamental question of how contemporary democracies should govern the informational commons upon which civic participation depends. If, as the weight of evidence appears to suggest, extreme concentration poses genuine risks to viewpoint diversity, then policymakers face difficult choices regarding the appropriate balance between economic efficiency and democratic accountability. Potential remedies, including ownership caps, public funding for independent journalism, and transparency requirements, each carry distinct advantages and drawbacks. What remains clear is that media ownership is no longer merely a commercial matter but a constitutional one, and that societies which neglect this issue may find their capacity for informed self-governance progressively eroded.",
+        "difficulty": "hard",
+        "topic": "media_ownership",
+        "word_count": 828,
+        "questions": [
+          {
+            "id": "q27",
+            "type": "yes_no_not_given",
+            "text": "The author believes that media ownership concentration should be understood as a constitutional issue rather than merely a commercial one.",
+            "options": [],
+            "correct_answer": "YES",
+            "explanation": "The author explicitly states that media ownership 'is no longer merely a commercial matter but a constitutional one,' directly supporting this claim.",
+            "paragraph_reference": "Paragraph 5",
+            "number": 27
+          },
+          {
+            "id": "q28",
+            "type": "yes_no_not_given",
+            "text": "The author claims that aggressive antitrust intervention is always harmful to consumers.",
+            "options": [],
+            "correct_answer": "NO",
+            "explanation": "The passage attributes this view to 'critics of regulation,' not the author, who presents it as one side of a contested debate.",
+            "paragraph_reference": "Paragraph 4",
+            "number": 28
+          },
+          {
+            "id": "q29",
+            "type": "yes_no_not_given",
+            "text": "The author suggests that reversing media concentration once it reaches a certain threshold is relatively straightforward.",
+            "options": [],
+            "correct_answer": "NO",
+            "explanation": "The passage states that 'once concentration reaches a certain threshold, reversing it becomes extraordinarily difficult,' directly contradicting this claim.",
+            "paragraph_reference": "Paragraph 3",
+            "number": 29
+          },
+          {
+            "id": "q30",
+            "type": "yes_no_not_given",
+            "text": "The author maintains that the relationship between ownership and diversity is more nuanced than either deregulators or pluralists typically acknowledge.",
+            "options": [],
+            "correct_answer": "YES",
+            "explanation": "The author explicitly states the relationship 'is considerably more nuanced than either enthusiastic deregulators or alarmed pluralists typically acknowledge.'",
+            "paragraph_reference": "Paragraph 4",
+            "number": 30
+          },
+          {
+            "id": "q31",
+            "type": "yes_no_not_given",
+            "text": "The author is convinced that public funding for independent journalism is the most effective remedy for media concentration.",
+            "options": [],
+            "correct_answer": "NOT GIVEN",
+            "explanation": "The passage mentions public funding as one of several potential remedies but does not express a preference for it over others.",
+            "paragraph_reference": "Paragraph 5",
+            "number": 31
+          },
+          {
+            "id": "q32",
+            "type": "matching_information",
+            "text": "Which paragraph contains information about a study tracking media consumption across multiple countries over several years?",
+            "options": [
+              "Paragraph 1",
+              "Paragraph 2",
+              "Paragraph 3",
+              "Paragraph 4",
+              "Paragraph 5"
+            ],
+            "correct_answer": "2",
+            "explanation": "Paragraph 2 describes Professor Elena Vasquez's longitudinal study tracking media consumption across five European countries over seven years.",
+            "paragraph_reference": "Paragraph 2",
+            "number": 32
+          },
+          {
+            "id": "q33",
+            "type": "matching_information",
+            "text": "Which paragraph contains information about legislation that relaxed restrictions on media ownership?",
+            "options": [
+              "Paragraph 1",
+              "Paragraph 2",
+              "Paragraph 3",
+              "Paragraph 4",
+              "Paragraph 5"
+            ],
+            "correct_answer": "3",
+            "explanation": "Paragraph 3 discusses the Telecommunications Act of 1996, which relaxed longstanding restrictions on station ownership.",
+            "paragraph_reference": "Paragraph 3",
+            "number": 33
+          },
+          {
+            "id": "q34",
+            "type": "matching_information",
+            "text": "Which paragraph contains information about the percentage of global advertising revenue controlled by major media corporations?",
+            "options": [
+              "Paragraph 1",
+              "Paragraph 2",
+              "Paragraph 3",
+              "Paragraph 4",
+              "Paragraph 5"
+            ],
+            "correct_answer": "2",
+            "explanation": "Paragraph 2 states that the ten largest media corporations controlled approximately 68 per cent of global advertising revenue.",
+            "paragraph_reference": "Paragraph 2",
+            "number": 34
+          },
+          {
+            "id": "q35",
+            "type": "matching_information",
+            "text": "Which paragraph contains information about the potential benefits of consolidation for sustaining investigative journalism?",
+            "options": [
+              "Paragraph 1",
+              "Paragraph 2",
+              "Paragraph 3",
+              "Paragraph 4",
+              "Paragraph 5"
+            ],
+            "correct_answer": "4",
+            "explanation": "Paragraph 4 mentions that consolidation frequently provides the financial stability necessary to sustain costly investigative reporting.",
+            "paragraph_reference": "Paragraph 4",
+            "number": 35
+          },
+          {
+            "id": "q36",
+            "type": "sentence_completion",
+            "text": "The Meridian Institute for Communication Policy reported that the ten largest media corporations controlled approximately ______ of global advertising revenue in 2019.",
+            "options": [],
+            "correct_answer": "68 per cent",
+            "explanation": "Paragraph 2 directly states the figure of '68 per cent' of global advertising revenue.",
+            "paragraph_reference": "Paragraph 2",
+            "number": 36
+          },
+          {
+            "id": "q37",
+            "type": "sentence_completion",
+            "text": "Ben Bagdikian's landmark study in 1983 demonstrated that ______ corporations controlled the majority of media output in the United States.",
+            "options": [],
+            "correct_answer": "fifty",
+            "explanation": "Paragraph 3 states that 'fifty corporations controlled the majority of media output in the United States.'",
+            "paragraph_reference": "Paragraph 3",
+            "number": 37
+          },
+          {
+            "id": "q38",
+            "type": "sentence_completion",
+            "text": "Professor Henrik Lindqvist has argued that digital technologies have fundamentally disrupted traditional ______ mechanisms.",
+            "options": [],
+            "correct_answer": "gatekeeping",
+            "explanation": "Paragraph 4 states that digital technologies 'have fundamentally disrupted traditional gatekeeping mechanisms.'",
+            "paragraph_reference": "Paragraph 4",
+            "number": 38
+          },
+          {
+            "id": "q39",
+            "type": "multiple_choice",
+            "text": "According to Professor Elena Vasquez's research, what effect does ownership concentration have on public opinion formation?",
+            "options": [
+              "A. It has no measurable impact on how audiences perceive policy issues.",
+              "B. It exerts a statistically significant, albeit gradual, homogenising effect.",
+              "C. It immediately and dramatically alters audience political preferences.",
+              "D. It increases awareness of alternative policy positions among viewers."
+            ],
+            "correct_answer": "B",
+            "explanation": "Paragraph 2 states her study 'concluded that ownership concentration exerts a statistically significant, albeit gradual, homogenising effect on public opinion formation.'",
+            "paragraph_reference": "Paragraph 2",
+            "number": 39
+          },
+          {
+            "id": "q40",
+            "type": "multiple_choice",
+            "text": "What does the passage identify as having played a decisive role in determining the structure of media markets?",
+            "options": [
+              "A. Technological imperatives alone",
+              "B. Consumer demand patterns",
+              "C. Regulatory frameworks",
+              "D. Journalistic professional standards"
+            ],
+            "correct_answer": "C",
+            "explanation": "Paragraph 3 states that 'regulatory frameworks, rather than technological imperatives alone, have played a decisive role in determining the structure of media markets.'",
+            "paragraph_reference": "Paragraph 3",
+            "number": 40
+          }
+        ],
+        "passage_number": 3,
+        "estimated_time": 20
+      }
+    ],
+    "total_questions": 40,
+    "time_limit": 60
+  },
+  "writing": {
+    "task1": {
+      "task": 1,
+      "chart_type": "flow_chart",
+      "topic": "how wine is made",
+      "prompt": "The flow chart below shows how wine is made. Summarise the information by selecting and reporting the main features.",
+      "chart_data": {
+        "title": "How wine is made",
+        "stages": [
+          "Harvesting grapes",
+          "Crushing and pressing",
+          "Fermentation",
+          "Clarification",
+          "Aging",
+          "Bottling"
+        ],
+        "descriptions": [
+          "Ripe grapes are picked from vineyards either by hand or machine.",
+          "The grapes are crushed to release juice, and pressing separates the juice from skins and stems.",
+          "Yeast converts the sugars in the grape juice into alcohol and carbon dioxide over days or weeks.",
+          "The wine is clarified by removing solid particles through settling, filtration, or fining agents.",
+          "The clarified wine is aged in tanks or barrels to develop flavor and complexity.",
+          "The finished wine is bottled, corked, and labeled for distribution and sale."
+        ],
+        "decisions": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "chart_type": "flow_chart",
+        "diagram_key": "wine_making",
+        "num_labels": 6
+      },
+      "chart_base64": "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3//+1sRJT0eFFxaeMGFC5cqVIwDKjiCEI69v374vvfRSRkbGsGHDKlasGJWdeLQtfg1PP/10t27dxo8fHx0/Pvroo9GjRz/66KMRcCL60Y9+NGjQoFNPPTUCoEwJQjjytm3bNmDAgNdeey1+5/vHP/5xhw4dzjjjjOjoys3NnT9//v333x+PtrVp0+ahhx6qVq1adLzZvHlzdnZ2/J1csWLFpk2b9uzZEwHHp/Lly9eqVatJkybnnHNOly5d0tLSIgCOAYIQvioPPvjg3XffnViuXr163bp1o6Nl9erVeXl5ieUhQ4bEdRoBAMBBBCF8hVauXLlkyZJ4sG7Dhg3vvfdedLRUqlSpdu3aZ5555tlnnx3fRgAAUBxBCAAAECjzEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEJJJoSsAAAKBSURBVAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAARKEAIAAATq/wEAAP//353yugAAAAZJREFUAwCsNfrmNEWk0gAAAABJRU5ErkJggg==",
+      "expected_features": [
+        "The flow chart has 6 stages",
+        "First stage: Harvesting grapes",
+        "Final stage: Bottling",
+        "Key detail: The grapes are crushed to release juice, and pressing separates the juice from skins and stems."
+      ],
+      "diagram_key": "wine_making",
+      "num_labels": 6,
+      "word_limit": 150,
+      "time_minutes": 20,
+      "difficulty": "medium",
+      "source": "ai"
+    },
+    "task2": {
+      "task": 2,
+      "topic": "Online shopping pros cons",
+      "prompt": "Online shopping has become increasingly popular, offering convenience and a wider range of products, but it also raises concerns about security, product quality, and the impact on local businesses. Do the advantages outweigh the disadvantages?",
+      "word_limit": 250,
+      "time_minutes": 40,
+      "difficulty": "medium",
+      "source": "ai"
+    },
+    "difficulty": "medium",
+    "exam_type": "ielts",
+    "total_time_minutes": 60,
+    "total_word_limit": 400,
+    "generated_at": "2026-10-01T19:27:38.520555+00:00",
+    "serial": "9bb541d8",
+    "session_id": "w_b3f0c6399f0b",
+    "test_id": 2,
+    "source": "on_demand"
+  },
+  "speaking": {
+    "title": "IELTS Speaking Test",
+    "difficulty": "medium",
+    "exam_type": "ielts",
+    "total_duration": "11-14 minutes",
+    "test_title": "IELTS Speaking Test",
+    "part1_topic": "health",
+    "part1": {
+      "examiner_greeting": "Good morning/afternoon. My name is [Examiner Name]. Can you tell me your full name, please?",
+      "examiner_name_follow_up": "What would you like me to call you?",
+      "examiner_id_check": "Could you show me your identification, please?",
+      "examiner_thank_you": "Thank you. That's perfect.",
+      "examiner_test_explanation": "Now, before we begin the test, let me explain how it works. I will ask you questions in three parts. Part 1 is about yourself and familiar topics. Part 2 is a long turn where you will speak for 1-2 minutes on a given topic. Part 3 is a discussion of more abstract ideas. Are you ready?",
+      "examiner_begin": "Excellent. Let's begin.",
+      "warmup_section": {
+        "examiner_transition": "Now, I'd like to ask you some questions about yourself.",
+        "questions": [
+          {
+            "question": "Where are you from originally?",
+            "type": "description"
+          },
+          {
+            "question": "Do you work or are you studying at the moment?",
+            "type": "work_study"
+          },
+          {
+            "question": "What do you enjoy most about your work or studies?",
+            "type": "opinion"
+          }
+        ]
+      },
+      "topic_section": {
+        "examiner_transition": "Now, let's talk about health.",
+        "questions": [
+          {
+            "question": "How important is it for people to maintain a healthy lifestyle?",
+            "type": "opinion"
+          },
+          {
+            "question": "Can you describe what you do to stay healthy?",
+            "type": "description"
+          },
+          {
+            "question": "Do you think people today are healthier or less healthy than in the past?",
+            "type": "comparison"
+          },
+          {
+            "question": "Have you ever had a health problem that changed your daily routine?",
+            "type": "experience"
+          },
+          {
+            "question": "Would you prefer to exercise outdoors or in a gym? Why?",
+            "type": "preference"
+          }
+        ]
+      },
+      "examiner_part1_closing": "Thank you. That's the end of Part 1. Now we'll move to Part 2."
+    },
+    "part2": {
+      "examiner_intro": "Now, I'm going to give you a topic and I'd like you to talk about it for one to two minutes.",
+      "examiner_instructions": "Before you speak, you'll have one minute to think about what you're going to say. You can make some notes if you wish.",
+      "examiner_card_presentation": "Here is your topic card.",
+      "topic_card": {
+        "title": "Describe a memorable journey you have taken",
+        "prompts": [
+          "where you went",
+          "who you went with",
+          "what you did during the journey",
+          "and explain why this journey was memorable for you"
+        ]
+      },
+      "examiner_preparation_start": "Alright? You have one minute to prepare.",
+      "examiner_preparation_end": "OK. Your preparation time is up.",
+      "examiner_speaking_start": "Please start speaking now.",
+      "examiner_speaking_end": "Thank you. Can I have the topic card back, please?",
+      "examiner_follow_up_question": "Just one quick question: Would you like to take a similar journey again in the future?",
+      "preparation_time": 60,
+      "speaking_time": 120
+    },
+    "part3": {
+      "examiner_intro": "Let's discuss some more general questions related to this topic.",
+      "examiner_transition": "I'd like to ask you a few more abstract questions now.",
+      "theme": "Travel and journeys",
+      "questions": [
+        {
+          "question": "Why do you think people enjoy traveling to new places?",
+          "type": "analysis"
+        },
+        {
+          "question": "How has travel changed compared to fifty years ago?",
+          "type": "comparison"
+        },
+        {
+          "question": "What are the benefits and drawbacks of tourism for local communities?",
+          "type": "evaluation"
+        },
+        {
+          "question": "Do you think virtual travel experiences could ever replace real travel?",
+          "type": "prediction"
+        },
+        {
+          "question": "Some people say that travel is a luxury rather than a necessity. What is your opinion?",
+          "type": "opinion"
+        },
+        {
+          "question": "How can governments encourage more sustainable forms of travel?",
+          "type": "critical"
+        }
+      ],
+      "examiner_closing": "Thank you. That is the end of the speaking test.",
+      "examiner_final": "You can relax now. Your results will be available shortly."
+    },
+    "total_questions": 15,
+    "ai_generated": true,
+    "success": true,
+    "has_audio": false,
+    "parts_included": [
+      "part1",
+      "part2",
+      "part3"
+    ]
+  },
+  "_published_at": "2026-10-01T19:27:45.497637+00:00"
+}

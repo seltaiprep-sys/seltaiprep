@@ -3,19 +3,27 @@
 Database models for IELTS only.
 PTE and UKVI have their own separate model files.
 
-v3 NOTE (Test Bank system):
-    `TestBank.used_by_users` is the SHARED-resource tracking column.
-    It stores a JSON-encoded list of user_ids (as strings) who have
-    already taken this test. Used by TestBankManager.get_or_create_test()
-    to serve only unused tests to each user.
+v8 NOTE (Coupons):
+    * `Coupon` — admin-created discount codes (percent / fixed).
+    * `CouponUsage` — tracks which user used which coupon.
+
+v7 NOTE (Profile fields):
+    * User.full_name   — display name (optional)
+    * User.target_band — IELTS target band score (0–9, optional)
+
+v6 NOTE (Facebook + Phone login):
+    * User.facebook_id — Facebook OAuth ID
+    * User.phone — phone number for SMS login
+
+v5 NOTE (Payment + Bills):
+    * `PaymentSettings` — singleton row controlled by admin.
+    * `Bill` — auto-generated invoices for AUTOMATIC payments only.
 
 v4 NOTE (Full-Test separation):
     `FullTestVariant` is a SEPARATE table from `TestBank`.
-    * Standalone tests (Listening/Reading/Writing/Speaking) → TestBank
-    * Full IELTS mock tests (all 4 phases in one snapshot) → FullTestVariant
 
-    Full-test variants are pre-generated (scripts + audio) so serving
-    is instant and standalone tests are never affected by full-test logic.
+v3 NOTE (Test Bank system):
+    `TestBank.used_by_users` is the SHARED-resource tracking column.
 """
 
 import json
@@ -23,7 +31,7 @@ from datetime import datetime, timedelta, timezone
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
-from sqlalchemy.ext.mutable import MutableDict #  added for IELTSTestPool
+from sqlalchemy.ext.mutable import MutableDict  # added for IELTSTestPool
 
 db = SQLAlchemy()
 
@@ -39,6 +47,10 @@ class User(UserMixin, db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
     google_id = db.Column(db.String(100), unique=True, nullable=True)
+    facebook_id = db.Column(db.String(100), unique=True, nullable=True)
+    phone = db.Column(db.String(20), unique=True, nullable=True, index=True)
+    full_name = db.Column(db.String(120), nullable=True)
+    target_band = db.Column(db.Float, nullable=True)
     is_admin = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     last_login = db.Column(db.DateTime, nullable=True)
@@ -132,7 +144,7 @@ class TestBank(db.Model):
     topic = db.Column(db.String(200), default='general')
     test_data = db.Column(db.JSON, nullable=False)
     usage_count = db.Column(db.Integer, default=0)
-    used_by_users = db.Column(db.Text, default='[]') #  v3 shared-resource tracking
+    used_by_users = db.Column(db.Text, default='[]')  # v3 shared-resource tracking
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     last_used_at = db.Column(db.DateTime, nullable=True)
 
@@ -167,30 +179,11 @@ class FullTestVariant(db.Model):
     Each row contains ONE complete, pre-generated IELTS mock test:
 
         snapshot = {
-            'listening': {
-                'sections': [4 sections with questions],
-                'total_sections': 4,
-                'generated_sections': [1, 2, 3, 4],
-                'accent': 'british',
-                'difficulty': 'medium',
-                'audio_urls': {'1': {...}, '2': {...}, ...},
-                'audio_timings': {'1': {...}, '2': {...}, ...},
-                'partial': False,
-            },
-            'reading': {full reading test data},
-            'writing': {task1, task2},
-            'speaking': {part1, part2, part3},
+            'listening': {...},
+            'reading': {...},
+            'writing': {...},
+            'speaking': {...},
         }
-
-    Why a separate table?
-        * Full-test variants are NOT the same as standalone tests.
-        * They bundle all 4 phases into one snapshot, served together.
-        * Standalone tests (TestBank) must never be affected by full-test
-          generation, serving, or admin actions — and vice versa.
-
-    Audio handling:
-        Listening audio URLs are ALSO stored in the two fast-access
-        columns below so serving does not need to deep-parse `snapshot`.
     """
     __tablename__ = 'full_test_variants'
 
@@ -248,13 +241,6 @@ class FullTestVariant(db.Model):
     # Snapshot accessors — always return defensive copies
     # ────────────────────────────────────────────────────────
     def get_listening_snapshot(self):
-        """
-        Return listening portion of the snapshot, guaranteeing:
-            * generated_sections is present
-            * total_sections is present
-            * partial is present
-            * audio_urls / audio_timings include the fast-access columns
-        """
         if not self.snapshot:
             return None
         snap = self.snapshot.get('listening')
@@ -426,7 +412,7 @@ class PendingPayment(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, nullable=False)
-    module = db.Column(db.String(20), nullable=False) # 'ielts', 'pte', 'ukvi'
+    module = db.Column(db.String(20), nullable=False)  # 'ielts', 'pte', 'ukvi'
     amount = db.Column(db.Integer, nullable=False)
     reference = db.Column(db.String(100), unique=True, nullable=False)
     status = db.Column(db.String(20), default='pending')
@@ -442,7 +428,6 @@ class PendingPayment(db.Model):
         db.Index('idx_pending_module', 'module', 'status'),
     )
 
-    # Lazy `user` property — resolves the User for this payment's module.
     @property
     def user(self):
         try:
@@ -544,6 +529,295 @@ class GenerationState(db.Model):
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
             'completed_at': self.completed_at.isoformat() if self.completed_at else None,
         }
+
+
+# ═══════════════════════════════════════════════════════════
+# PAYMENT SETTINGS (Admin controlled — singleton)
+# ═══════════════════════════════════════════════════════════
+class PaymentSettings(db.Model):
+    """
+    Global payment settings — admin controls which gateways are active.
+
+    Singleton row (only one exists). Use `PaymentSettings.get()` to fetch
+    or auto-create it.
+
+    Behavior:
+        * manual_enabled  → shows "Bank Transfer" button + /manual-payment allowed
+        * esewa_enabled   → shows "Pay via eSewa" button + auto-bill on success
+        * khalti_enabled  → reserved (not implemented yet)
+    """
+    __tablename__ = 'payment_settings'
+
+    id = db.Column(db.Integer, primary_key=True)
+    manual_enabled = db.Column(db.Boolean, default=True, nullable=False)
+    esewa_enabled = db.Column(db.Boolean, default=True, nullable=False)
+    khalti_enabled = db.Column(db.Boolean, default=False, nullable=False)
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_by = db.Column(db.Integer, nullable=True)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'manual_enabled': self.manual_enabled,
+            'esewa_enabled': self.esewa_enabled,
+            'khalti_enabled': self.khalti_enabled,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'updated_by': self.updated_by,
+        }
+
+    @classmethod
+    def get(cls):
+        """
+        Return the singleton settings row.
+        Auto-creates one with sensible defaults on first call.
+        """
+        s = cls.query.first()
+        if not s:
+            s = cls(
+                manual_enabled=True,
+                esewa_enabled=True,
+                khalti_enabled=False,
+            )
+            db.session.add(s)
+            try:
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+                # In case of race condition, re-fetch
+                s = cls.query.first()
+        return s
+
+    def __repr__(self):
+        return (
+            f"<PaymentSettings manual={self.manual_enabled} "
+            f"esewa={self.esewa_enabled} khalti={self.khalti_enabled}>"
+        )
+
+
+# ═══════════════════════════════════════════════════════════
+# BILLS (Auto-generated invoices — only for AUTOMATIC payments)
+# ═══════════════════════════════════════════════════════════
+class Bill(db.Model):
+    """
+    Auto-generated invoice/receipt for AUTOMATIC (eSewa) payments only.
+
+    ⚠️ IMPORTANT:
+        * Manual payments do NOT create Bill rows.
+        * Only `_create_auto_bill()` in app.py creates these rows.
+        * PDF is stored under protected_uploads/bills/.
+
+    Bill number format: INV-YYYY-NNNN
+        Example: INV-2026-0001, INV-2026-0002, ...
+    """
+    __tablename__ = 'bills'
+
+    id = db.Column(db.Integer, primary_key=True)
+    bill_number = db.Column(db.String(30), unique=True, nullable=False, index=True)
+
+    # User info (denormalized for PDF — user may be deleted later)
+    user_id = db.Column(db.Integer, nullable=False, index=True)
+    user_email = db.Column(db.String(255), nullable=True)
+    user_name = db.Column(db.String(255), nullable=True)
+
+    # Plan info
+    module = db.Column(db.String(20), nullable=False, index=True)  # ielts/pte/ukvi
+    plan = db.Column(db.String(20), nullable=False)                # 30days, etc.
+    plan_label = db.Column(db.String(50), nullable=True)           # "30 Days"
+    amount = db.Column(db.Integer, nullable=False)                 # NPR
+    status = db.Column(db.String(20), default='paid', index=True)  # paid/pending/refunded
+
+    # Payment info
+    payment_method = db.Column(db.String(20), nullable=False)      # esewa
+    transaction_id = db.Column(db.String(100), nullable=True, index=True)
+
+    # Timestamps + PDF path
+    issued_at = db.Column(
+        db.DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        index=True,
+    )
+    pdf_path = db.Column(db.String(255), nullable=True)
+
+    __table_args__ = (
+        db.Index('idx_bill_user_issued', 'user_id', 'issued_at'),
+        db.Index('idx_bill_module_status', 'module', 'status'),
+    )
+
+    def to_dict(self):
+        """Serializable dict — passed to PDF generator."""
+        return {
+            'id': self.id,
+            'bill_number': self.bill_number,
+            'user_id': self.user_id,
+            'user_email': self.user_email,
+            'user_name': self.user_name,
+            'module': self.module,
+            'plan': self.plan,
+            'plan_label': self.plan_label,
+            'amount': self.amount,
+            'status': self.status,
+            'payment_method': self.payment_method,
+            'transaction_id': self.transaction_id,
+            'issued_at': self.issued_at,
+            'pdf_path': self.pdf_path,
+        }
+
+    def __repr__(self):
+        return f"<Bill {self.bill_number} user={self.user_id} NPR={self.amount} {self.status}>"
+
+
+# ═══════════════════════════════════════════════════════════
+# 🆕 PHASE 2C — COUPONS
+# ═══════════════════════════════════════════════════════════
+class Coupon(db.Model):
+    """
+    Discount coupon — admin-created.
+
+    Supports:
+      • Percent discounts  (e.g., 10% off)
+      • Fixed NPR discounts (e.g., NPR 200 off)
+
+    Safety features:
+      • max_uses        — total usage limit (e.g., first 100 users)
+      • per_user_limit  — per-user limit (e.g., 1 time per user)
+      • min_amount      — minimum order amount required
+      • max_discount    — cap on percent discount
+      • expires_at      — expiry timestamp
+      • applicable_modules / applicable_plans — scope limiting
+    """
+    __tablename__ = 'coupons'
+
+    id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(50), unique=True, nullable=False, index=True)
+    description = db.Column(db.String(255), nullable=True)
+
+    discount_type = db.Column(db.String(20), default='percent', nullable=False)
+    discount_value = db.Column(db.Float, default=10.0, nullable=False)
+    min_amount = db.Column(db.Integer, default=0)
+    max_discount = db.Column(db.Integer, nullable=True)
+
+    max_uses = db.Column(db.Integer, default=0)
+    times_used = db.Column(db.Integer, default=0)
+    per_user_limit = db.Column(db.Integer, default=1)
+
+    applicable_modules = db.Column(db.String(100), default='all')
+    applicable_plans = db.Column(db.String(255), default='all')
+
+    starts_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    expires_at = db.Column(db.DateTime, nullable=True)
+    is_active = db.Column(db.Boolean, default=True, index=True)
+    created_by = db.Column(db.Integer, nullable=True)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(
+        db.DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    def compute_discount(self, amount):
+        """Return discount (NPR) for the given original amount."""
+        try:
+            amt = float(amount or 0)
+        except (ValueError, TypeError):
+            return 0
+        if amt <= 0:
+            return 0
+        if self.min_amount and amt < int(self.min_amount):
+            return 0
+
+        if (self.discount_type or '').lower() == 'percent':
+            disc = amt * (float(self.discount_value or 0) / 100.0)
+        else:
+            disc = float(self.discount_value or 0)
+
+        if self.max_discount:
+            disc = min(disc, float(self.max_discount))
+        disc = min(disc, amt)
+        return int(round(disc))
+
+    def is_valid_now(self):
+        now = datetime.now(timezone.utc)
+        if not self.is_active:
+            return False, 'Coupon is inactive'
+        if self.starts_at and self.starts_at > now:
+            return False, 'Coupon is not yet active'
+        if self.expires_at and self.expires_at < now:
+            return False, 'Coupon has expired'
+        if self.max_uses and self.times_used >= self.max_uses:
+            return False, 'Coupon usage limit reached'
+        return True, None
+
+    def module_allowed(self, module):
+        s = (self.applicable_modules or 'all').lower().strip()
+        if s == 'all' or not s:
+            return True
+        return module.lower() in [x.strip() for x in s.split(',')]
+
+    def plan_allowed(self, plan_key):
+        s = (self.applicable_plans or 'all').lower().strip()
+        if s == 'all' or not s:
+            return True
+        return plan_key.lower() in [x.strip() for x in s.split(',')]
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'code': self.code,
+            'description': self.description,
+            'discount_type': self.discount_type,
+            'discount_value': self.discount_value,
+            'min_amount': self.min_amount,
+            'max_discount': self.max_discount,
+            'max_uses': self.max_uses,
+            'times_used': self.times_used,
+            'per_user_limit': self.per_user_limit,
+            'applicable_modules': self.applicable_modules,
+            'applicable_plans': self.applicable_plans,
+            'starts_at': self.starts_at.isoformat() if self.starts_at else None,
+            'expires_at': self.expires_at.isoformat() if self.expires_at else None,
+            'is_active': self.is_active,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+    def __repr__(self):
+        return f"<Coupon {self.code} {self.discount_type}={self.discount_value}>"
+
+
+class CouponUsage(db.Model):
+    """Tracks which user used which coupon (for per-user limit + history)."""
+    __tablename__ = 'coupon_usages'
+
+    id = db.Column(db.Integer, primary_key=True)
+    coupon_id = db.Column(db.Integer, nullable=False, index=True)
+    user_id = db.Column(db.Integer, nullable=False, index=True)
+    module = db.Column(db.String(20), nullable=True)
+    plan = db.Column(db.String(50), nullable=True)
+    original_amount = db.Column(db.Integer, nullable=False)
+    discount_amount = db.Column(db.Integer, nullable=False, default=0)
+    final_amount = db.Column(db.Integer, nullable=False)
+    txn_id = db.Column(db.String(100), nullable=True)
+    used_at = db.Column(
+        db.DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        index=True,
+    )
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'coupon_id': self.coupon_id,
+            'user_id': self.user_id,
+            'module': self.module,
+            'plan': self.plan,
+            'original_amount': self.original_amount,
+            'discount_amount': self.discount_amount,
+            'final_amount': self.final_amount,
+            'txn_id': self.txn_id,
+            'used_at': self.used_at.isoformat() if self.used_at else None,
+        }
+
+    def __repr__(self):
+        return f"<CouponUsage coupon={self.coupon_id} user={self.user_id}>"
 
 
 # ============================================================
@@ -657,7 +931,6 @@ def get_test_bank_usage_model(module=None):
         return UserTestBankUsage
 
 
-# NEW: Full-test variant model getter
 def get_full_test_variant_model(module=None):
     """
     Return the FullTestVariant model class.
