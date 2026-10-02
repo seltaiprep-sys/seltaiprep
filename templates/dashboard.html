@@ -91,7 +91,6 @@
             background: #6c63ff;
             color: #fff;
         }
-        /* My Profile link */
         .profile-link {
             color: #6c63ff;
             font-weight: 600;
@@ -109,7 +108,6 @@
             background: #6c63ff;
             color: #fff;
         }
-        /* My Bills link */
         .bills-link {
             color: #16a34a;
             font-weight: 600;
@@ -296,62 +294,6 @@
             color: #94a3b8;
         }
 
-        /* ═══════════════════════════════════════════════════════ */
-        /* 🆕 PHASE 2A — PROGRESS CHART                            */
-        /* ═══════════════════════════════════════════════════════ */
-        .progress-section {
-            background: #fff;
-            border-radius: 16px;
-            padding: 20px 24px;
-            margin-bottom: 28px;
-            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
-        }
-        .progress-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 16px;
-            flex-wrap: wrap;
-            gap: 12px;
-        }
-        .progress-header h3 {
-            font-size: 16px;
-            font-weight: 600;
-            color: #1e293b;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin: 0;
-        }
-        .progress-select {
-            padding: 6px 16px;
-            border: 1px solid #ddd;
-            border-radius: 20px;
-            font-size: 13px;
-            background: white;
-            cursor: pointer;
-            font-weight: 600;
-            color: #475569;
-            transition: 0.2s;
-        }
-        .progress-select:hover {
-            border-color: #6c63ff;
-        }
-        .progress-chart-wrapper {
-            position: relative;
-            height: 340px;
-            width: 100%;
-        }
-        .progress-empty {
-            text-align: center;
-            padding: 60px 20px;
-            color: #94a3b8;
-            font-size: 14px;
-        }
-        @media (max-width: 480px) {
-            .progress-chart-wrapper { height: 260px; }
-        }
-
         /* ─── QUICK ACTIONS ─── */
         .quick-actions {
             display: grid;
@@ -405,21 +347,11 @@
             background: #f1f5f9;
             color: #475569;
         }
-        .skill-card.listening {
-            border-top-color: #3b82f6;
-        }
-        .skill-card.reading {
-            border-top-color: #22c55e;
-        }
-        .skill-card.writing {
-            border-top-color: #f59e0b;
-        }
-        .skill-card.speaking {
-            border-top-color: #ef4444;
-        }
-        .skill-card.pte-speaking {
-            border-top-color: #8b5cf6;
-        }
+        .skill-card.listening { border-top-color: #3b82f6; }
+        .skill-card.reading { border-top-color: #22c55e; }
+        .skill-card.writing { border-top-color: #f59e0b; }
+        .skill-card.speaking { border-top-color: #ef4444; }
+        .skill-card.pte-speaking { border-top-color: #8b5cf6; }
 
         /* ─── FULL TEST CARD ─── */
         .full-test-card {
@@ -596,6 +528,7 @@
             border-radius: 16px;
             padding: 20px 24px;
             box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+            margin-bottom: 28px;
         }
         .results-section h3 {
             font-size: 16px;
@@ -654,9 +587,7 @@
             font-weight: 600;
         }
 
-        /* ═══════════════════════════════════════════════════════════
-           ✅ FULL TEST RESULT CARD (highlighted golden)
-           ═══════════════════════════════════════════════════════════ */
+        /* ─── FULL RESULT CARD ─── */
         .full-result-card {
             display: block;
             padding: 16px 20px;
@@ -718,8 +649,6 @@
             color: #b45309;
             line-height: 1;
         }
-
-        /* Section breakdown chips */
         .section-chips {
             display: flex;
             flex-wrap: wrap;
@@ -739,18 +668,9 @@
             border: 1px solid rgba(245, 158, 11, 0.35);
             white-space: nowrap;
         }
-        .section-chip .icon {
-            font-size: 14px;
-        }
-        .section-chip .chip-label {
-            color: #92400e;
-            font-weight: 700;
-        }
-        .section-chip .chip-band {
-            color: #b45309;
-            font-weight: 900;
-            font-size: 14px;
-        }
+        .section-chip .icon { font-size: 14px; }
+        .section-chip .chip-label { color: #92400e; font-weight: 700; }
+        .section-chip .chip-band { color: #b45309; font-weight: 900; font-size: 14px; }
         .section-chip.zero {
             background: rgba(254, 226, 226, 0.75);
             border-color: rgba(239, 68, 68, 0.35);
@@ -766,14 +686,65 @@
             font-size: 14px;
         }
 
+        /* ═══════════════════════════════════════════════════════ */
+        /* 🆕 PROGRESS CHART — Now at the bottom                   */
+        /* ═══════════════════════════════════════════════════════ */
+        .progress-section {
+            background: #fff;
+            border-radius: 16px;
+            padding: 20px 24px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+        }
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .progress-header h3 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1e293b;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 0;
+        }
+        .progress-select {
+            padding: 6px 16px;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            font-size: 13px;
+            background: white;
+            cursor: pointer;
+            font-weight: 600;
+            color: #475569;
+            transition: 0.2s;
+        }
+        .progress-select:hover {
+            border-color: #6c63ff;
+        }
+        .progress-chart-wrapper {
+            position: relative;
+            height: 340px;
+            width: 100%;
+        }
+        .progress-empty {
+            text-align: center;
+            padding: 60px 20px;
+            color: #94a3b8;
+            font-size: 14px;
+        }
+        @media (max-width: 480px) {
+            .progress-chart-wrapper { height: 260px; }
+        }
+
         /* ─── RESPONSIVE ─── */
         @media (max-width: 1024px) {
-            .quick-actions {
-                grid-template-columns: 1fr;
-            }
-            .skill-grid {
-                grid-template-columns: repeat(4, 1fr);
-            }
+            .quick-actions { grid-template-columns: 1fr; }
+            .skill-grid { grid-template-columns: repeat(4, 1fr); }
         }
         @media (max-width: 768px) {
             .header {
@@ -796,67 +767,36 @@
                 justify-content: center;
                 gap: 16px;
             }
-            .welcome-stats .stat .number {
-                font-size: 22px;
-            }
-            .skill-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
+            .welcome-stats .stat .number { font-size: 22px; }
+            .skill-grid { grid-template-columns: repeat(2, 1fr); }
             .subscription-widget {
                 flex-direction: column;
                 align-items: stretch;
                 text-align: center;
             }
-            .subscription-widget .left {
-                justify-content: center;
-            }
-            .full-test-card {
-                align-items: center;
-                text-align: center;
-            }
-            .full-test-btn-wrapper {
-                justify-content: center;
-            }
-            .session-item {
-                flex-direction: column;
-                align-items: stretch;
-            }
-            .session-info {
-                justify-content: center;
-            }
+            .subscription-widget .left { justify-content: center; }
+            .full-test-card { align-items: center; text-align: center; }
+            .full-test-btn-wrapper { justify-content: center; }
+            .session-item { flex-direction: column; align-items: stretch; }
+            .session-info { justify-content: center; }
             .result-item {
                 flex-wrap: wrap;
                 gap: 8px;
                 justify-content: center;
             }
-            .module-breakdown {
-                justify-content: center;
-            }
+            .module-breakdown { justify-content: center; }
             .full-result-header {
                 flex-direction: column;
                 align-items: flex-start;
             }
         }
         @media (max-width: 480px) {
-            .skill-grid {
-                grid-template-columns: 1fr 1fr;
-                gap: 10px;
-            }
-            .skill-card {
-                padding: 14px 10px;
-            }
-            .skill-card .icon {
-                font-size: 30px;
-            }
-            .container {
-                padding: 16px 12px 40px;
-            }
-            .welcome-stats .stat .number {
-                font-size: 18px;
-            }
-            .section-chips {
-                flex-direction: column;
-            }
+            .skill-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+            .skill-card { padding: 14px 10px; }
+            .skill-card .icon { font-size: 30px; }
+            .container { padding: 16px 12px 40px; }
+            .welcome-stats .stat .number { font-size: 18px; }
+            .section-chips { flex-direction: column; }
         }
     </style>
 
@@ -982,28 +922,9 @@
         </div>
 
         <!-- ═══════════════════════════════════════════════════════ -->
-        <!-- 🆕 PROGRESS CHART                                       -->
+        <!-- ✅ CARDS FIRST (Quick Actions — Skill Cards)            -->
         <!-- ═══════════════════════════════════════════════════════ -->
-        <div class="progress-section" id="progress-section">
-            <div class="progress-header">
-                <h3>📈 Band Score Progress</h3>
-                <select id="progress-range" class="progress-select">
-                    <option value="10">Last 10 tests</option>
-                    <option value="30" selected>Last 30 tests</option>
-                    <option value="100">All tests</option>
-                </select>
-            </div>
-            <div class="progress-chart-wrapper" id="progress-chart-wrapper">
-                <canvas id="progressChart"></canvas>
-            </div>
-            <div class="progress-empty" id="progress-empty" style="display:none;">
-                📭 No test results yet. Take a test to see your progress here!
-            </div>
-        </div>
-
-        <!-- ===== QUICK ACTIONS ===== -->
         <div class="quick-actions">
-            <!-- Skill Cards -->
             <div class="skill-grid">
                 {% if selected_module == 'ielts' %}
                     <a href="/listening" class="skill-card listening">
@@ -1162,16 +1083,13 @@
             </div>
         </div>
 
-        <!-- ============================================================
-             RESULTS SECTION
-             ============================================================ -->
+        <!-- ===== RESULTS SECTION ===== -->
         <div class="results-section">
             <h3>📊 Recent {{ selected_module.upper() }} Results</h3>
             <div class="results-list">
                 {% set found = false %}
                 {% for result in results %}
 
-                    {# Full IELTS test result #}
                     {% if selected_module == 'ielts' and result.test_type in ['full_ielts', 'ielts_full', 'full'] %}
                         {% set found = true %}
 
@@ -1285,6 +1203,26 @@
             </div>
         </div>
 
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!-- ✅ PROGRESS CHART — Now at the BOTTOM                    -->
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <div class="progress-section" id="progress-section">
+            <div class="progress-header">
+                <h3>📈 Band Score Progress</h3>
+                <select id="progress-range" class="progress-select">
+                    <option value="10">Last 10 tests</option>
+                    <option value="30" selected>Last 30 tests</option>
+                    <option value="100">All tests</option>
+                </select>
+            </div>
+            <div class="progress-chart-wrapper" id="progress-chart-wrapper">
+                <canvas id="progressChart"></canvas>
+            </div>
+            <div class="progress-empty" id="progress-empty" style="display:none;">
+                📭 No test results yet. Take a test to see your progress here!
+            </div>
+        </div>
+
     </div>
 
     <script>
@@ -1294,7 +1232,6 @@
             return meta ? meta.getAttribute('content') : '';
         }
 
-        // ─── Get subscription endpoint based on module ──────────────────
         function getSubscriptionEndpoint(module) {
             const endpoints = {
                 'pte': '/api/pte/subscription/status',
@@ -1303,7 +1240,6 @@
             return endpoints[module] || null;
         }
 
-        // ─── Helper: compute remaining free tests ───────────────────────
         function getFreeRemaining(data) {
             if (data.remaining_free !== undefined) return data.remaining_free;
             if (data.free_tests_remaining !== undefined) return data.free_tests_remaining;
@@ -1322,7 +1258,6 @@
             return 2;
         }
 
-        // ─── Render subscription widget for PTE/UKVI ──────────────────
         function renderSubscriptionWidget(module, data) {
             const container = document.getElementById('subscription-widget-content');
             if (!container) return;
@@ -1385,7 +1320,6 @@
             return div.innerHTML;
         }
 
-        // ─── Update full test lock for PTE ────
         function updateFullTestLock(data) {
             const btn = document.getElementById('full-test-btn');
             const lockIcon = document.getElementById('lock-icon');
@@ -1400,7 +1334,6 @@
             if (warning) warning.classList.toggle('visible', isLocked);
         }
 
-        // ─── Fetch and update (PTE/UKVI only) ─────────────────────────
         function fetchAndUpdateSubscription() {
             const module = '{{ selected_module }}';
             const endpoint = getSubscriptionEndpoint(module);
@@ -1427,7 +1360,7 @@
         }
 
         // ═══════════════════════════════════════════════════════════
-        // 🆕 PHASE 2A — PROGRESS CHART
+        // PROGRESS CHART
         // ═══════════════════════════════════════════════════════════
         var progressChartInstance = null;
 
@@ -1540,7 +1473,6 @@
                 fetchAndUpdateSubscription();
             }
 
-            // 🆕 Load progress chart
             loadProgressChart();
             var rangeEl = document.getElementById('progress-range');
             if (rangeEl) {
