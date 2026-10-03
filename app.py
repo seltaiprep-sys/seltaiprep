@@ -1421,6 +1421,9 @@ def _pte_active_session_response(test_type: str):
 # ============================================================
 @app.route('/')
 def index():
+    """Homepage — redirect logged-in users to dashboard, else show login."""
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
     return render_template('index.html')
 
 
