@@ -2226,6 +2226,7 @@ def google_authorized():
             user = User.query.filter_by(email=email).first()
             if not user:
                 user = User(username=name, email=email, google_id=google_id)
+                user.set_password(secrets.token_hex(32))
                 db.session.add(user)
                 db.session.commit()
             else:
@@ -2401,6 +2402,7 @@ def verify_email_otp():
     user = User.query.filter_by(email=email).first()
     if not user:
         user = User(username=email.split('@')[0], email=email)
+        user.set_password(secrets.token_hex(32))
         db.session.add(user)
         db.session.commit()
     session.pop('otp', None)
