@@ -1,4 +1,4 @@
-﻿# app.py
+# app.py
 """
 Flask application with fully separated models for IELTS, PTE, and UKVI.
 
@@ -1221,9 +1221,45 @@ def ukvi_static(filename):
     return send_from_directory('data/ukvi', filename)
 
 
-scheduler = BackgroundScheduler()
-scheduler.add_job(cleanup_old_generation_states, 'interval', days=1, args=[7])
-scheduler.start()
+# ═══════════════════════════════════════════════════════════
+# SCHEDULER — single-process leader lock
+# Prevents duplicate jobs across multiple Gunicorn workers
+# ═══════════════════════════════════════════════════════════
+import fcntl as _fcntl
+
+_SCHEDULER_LOCK_FILE = '/tmp/seltaiprep_scheduler.lock'
+_scheduler_lock_handle = None
+
+
+def _try_acquire_scheduler_lock():
+    global _scheduler_lock_handle
+    try:
+        _scheduler_lock_handle = open(_SCHEDULER_LOCK_FILE, 'w')
+        _fcntl.flock(_scheduler_lock_handle, _fcntl.LOCK_EX | _fcntl.LOCK_NB)
+        _scheduler_lock_handle.write(str(os.getpid()))
+        _scheduler_lock_handle.flush()
+        return True
+    except (IOError, OSError):
+        try:
+            if _scheduler_lock_handle:
+                _scheduler_lock_handle.close()
+        except Exception:
+            pass
+        _scheduler_lock_handle = None
+        return False
+
+
+_is_scheduler_leader = _try_acquire_scheduler_lock()
+
+if _is_scheduler_leader:
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(cleanup_old_generation_states, 'interval', days=1, args=[7])
+    scheduler.start()
+    logger.info(f" ✅ Scheduler started (LEADER pid={os.getpid()})")
+else:
+    scheduler = None
+    logger.info(f" ⏭️  Scheduler skipped (worker pid={os.getpid()})")
+
 admin_executor = ThreadPoolExecutor(max_workers=2)
 
 # ═══════════════════════════════════════════════════════════
@@ -1332,12 +1368,8 @@ def _pte_job_cleanup_old(hours: int = 24) -> int:
     return removed
 
 
-scheduler.add_job(_pte_job_cleanup_old, 'interval', hours=6, args=[24])
-
-_is_werkzeug_child = os.environ.get('WERKZEUG_RUN_MAIN') == 'true'
-_reloader_active = bool(app.debug) and not _is_werkzeug_child
-
-if _is_werkzeug_child or not bool(app.debug):
+if scheduler is not None:
+    scheduler.add_job(_pte_job_cleanup_old, 'interval', hours=6, args=[24])
     scheduler.add_job(
         _poll_ukvi_jobs,
         'interval',
@@ -1346,9 +1378,9 @@ if _is_werkzeug_child or not bool(app.debug):
         max_instances=1,
         coalesce=True,
     )
-    logger.info(" UKVI poller registered (interval=10s, single process)")
+    logger.info(" ✅ PTE cleanup + UKVI poller registered (leader only)")
 else:
-    logger.info(" UKVI poller SKIPPED in reloader parent process")
+    logger.info(" ⏭️  Background jobs skipped (not scheduler leader)")
 
 
 # ═══════════════════════════════════════════════════════════
