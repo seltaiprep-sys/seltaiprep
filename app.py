@@ -760,6 +760,50 @@ def map_accent_to_voice(accent):
     return mapping.get(accent.lower(), 'en-US-Neural2-F')
 
 
+def _clean_script_for_tts(script: str) -> str:
+    """Clean script for TTS — handle special characters."""
+    if not script:
+        return script
+    
+    import re
+    
+    # Email addresses: convert @ to " at " and . to " dot " (optional)
+    # Keep email readable: "john.smith@email.com" → "john dot smith at email dot com"
+    def _email_repl(m):
+        email = m.group(0)
+        return email.replace('@', ' at ').replace('.', ' dot ')
+    
+    script = re.sub(
+        r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}',
+        _email_repl,
+        script
+    )
+    
+    # URLs: remove http:// https:// www.
+    script = re.sub(r'https?://', '', script)
+    script = re.sub(r'www\.', '', script)
+    
+    # Numbers with commas: "50,000" → "50 thousand" (optional)
+    script = re.sub(r'(\d),000', r'\1 thousand', script)
+    script = re.sub(r'(\d),000,000', r'\1 million', script)
+    
+    # £ symbol → "pounds", $ → "dollars", € → "euros"
+    script = script.replace('£', ' pounds ')
+    script = script.replace('$', ' dollars ')
+    script = script.replace('€', ' euros ')
+    
+    # Percentage: "65%" → "65 percent"
+    script = re.sub(r'(\d+(?:\.\d+)?)%', r'\1 percent', script)
+    
+    # Remove other special chars that TTS mispronounces
+    script = re.sub(r'[*#~`^&<>{}|\\]', ' ', script)
+    
+    # Multiple spaces → single
+    script = re.sub(r'\s+', ' ', script)
+    
+    return script.strip()
+
+
 def _generate_single_section_audio(
     session_id, section_num, section_data, accents_map,
     retries=3, pool_id=None,
@@ -770,6 +814,9 @@ def _generate_single_section_audio(
         script = '. '.join(text_parts)
     if not script:
         return None, "No text to synthesize", {}
+
+    # Clean script for TTS
+    script = _clean_script_for_tts(script)
 
     if AUDIO_GENERATOR_AVAILABLE and audio_generator:
         try:
@@ -6321,7 +6368,15 @@ def submit_listening():
         for section in sections:
             for q in section.get('questions', []):
                 q_id = str(q.get('id') or q.get('number') or q.get('question_number') or '')
-                answer = q.get('correct_answer') or q.get('answer') or q.get('correct') or ''
+                # Prefer correct_answer, fallback to answer / correct
+                answer = (q.get('correct_answer') 
+                          or q.get('answer') 
+                          or q.get('correct') 
+                          or q.get('solution')
+                          or '')
+                # Normalize: also store in question dict for frontend
+                if not q.get('correct_answer') and answer:
+                    q['correct_answer'] = answer
                 if q_id and answer:
                     correct_answers[q_id] = answer
                     total_questions += 1
@@ -6345,6 +6400,7 @@ def submit_listening():
             answer_results[q_id] = {
                 'user_answer': display_answer,
                 'correct_answer': correct,
+                'answer': correct,
                 'is_correct': is_correct,
             }
         band_score = round_ielts_band(calculate_ielts_band(correct_count, total_questions))
