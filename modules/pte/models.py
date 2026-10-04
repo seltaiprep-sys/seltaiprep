@@ -79,7 +79,11 @@ class PTESubscription(db.Model):
     def days_remaining(self):
         if not self.subscription_end:
             return 0
-        return max(0, (self.subscription_end - datetime.now(timezone.utc)).days)
+        end = self.subscription_end
+        if end.tzinfo is None:
+            end = end.replace(tzinfo=timezone.utc)
+        now = datetime.now(timezone.utc)
+        return max(0, (end - now).days)
 
     def increment_free_usage(self, test_type: str):
         usage = dict(self.free_usage or {})

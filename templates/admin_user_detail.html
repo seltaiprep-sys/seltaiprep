@@ -92,7 +92,7 @@
             <div><span class="label">Username:</span> <span class="value">{{ user.username }}</span></div>
             <div><span class="label">Email:</span> <span class="value">{{ user.email }}</span></div>
             <div><span class="label">Role:</span> <span class="value">{% if user.is_admin %}Admin{% else %}User{% endif %}</span></div>
-            <div><span class="label">Joined:</span> <span class="value">{{ user.created_at.strftime('%Y-%m-%d %H:%M') }}</span></div>
+            <div><span class="label">Joined:</span> <span class="value">{{ user.created_at.strftime('%Y-%m-%d %H:%M') if user.created_at else 'N/A' }}</span></div>
             <div><span class="label">Last Login:</span> <span class="value">{{ user.last_login.strftime('%Y-%m-%d %H:%M') if user.last_login else 'Never' }}</span></div>
         </div>
     </div>
@@ -110,7 +110,7 @@
             <div><span class="label">Tests Remaining:</span> <span class="value">{{ subscription.tests_remaining }}</span></div>
             <div><span class="label">Tests Taken:</span> <span class="value">{{ subscription.tests_taken }}</span></div>
             <div><span class="label">Expires:</span> <span class="value">{{ subscription.subscription_end.strftime('%Y-%m-%d') if subscription.subscription_end else 'N/A' }}</span></div>
-            <div><span class="label">Days Left:</span> <span class="value">{{ subscription.days_remaining() }}</span></div>
+            <div><span class="label">Days Left:</span> <span class="value">{{ subscription.days_remaining() if subscription and subscription.days_remaining is defined else 'N/A' }}</span></div>
         </div>
     </div>
     {% endif %}
