@@ -115,6 +115,19 @@ class UKVISubscription(db.Model):
     subscription_end = db.Column(db.DateTime, nullable=True)
     amount_paid_npr = db.Column(db.Float, default=0.0)
 
+    def is_active(self):
+        """Check if subscription is active (timezone-aware)."""
+        from datetime import datetime, timezone
+        if self.status != 'active':
+            return False
+        if not self.subscription_end:
+            return True
+        end = self.subscription_end
+        if end.tzinfo is None:
+            end = end.replace(tzinfo=timezone.utc)
+        now = datetime.now(timezone.utc)
+        return end > now
+
     def get_free_usage(self):
         return json.loads(self.free_usage) if self.free_usage else {}
 
