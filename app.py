@@ -1451,6 +1451,12 @@ def _pte_active_session_response(test_type: str):
 # ============================================================
 # MAIN ROUTES
 # ============================================================
+@app.route('/splash')
+def splash():
+    """PWA splash screen — shown on app launch."""
+    return render_template('splash.html')
+
+
 @app.route('/')
 def index():
     """Homepage — redirect logged-in users to dashboard, else show login."""
@@ -7246,6 +7252,229 @@ def debug_image():
     from modules.pte.utils.image_generator import pte_image_generator
     result = pte_image_generator.generate_image('bar_chart', 'medium', True)
     return jsonify(result)
+
+
+# ============================================================
+# PUSH NOTIFICATIONS
+# ============================================================
+import json as _json
+
+VAPID_PUBLIC_KEY = os.environ.get('VAPID_PUBLIC_KEY', '')
+VAPID_PRIVATE_KEY_PATH = os.environ.get('VAPID_PRIVATE_KEY_PATH', '')
+VAPID_SUBJECT = os.environ.get('VAPID_SUBJECT', 'mailto:admin@example.com')
+
+
+def _get_webpush():
+    """Lazy import webpush — optional dependency."""
+    try:
+        from pywebpush import webpush, WebPushException
+        return webpush, WebPushException
+    except ImportError:
+        return None, None
+
+
+@app.route('/api/push/vapid-public-key', methods=['GET'])
+def push_vapid_public_key():
+    """Return VAPID public key for browser subscription."""
+    return jsonify({
+        'success': True,
+        'publicKey': VAPID_PUBLIC_KEY,
+    })
+
+
+@app.route('/api/push/subscribe', methods=['POST'])
+@login_required
+def push_subscribe():
+    """Save browser push subscription."""
+    from models import PushSubscription
+
+    data = request.get_json(silent=True) or {}
+    sub = data.get('subscription') or {}
+    endpoint = sub.get('endpoint')
+    keys = sub.get('keys') or {}
+    p256dh = keys.get('p256dh')
+    auth = keys.get('auth')
+
+    if not endpoint or not p256dh or not auth:
+        return jsonify({'success': False, 'error': 'Invalid subscription'}), 400
+
+    module = session.get('selected_module', 'ielts')
+    ua = (request.headers.get('User-Agent') or '')[:255]
+
+    try:
+        existing = PushSubscription.query.filter_by(endpoint=endpoint).first()
+        if existing:
+            existing.user_id = current_user.id
+            existing.module = module
+            existing.p256dh = p256dh
+            existing.auth = auth
+            existing.user_agent = ua
+        else:
+            new_sub = PushSubscription(
+                user_id=current_user.id,
+                module=module,
+                endpoint=endpoint,
+                p256dh=p256dh,
+                auth=auth,
+                user_agent=ua,
+            )
+            db.session.add(new_sub)
+        db.session.commit()
+        logger.info(f" Push subscription saved for user {current_user.id}")
+        return jsonify({'success': True, 'message': 'Subscribed'})
+    except Exception as e:
+        db.session.rollback()
+        logger.exception(f"Push subscribe error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/push/unsubscribe', methods=['POST'])
+@login_required
+def push_unsubscribe():
+    """Remove push subscription."""
+    from models import PushSubscription
+
+    data = request.get_json(silent=True) or {}
+    endpoint = data.get('endpoint')
+    if not endpoint:
+        return jsonify({'success': False, 'error': 'Endpoint required'}), 400
+
+    try:
+        PushSubscription.query.filter_by(
+            endpoint=endpoint,
+            user_id=current_user.id,
+        ).delete()
+        db.session.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/push/test', methods=['POST'])
+@login_required
+def push_test():
+    """Send test notification to current user."""
+    from models import PushSubscription
+
+    subs = PushSubscription.query.filter_by(user_id=current_user.id).all()
+    if not subs:
+        return jsonify({'success': False, 'error': 'No subscriptions found'}), 404
+
+    sent = 0
+    for sub in subs:
+        if _send_push(sub, 'SeltaPrep Test', 'Push notifications काम गर्छ! 🎉'):
+            sent += 1
+
+    return jsonify({
+        'success': True,
+        'sent': sent,
+        'total': len(subs),
+    })
+
+
+def _send_push(subscription, title, body, url='/'):
+    """Send a push notification to a single subscription."""
+    webpush, WebPushException = _get_webpush()
+    if not webpush:
+        logger.warning("pywebpush not installed")
+        return False
+
+    if not VAPID_PRIVATE_KEY_PATH or not os.path.exists(VAPID_PRIVATE_KEY_PATH):
+        logger.warning("VAPID private key not found")
+        return False
+
+    payload = _json.dumps({
+        'title': title,
+        'body': body,
+        'url': url,
+        'icon': '/static/icon-192.png',
+    })
+
+    try:
+        webpush(
+            subscription_info={
+                'endpoint': subscription.endpoint,
+                'keys': {
+                    'p256dh': subscription.p256dh,
+                    'auth': subscription.auth,
+                },
+            },
+            data=payload,
+            vapid_private_key=VAPID_PRIVATE_KEY_PATH,
+            vapid_claims={'sub': VAPID_SUBJECT},
+            timeout=10,
+        )
+        subscription.last_used_at = datetime.now(timezone.utc)
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+        return True
+    except WebPushException as e:
+        # 410 Gone → remove subscription
+        if e.response and e.response.status_code in (404, 410):
+            try:
+                db.session.delete(subscription)
+                db.session.commit()
+                logger.info(f"Removed stale push subscription: {subscription.id}")
+            except Exception:
+                db.session.rollback()
+        else:
+            logger.warning(f"Push failed: {e}")
+        return False
+    except Exception as e:
+        logger.warning(f"Push error: {e}")
+        return False
+
+
+# ═══════════════════════════════════════════════════════════
+# ADMIN — Send push to users
+# ═══════════════════════════════════════════════════════════
+@app.route('/admin/push/send', methods=['POST'])
+@admin_required
+@csrf_protect
+def admin_push_send():
+    """Send push notification to all or selected users."""
+    from models import PushSubscription
+
+    data = request.get_json(silent=True) or request.form or {}
+    title = (data.get('title') or '').strip()
+    body = (data.get('body') or '').strip()
+    module = (data.get('module') or 'all').strip()
+    user_id = data.get('user_id')
+    url = (data.get('url') or '/').strip()
+
+    if not title or not body:
+        return jsonify({'success': False, 'error': 'Title and body required'}), 400
+
+    q = PushSubscription.query
+    if user_id:
+        try:
+            q = q.filter_by(user_id=int(user_id))
+        except (ValueError, TypeError):
+            return jsonify({'success': False, 'error': 'Invalid user_id'}), 400
+    elif module and module != 'all':
+        q = q.filter_by(module=module)
+
+    subs = q.all()
+    if not subs:
+        return jsonify({'success': False, 'error': 'No subscriptions', 'count': 0}), 404
+
+    sent = 0
+    failed = 0
+    for sub in subs:
+        if _send_push(sub, title, body, url=url):
+            sent += 1
+        else:
+            failed += 1
+
+    return jsonify({
+        'success': True,
+        'sent': sent,
+        'failed': failed,
+        'total': len(subs),
+    })
 
 
 # ============================================================

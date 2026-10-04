@@ -1009,3 +1009,29 @@ class IELTSUserPoolProgress(db.Model):
 
     def __repr__(self):
         return f"<IELTSUserPoolProgress user={self.user_id} {self.module} pool={self.pool_id}>"
+
+# ═══════════════════════════════════════════════════════════
+# PUSH NOTIFICATION SUBSCRIPTIONS
+# ═══════════════════════════════════════════════════════════
+class PushSubscription(db.Model):
+    """Store browser push subscription endpoints."""
+    __tablename__ = 'push_subscriptions'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, nullable=False, index=True)
+    module = db.Column(db.String(20), default='ielts', index=True)
+    endpoint = db.Column(db.Text, nullable=False, unique=True)
+    p256dh = db.Column(db.Text, nullable=False)
+    auth = db.Column(db.Text, nullable=False)
+    user_agent = db.Column(db.String(255))
+    created_at = db.Column(db.DateTime, default=lambda: __import__('datetime').datetime.now(__import__('datetime').timezone.utc))
+    last_used_at = db.Column(db.DateTime)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'module': self.module,
+            'endpoint': self.endpoint[:80] + '...' if self.endpoint else None,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }

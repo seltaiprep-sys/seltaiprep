@@ -29,5 +29,7 @@
 <body>
     <div class="header"><div class="header-content"><div class="logo"><h1>IELTS Practice Platform</h1><p>Saved Tests</p></div><div class="nav-links"><a href="/dashboard">Dashboard</a><a href="/logout">Logout</a></div></div></div>
     <div class="container"><div class="card"><h2>📁 Saved Tests</h2>{% if results %}<table><tr><th>Type</th><th>Date</th><th>Band</th></tr>{% for r in results %}<tr onclick="location.href='/results/{{ r.id }}'"><td class="type">{{ r.test_type }}</td><td>{{ r.created_at.strftime('%Y-%m-%d') }}</td><td class="score">Band {{ r.band_score }}</td></tr>{% endfor %}</table>{% else %}<div class="empty"><p>No saved tests.</p><a href="/dashboard" class="btn">Take a Test</a></div>{% endif %}</div></div>
+<script src="/static/js/sw-register.js"></script>
+<script src="/static/js/push-notifications.js"></script>
 </body>
 </html>
