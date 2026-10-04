@@ -1,0 +1,14 @@
+{
+  "name": "SeltaPrep",
+  "short_name": "SeltaPrep",
+  "description": "AI-powered IELTS, PTE, UKVI prep",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1a2b4a",
+  "theme_color": "#4f46e5",
+  "icons": [
+    {"src": "/static/icon-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "/static/icon-512.png", "sizes": "512x512", "type": "image/png"}
+  ]
+}
