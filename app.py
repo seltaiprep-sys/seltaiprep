@@ -3391,10 +3391,38 @@ def admin_dashboard():
 @app.route('/admin/users')
 @admin_required
 def admin_users():
-    module = request.args.get('module', 'ielts')
-    User = get_user_model(module)
-    users = User.query.all()
-    return render_template('admin_users.html', users=users, module=module)
+    """Show users from all modules (default) or a specific module."""
+    module = request.args.get('module', 'all')
+    if module not in ['all', 'ielts', 'pte', 'ukvi']:
+        module = 'all'
+
+    module_counts = {}
+    if module == 'all':
+        users = []
+        for mod in ['ielts', 'pte', 'ukvi']:
+            try:
+                User = get_user_model(mod)
+                mod_users = User.query.all()
+                module_counts[mod] = len(mod_users)
+                for u in mod_users:
+                    u._module = mod
+                    users.append(u)
+            except Exception as e:
+                logger.warning(f"admin_users: {mod} failed: {e}")
+                module_counts[mod] = 0
+        # Sort by ID descending
+        users.sort(key=lambda u: (getattr(u, 'id', 0) or 0), reverse=True)
+    else:
+        User = get_user_model(module)
+        users = User.query.all()
+        module_counts = {module: len(users)}
+
+    return render_template(
+        'admin_users.html',
+        users=users,
+        module=module,
+        module_counts=module_counts,
+    )
 
 
 @app.route('/admin/user/<int:user_id>')

@@ -92,11 +92,40 @@
 
     <a href="{{ url_for('admin_dashboard') }}" class="back-link">← Back to Dashboard</a>
 
+    <!-- Module Tabs -->
+    <div style="margin: 15px 0; display: flex; gap: 10px; flex-wrap: wrap;">
+        <a href="/admin/users?module=all"
+           style="padding: 8px 16px; border-radius: 6px; text-decoration: none;
+                  background: {% if module == 'all' %}#4f46e5{% else %}#e5e7eb{% endif %};
+                  color: {% if module == 'all' %}white{% else %}#1f2937{% endif %};">
+            📊 All ({{ (module_counts.get('ielts',0) + module_counts.get('pte',0) + module_counts.get('ukvi',0)) }})
+        </a>
+        <a href="/admin/users?module=ielts"
+           style="padding: 8px 16px; border-radius: 6px; text-decoration: none;
+                  background: {% if module == 'ielts' %}#4f46e5{% else %}#e5e7eb{% endif %};
+                  color: {% if module == 'ielts' %}white{% else %}#1f2937{% endif %};">
+            📚 IELTS ({{ module_counts.get('ielts', 0) }})
+        </a>
+        <a href="/admin/users?module=pte"
+           style="padding: 8px 16px; border-radius: 6px; text-decoration: none;
+                  background: {% if module == 'pte' %}#4f46e5{% else %}#e5e7eb{% endif %};
+                  color: {% if module == 'pte' %}white{% else %}#1f2937{% endif %};">
+            🎯 PTE ({{ module_counts.get('pte', 0) }})
+        </a>
+        <a href="/admin/users?module=ukvi"
+           style="padding: 8px 16px; border-radius: 6px; text-decoration: none;
+                  background: {% if module == 'ukvi' %}#4f46e5{% else %}#e5e7eb{% endif %};
+                  color: {% if module == 'ukvi' %}white{% else %}#1f2937{% endif %};">
+            🎓 UKVI ({{ module_counts.get('ukvi', 0) }})
+        </a>
+    </div>
+
     {% if users %}
         <table>
             <thead>
                 <tr>
                     <th>ID</th>
+                    <th>Module</th>
                     <th>Username</th>
                     <th>Email</th>
                     <th>Role</th>
@@ -109,6 +138,17 @@
                 {% for u in users %}
                 <tr>
                     <td>{{ u.id }}</td>
+                    <td>
+                        {% if u._module == 'ielts' %}
+                            <span style="padding: 2px 8px; border-radius: 4px; font-size: 12px; background: #dbeafe; color: #1e40af;">IELTS</span>
+                        {% elif u._module == 'pte' %}
+                            <span style="padding: 2px 8px; border-radius: 4px; font-size: 12px; background: #fef3c7; color: #92400e;">PTE</span>
+                        {% elif u._module == 'ukvi' %}
+                            <span style="padding: 2px 8px; border-radius: 4px; font-size: 12px; background: #dcfce7; color: #166534;">UKVI</span>
+                        {% else %}
+                            <span style="padding: 2px 8px; border-radius: 4px; font-size: 12px; background: #e5e7eb; color: #374151;">{{ module|upper }}</span>
+                        {% endif %}
+                    </td>
                     <td><strong>{{ u.username }}</strong></td>
                     <td>{{ u.email }}</td>
                     <td>
@@ -121,7 +161,7 @@
                     <td>{{ u.created_at.strftime('%Y-%m-%d') }}</td>
                     <td>{{ u.last_login.strftime('%Y-%m-%d %H:%M') if u.last_login else 'Never' }}</td>
                     <td>
-                        <a href="{{ url_for('admin_user_detail', user_id=u.id) }}" class="btn-view">View</a>
+                        <a href="{{ url_for('admin_user_detail', user_id=u.id) }}?module={{ u._module or module }}" class="btn-view">View</a>
                     </td>
                 </tr>
                 {% endfor %}
