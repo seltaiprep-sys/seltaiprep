@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Result — Band {{ result.band_score }}</title>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box;}
+        body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f2f5;padding:20px;}
+        .container{max-width:800px;margin:0 auto;}
+        .card{background:white;border-radius:16px;padding:30px;box-shadow:0 2px 10px rgba(0,0,0,0.08);margin-bottom:20px;}
+        h1{color:#003d6b;margin-bottom:10px;}
+        .band{font-size:64px;font-weight:800;color:#28a745;text-align:center;margin:20px 0;}
+        .meta{color:#666;font-size:14px;margin-bottom:20px;}
+        .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:15px;margin:20px 0;}
+        .stat{background:#f8f9fc;padding:15px;border-radius:10px;text-align:center;}
+        .stat-value{font-size:24px;font-weight:700;color:#003d6b;}
+        .stat-label{font-size:12px;color:#666;text-transform:uppercase;}
+        .feedback{background:#eef2f7;padding:15px;border-radius:10px;font-size:14px;line-height:1.6;}
+        .btn{display:inline-block;padding:12px 24px;background:#003d6b;color:white;text-decoration:none;border-radius:8px;margin:5px;font-weight:600;}
+        .btn-secondary{background:#6c757d;}
+        @media (max-width:768px){
+            .band{font-size:48px;}
+            .card{padding:20px;}
+        }
+    </style>
+    <link rel="stylesheet" href="/static/css/mobile.css">
+    <link rel="manifest" href="/static/manifest.json">
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>{{ result.test_type|replace('_', ' ')|title }}</h1>
+            <div class="meta">
+                📅 {{ result.created_at.strftime('%B %d, %Y at %H:%M') if result.created_at else 'N/A' }}
+            </div>
+            
+            <div class="band">Band {{ result.band_score }}</div>
+            
+            <div class="stats">
+                <div class="stat">
+                    <div class="stat-value">{{ result.score|round(1) }}%</div>
+                    <div class="stat-label">Score</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value">{{ result.band_score }}</div>
+                    <div class="stat-label">Band</div>
+                </div>
+            </div>
+            
+            {% if result.feedback %}
+            <div class="feedback">
+                <strong>📝 Feedback:</strong><br>
+                {{ result.feedback }}
+            </div>
+            {% endif %}
+            
+            <div style="text-align:center;margin-top:25px;">
+                <a href="/saved-tests" class="btn btn-secondary">← Back to Saved Tests</a>
+                <a href="/{{ module }}/subscription" class="btn">Practice More</a>
+            </div>
+        </div>
+    </div>
+    <script src="/static/js/sw-register.js"></script>
+</body>
+</html>

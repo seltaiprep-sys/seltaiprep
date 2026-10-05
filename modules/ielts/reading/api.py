@@ -182,6 +182,58 @@ def _clone_completed_reading_test(user_id: int, difficulty: str = 'medium'):
     }
 
 
+def _normalize_reading_options(test_data):
+    """Auto-fill options for T/F/NG, Y/N/NG, MCQ questions.
+    
+    IELTS standard options:
+    - true_false_not_given → [TRUE, FALSE, NOT GIVEN]
+    - yes_no_not_given     → [YES, NO, NOT GIVEN]
+    - multiple_choice      → must have options in data (A, B, C, D)
+    """
+    if not isinstance(test_data, dict):
+        return test_data
+    
+    TFNG_OPTIONS = [
+        {'letter': 'TRUE', 'text': 'TRUE'},
+        {'letter': 'FALSE', 'text': 'FALSE'},
+        {'letter': 'NOT GIVEN', 'text': 'NOT GIVEN'},
+    ]
+    YNNG_OPTIONS = [
+        {'letter': 'YES', 'text': 'YES'},
+        {'letter': 'NO', 'text': 'NO'},
+        {'letter': 'NOT GIVEN', 'text': 'NOT GIVEN'},
+    ]
+    
+    def _fix_question(q):
+        if not isinstance(q, dict):
+            return
+        qtype = (q.get('type') or '').lower()
+        options = q.get('options')
+        
+        # Already has options? Skip
+        if isinstance(options, list) and len(options) > 0:
+            return
+        
+        # T/F/NG
+        if qtype in ('true_false_not_given', 'tfng', 'true_false'):
+            q['options'] = list(TFNG_OPTIONS)
+        # Y/N/NG
+        elif qtype in ('yes_no_not_given', 'ynng', 'yes_no'):
+            q['options'] = list(YNNG_OPTIONS)
+    
+    # Top-level questions
+    for q in (test_data.get('questions') or []):
+        _fix_question(q)
+    
+    # Passages questions
+    for p in (test_data.get('passages') or []):
+        if isinstance(p, dict):
+            for q in (p.get('questions') or []):
+                _fix_question(q)
+    
+    return test_data
+
+
 def create_reading_api(ai_engine, db, limiter=None):
     """Factory to create the reading blueprint with dependencies."""
     bp = Blueprint('reading_api', __name__, url_prefix='/api/reading')
@@ -270,6 +322,8 @@ def create_reading_api(ai_engine, db, limiter=None):
 
             if session_obj:
                 test_data = session_obj.test_data
+                if isinstance(test_data, dict):
+                    test_data = _normalize_reading_options(test_data)
                 if isinstance(test_data, str):
                     try:
                         test_data = json.loads(test_data)
@@ -298,6 +352,8 @@ def create_reading_api(ai_engine, db, limiter=None):
 
             if auto:
                 test_data = auto.test_data
+                if isinstance(test_data, dict):
+                    test_data = _normalize_reading_options(test_data)
                 if isinstance(test_data, str):
                     try:
                         test_data = json.loads(test_data)
@@ -575,6 +631,8 @@ def create_reading_api(ai_engine, db, limiter=None):
         )
 
         test_data = session_obj.test_data
+        if isinstance(test_data, dict):
+            test_data = _normalize_reading_options(test_data)
         if isinstance(test_data, str):
             test_data = json.loads(test_data)
 

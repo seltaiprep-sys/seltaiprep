@@ -2194,6 +2194,55 @@ def logout():
     return redirect(url_for('index'))
 
 
+@app.route('/saved-tests')
+@login_required
+def saved_tests():
+    """Show user's saved test results."""
+    module = session.get('selected_module', 'ielts')
+    TestResult = get_test_result_model(module)
+    
+    try:
+        results = (
+            TestResult.query
+            .filter_by(user_id=current_user.id)
+            .order_by(TestResult.created_at.desc())
+            .limit(100)
+            .all()
+        )
+    except Exception as e:
+        logger.warning(f"saved_tests query failed: {e}")
+        results = []
+    
+    return render_template('saved_tests.html', results=results, module=module)
+
+
+@app.route('/results/<int:result_id>')
+@login_required
+def view_result(result_id):
+    """View a specific test result."""
+    module = session.get('selected_module', 'ielts')
+    TestResult = get_test_result_model(module)
+    
+    result = db.session.get(TestResult, result_id)
+    if not result or result.user_id != current_user.id:
+        abort(404)
+    
+    # Get answers
+    answers = None
+    try:
+        if hasattr(result, 'get_answers'):
+            answers = result.get_answers()
+    except Exception:
+        pass
+    
+    return render_template(
+        'result_detail.html',
+        result=result,
+        answers=answers,
+        module=module,
+    )
+
+
 @app.route('/select-module', methods=['GET', 'POST'])
 @login_required
 def select_module():

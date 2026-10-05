@@ -64,8 +64,13 @@
         .task2-badge { background: #ffebee; color: #c62828; }
         .task-meta { display: flex; gap: 15px; font-size: 13px; color: var(--text-light); }
 
-        .chart-section { background: #fafbfc; border: 2px dashed #d0d7de; border-radius: 10px; padding: 20px; margin: 20px 0; text-align: center; min-height: 200px; display: flex; align-items: center; justify-content: center; flex-direction: column; }
-        .chart-section img { max-width: 100%; max-height: 400px; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .chart-section { background: #fafbfc; border: 2px dashed #d0d7de; border-radius: 10px; padding: 15px; margin: 20px 0; text-align: center; min-height: 200px; display: flex; align-items: center; justify-content: center; flex-direction: column; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .chart-section img { max-width: 100%; max-height: 600px; height: auto; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); cursor: zoom-in; transition: transform 0.2s; }
+        .chart-section img:active { transform: scale(1.02); }
+        @media (max-width: 768px) {
+            .chart-section { padding: 8px; margin: 10px 0; }
+            .chart-section img { max-height: none; width: 100%; min-height: 250px; }
+        }
         .chart-placeholder { text-align: center; color: #888; padding: 30px; }
         .chart-placeholder .icon { font-size: 48px; margin-bottom: 10px; }
         .chart-loading { display: flex; flex-direction: column; align-items: center; gap: 10px; color: #666; }
@@ -822,7 +827,7 @@
             const container = document.getElementById('chart-section');
             if (base64Data && base64Data.length > 100) {
                 let imgSrc = base64Data.startsWith('data:image') ? base64Data : 'data:image/png;base64,' + base64Data;
-                container.innerHTML = '<img src="' + imgSrc + '" alt="Task 1 Chart" onerror="this.style.display=\'none\';showChartError();">';
+                container.innerHTML = '<img src="' + imgSrc + '" alt="Task 1 Chart" onclick="openChartFullscreen(this.src)" onerror="this.style.display=\'none\';showChartError();">';
                 return;
             }
             if (chartData && chartData.labels && chartData.values) {
@@ -1448,6 +1453,23 @@
         });
     </script>
 <script src="/static/js/sw-register.js"></script>
-<script src="/static/js/push-notifications.js"></script>
+<script src="/static/js/push-notifications.js">
+        // ═══════════════════════════════════════════════════
+        // FULLSCREEN CHART VIEWER
+        // ═══════════════════════════════════════════════════
+        function openChartFullscreen(src) {
+            var overlay = document.createElement('div');
+            overlay.id = 'chart-fullscreen';
+            overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.95);z-index:99999;display:flex;align-items:center;justify-content:center;padding:10px;overflow:auto;-webkit-overflow-scrolling:touch;';
+            overlay.innerHTML = '<div style="position:relative;max-width:100%;max-height:100%;">' +
+                '<img src="' + src + '" style="max-width:100%;max-height:95vh;border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,0.5);">' +
+                '<button onclick="document.getElementById(\'chart-fullscreen\').remove()" style="position:fixed;top:15px;right:15px;background:white;border:none;width:44px;height:44px;border-radius:50%;font-size:24px;font-weight:bold;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,0.3);color:#333;z-index:100000;">×</button>' +
+                '<div style="position:fixed;bottom:15px;left:50%;transform:translateX(-50%);background:rgba(255,255,255,0.9);color:#333;padding:8px 16px;border-radius:20px;font-size:13px;font-weight:500;box-shadow:0 2px 8px rgba(0,0,0,0.2);">Pinch to zoom • Tap × to close</div>' +
+                '</div>';
+            document.body.appendChild(overlay);
+            overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
+            document.addEventListener('keydown', function escHandler(e) { if (e.key === 'Escape') { overlay.remove(); document.removeEventListener('keydown', escHandler); } });
+        }
+</script>
 </body>
 </html>
