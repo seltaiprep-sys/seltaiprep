@@ -26,6 +26,8 @@
         color: var(--text);
         overflow: hidden;
         height: 100vh;
+        height: 100dvh;  /* mobile: dynamic viewport */
+        overflow-x: hidden;
         -webkit-font-smoothing: antialiased;
     }
 
@@ -690,6 +692,109 @@
         .redirect-overlay h2 { font-size: 18px; }
         .redirect-overlay .countdown { font-size: 48px; }
     }
+
+    /* ═══════════════════════════════════════════════════
+       MOBILE ENHANCEMENT PATCH
+       ═══════════════════════════════════════════════════ */
+    
+    /* Safe area for notched phones (iPhone X+, Android gesture nav) */
+    @supports (padding: env(safe-area-inset-bottom)) {
+        #ui-overlay {
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+        .panel {
+            bottom: calc(16px + env(safe-area-inset-bottom)) !important;
+        }
+        .header {
+            padding-top: env(safe-area-inset-top);
+        }
+    }
+
+    /* Small phones (≤480px) — extra tight layout */
+    @media (max-width: 480px) {
+        #ui-overlay { padding: 8px 10px 10px; }
+        
+        .header {
+            max-width: 100%;
+            padding: 0 4px;
+        }
+        .logo { font-size: 14px; }
+        .nav-links a { font-size: 11px; padding: 6px 8px; }
+        
+        /* Panel — full width, higher on screen */
+        .panel {
+            width: calc(100vw - 16px);
+            left: 8px;
+            bottom: 8px;
+            max-height: 58vh;
+            padding: 12px 12px 14px;
+        }
+        
+        /* Question overlay — bigger on small screens */
+        .question-overlay {
+            top: 20%;
+            max-width: 94%;
+            width: 94%;
+            padding: 16px 18px;
+        }
+        .question-overlay .text { font-size: 17px; line-height: 1.5; }
+        .question-overlay .overlay-timer { font-size: 40px; }
+        
+        /* Controls — stack if needed */
+        .controls {
+            gap: 6px;
+            justify-content: center;
+        }
+        .controls .btn-mic {
+            width: 54px;
+            height: 54px;
+            font-size: 22px;
+        }
+        .controls .btn {
+            padding: 10px 14px;
+            font-size: 13px;
+            min-height: 42px;
+        }
+        
+        /* Cue card — scrollable */
+        .cue-card {
+            max-height: 40vh;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            font-size: 14px;
+            padding: 14px;
+        }
+        
+        /* Results grid */
+        .result-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+    }
+
+    /* Touch-friendly — all buttons min 44px */
+    @media (hover: none) and (pointer: coarse) {
+        button, .btn {
+            min-height: 44px;
+            min-width: 44px;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        /* Disable hover effects on touch */
+        button:hover, .btn:hover {
+            transform: none;
+        }
+        
+        /* Prevent zoom on input focus (iOS) */
+        input, textarea, select {
+            font-size: 16px !important;
+        }
+    }
+
+    /* Prevent body scroll when overlay open */
+    body.overlay-open {
+        overflow: hidden;
+        position: fixed;
+        width: 100%;
+    }
 </style>
 <link rel="stylesheet" href="/static/css/mobile.css">
 <link rel="manifest" href="/static/manifest.json">
@@ -733,7 +838,7 @@
     </p>
     <div class="rules">
         <strong>📋 Smart Detection Rules:</strong><br>
-        • <strong>Mic mode:</strong> After you speak, <strong>8 sec silence</strong> moves to next question<br>
+        • <strong>Mic mode:</strong> After you speak, <strong>3 sec silence</strong> moves to next question (Part 3: 5 sec)<br>
         • <strong>Typing mode:</strong> After you type, <strong>15 sec idle</strong> moves to next question<br>
         • <strong>Part 2:</strong> Full 2 minutes given (no auto-advance)<br>
         • <strong>Minimum per Q:</strong> 15 seconds (no rushing)
@@ -1347,9 +1452,9 @@
     const GRACE_SECONDS = 5 * 60;
 
     const SILENCE_CONFIG = {
-        1: { silence: 8,  typing: 15 },
+        1: { silence: 3,  typing: 12 },
         2: { silence: 0,  typing: 0 },
-        3: { silence: 10, typing: 18 },
+        3: { silence: 5,  typing: 15 },
     };
 
     const PART_DURATIONS = { 1: 30, 2: 120, 3: 45 };
@@ -2263,10 +2368,17 @@
         return null;
     }
 
-    async function speakText(text, key, style) {
+    async function speakText(text, key, style, onAudioReady) {
         setAvatarState('speaking');
-        setStatus('🔊 Examiner is speaking…', 'live');
+        setStatus('🔊 Preparing examiner…', 'live');
+        // 1. Generate audio FIRST (silent, no UI change)
         const url = await generateAudio(text, key, style);
+        // 2. Audio ready — NOW show text overlay (simultaneous)
+        if (typeof onAudioReady === 'function') {
+            onAudioReady(url);
+        }
+        setStatus('🔊 Examiner is speaking…', 'live');
+        // 3. Play audio
         if (url) {
             try {
                 await playMp3(url);
@@ -2406,7 +2518,11 @@
 
         if (state.currentQuestion.type === 'cue_card') {
             showCueCardOverlay(state.currentQuestion.cueData || {});
-            await speakText(state.currentQuestion.text, state.currentQuestion.id, 'empathetic');
+            await speakText(
+                state.currentQuestion.text,
+                state.currentQuestion.id,
+                'empathetic'
+            );
             await prepCountdown(60);
             overlayHint.style.display = 'block';
             overlayHint.textContent = '🗣️ Speak now — 2 minutes';
@@ -2415,8 +2531,13 @@
             return;
         }
 
-        showOverlay(qCategory.textContent, state.currentQuestion.text);
-        await speakText(state.currentQuestion.text, state.currentQuestion.id, 'thoughtful');
+        // Show overlay ONLY when audio is ready (synced)
+        await speakText(
+            state.currentQuestion.text,
+            state.currentQuestion.id,
+            'thoughtful',
+            () => showOverlay(qCategory.textContent, state.currentQuestion.text)
+        );
         stopCaptions(true);
 
         if (state.currentQuestion.expectsResponse) {
@@ -2484,6 +2605,12 @@
                 recognition.lang = 'en-US';
                 recognition.continuous = true;
                 recognition.interimResults = true;
+                recognition.maxAlternatives = 1;
+
+                let _srRestartCount = 0;
+                const _srMaxRestarts = 60;  // safety cap
+                let _srStopped = false;
+
                 recognition.onresult = (event) => {
                     interimTranscript = '';
                     for (let i = event.resultIndex; i < event.results.length; i++) {
@@ -2496,9 +2623,41 @@
                     answerInput.value = shown;
                     updateWordCounter();
                 };
-                recognition.onerror = () => {};
-                recognition.onend = () => {};
-                recognition.start();
+
+                recognition.onerror = (event) => {
+                    const err = event.error || 'unknown';
+                    console.warn('🎙️ SR error:', err);
+                    // Non-fatal errors — let onend restart
+                    if (err === 'no-speech' || err === 'aborted' || err === 'network') {
+                        return;
+                    }
+                    // 'not-allowed' / 'service-not-allowed' — permission denied
+                    if (err === 'not-allowed' || err === 'service-not-allowed') {
+                        _srStopped = true;
+                        liveTranscriptText.textContent =
+                            '⚠️ Mic permission blocked — check browser settings';
+                    }
+                };
+
+                recognition.onend = () => {
+                    // Android Chrome auto-stops after ~5s silence → restart
+                    // iOS Safari stops after 60s → restart
+                    if (_srStopped || state._micFailed) return;
+                    if (!state.isAwaitingResponse) return;
+                    if (_srRestartCount >= _srMaxRestarts) return;
+                    _srRestartCount++;
+                    try {
+                        recognition.start();
+                    } catch (e) {
+                        // Already started — ignore
+                    }
+                };
+
+                try {
+                    recognition.start();
+                } catch (e) {
+                    console.warn('SR start failed:', e);
+                }
             }
         } catch (e) {}
 

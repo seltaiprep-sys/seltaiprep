@@ -21,6 +21,47 @@ import time
 from typing import Dict, Optional, Any, List
 
 logger = logging.getLogger(__name__)
+# ═══════════════════════════════════════════════════════════════
+# EXAMINER NAME POOL — random pick per test session
+# ═══════════════════════════════════════════════════════════════
+EXAMINER_NAMES = [
+    "Sarah Mitchell",
+    "James Anderson",
+    "Emma Thompson",
+    "Michael Roberts",
+    "Olivia Bennett",
+    "David Harrison",
+    "Sophie Clarke",
+    "Daniel Wright",
+    "Rachel Foster",
+    "Thomas Hughes",
+]
+
+def pick_examiner_name() -> str:
+    """Return a random IELTS examiner name for this session."""
+    import random
+    return random.choice(EXAMINER_NAMES)
+
+def fill_examiner_placeholders(data, name: str = None):
+    """
+    Recursively replace [Examiner Name] / [Examiner] placeholders.
+    Handles dict, list, str.
+    """
+    if name is None:
+        name = pick_examiner_name()
+    if isinstance(data, str):
+        return (data
+            .replace("[Examiner Name]", name)
+            .replace("[Examiner name]", name)
+            .replace("[Examiner]", name)
+            .replace("[EXAMINER]", name))
+    if isinstance(data, dict):
+        return {k: fill_examiner_placeholders(v, name) for k, v in data.items()}
+    if isinstance(data, list):
+        return [fill_examiner_placeholders(v, name) for v in data]
+    return data
+
+
 
 
 # ============================================================
@@ -56,6 +97,56 @@ ATTEMPT_TEMPERATURES = [0.7, 0.85, 0.6]
 # ============================================================
 # Helpers
 # ============================================================
+
+
+# ═══════════════════════════════════════════════════════════════
+# SANITIZER — catches literal placeholder leaks from AI output
+# ═══════════════════════════════════════════════════════════════
+import re as _re
+
+_PLACEHOLDER_PATTERNS = [
+    _re.compile(r'^Generate .+? question \d', _re.IGNORECASE),
+    _re.compile(r'^Generate question', _re.IGNORECASE),
+    _re.compile(r'^REAL .+ question', _re.IGNORECASE),
+    _re.compile(r'\[something interesting\]', _re.IGNORECASE),
+    _re.compile(r'\[simple question\]', _re.IGNORECASE),
+    _re.compile(r'\[Examiner\]'),
+    _re.compile(r'\[Examiner Name\]', _re.IGNORECASE),
+    _re.compile(r'\{selected_topic\}'),
+    _re.compile(r'\{theme\}'),
+    _re.compile(r'Generate .+ about \{', _re.IGNORECASE),
+]
+
+def _looks_like_placeholder(text: str) -> bool:
+    """Return True if text contains literal placeholder garbage."""
+    if not text or not isinstance(text, str):
+        return True
+    s = text.strip()
+    if len(s) < 8:
+        return True
+    for pat in _PLACEHOLDER_PATTERNS:
+        if pat.search(s):
+            return True
+    return False
+
+def sanitize_questions(data):
+    """Remove questions that still contain placeholder text. Recursive."""
+    if isinstance(data, dict):
+        out = {}
+        for k, v in data.items():
+            if k == 'questions' and isinstance(v, list):
+                out[k] = [q for q in v if not (
+                    isinstance(q, dict) and _looks_like_placeholder(q.get('question', ''))
+                )]
+            elif k == 'prompts' and isinstance(v, list):
+                out[k] = [p for p in v if not _looks_like_placeholder(str(p))]
+            else:
+                out[k] = sanitize_questions(v)
+        return out
+    if isinstance(data, list):
+        return [sanitize_questions(v) for v in data]
+    return data
+
 
 def _safe_str(value: Any, default: str = "") -> str:
     """Return stripped string if value is a non-empty string, else default."""
@@ -273,7 +364,7 @@ class SpeakingTest:
                     f" Speaking test generated "
                     f"(attempt {attempt+1}, {result['total_questions']} questions)"
                 )
-                return result
+                return sanitize_questions(fill_examiner_placeholders(result))
 
             except Exception as e:
                 last_error = str(e)
@@ -424,10 +515,27 @@ Generate a COMPLETE test with ALL THREE PARTS now. Return ONLY valid JSON."""
             return {'error': 'AI Engine required.', 'success': False}
 
         selected_topic = _safe_str(topic) or self._pick_topic(PART1_TOPIC_POOL)
-        prompt = f"""You are an IELTS Speaking Examiner. Generate COMPLETE Part 1 with FULL INTRODUCTION.
+        prompt = f"""You are a certified IELTS Speaking Examiner (British English).
+
+TARGET: Candidates aiming for Band 6.5-8.0.
+STYLE: Natural examiner phrasing — same as real Cambridge IELTS Speaking tests.
 
 Topic: {selected_topic}
 Difficulty: {difficulty}
+
+TASK: Generate Part 1 (Introduction + Interview). Output ONLY the JSON below.
+
+CRITICAL RULES:
+  1. Every "question" field must contain a REAL, grammatically complete question
+     that an examiner would actually say out loud.
+  2. NEVER output instruction text like "Generate question 1" — those are placeholders,
+     not real questions.
+  3. Use natural British English. No markdown. No extra text outside JSON.
+
+EXAMPLES of real Part 1 questions (do NOT copy verbatim):
+  • "Where is your hometown?"
+  • "What do you like most about your hometown?"
+  • "Has your hometown changed much in recent years?"
 
 Return ONLY valid JSON with this EXACT structure:
 
@@ -440,17 +548,18 @@ Return ONLY valid JSON with this EXACT structure:
     "examiner_begin": "Excellent. Let's begin.",
     "warmup_section": {{
         "questions": [
-            {{"question": "Where are you from?", "type": "description"}},
-            {{"question": "Do you work or study?", "type": "work_study"}}
+            {{"question": "REAL question about the candidate (e.g. 'Where are you from?')", "type": "description"}},
+            {{"question": "REAL question about work/study (e.g. 'Do you work or study?')", "type": "work_study"}},
+            {{"question": "REAL question about daily life (e.g. 'What do you usually do in the evenings?')", "type": "daily_life"}}
         ]
     }},
     "topic_section": {{
         "questions": [
-            {{"question": "Generate question 1 about {selected_topic}", "type": "opinion"}},
-            {{"question": "Generate question 2 about {selected_topic}", "type": "description"}},
-            {{"question": "Generate question 3 about {selected_topic}", "type": "comparison"}},
-            {{"question": "Generate question 4 about {selected_topic}", "type": "experience"}},
-            {{"question": "Generate question 5 about {selected_topic}", "type": "preference"}}
+            {{"question": "REAL question 1 about {selected_topic} — opinion style", "type": "opinion"}},
+            {{"question": "REAL question 2 about {selected_topic} — description style", "type": "description"}},
+            {{"question": "REAL question 3 about {selected_topic} — comparison style", "type": "comparison"}},
+            {{"question": "REAL question 4 about {selected_topic} — experience style", "type": "experience"}},
+            {{"question": "REAL question 5 about {selected_topic} — preference style", "type": "preference"}}
         ]
     }},
     "examiner_closing": "Thank you. That's the end of Part 1."
@@ -470,7 +579,7 @@ Generate NATURAL, REALISTIC questions. Return ONLY valid JSON."""
 
                 warmup = (result.get('warmup_section') or {}).get('questions') or []
                 topic_qs = (result.get('topic_section') or {}).get('questions') or []
-                if _count_valid_questions(warmup) < 1 or _count_valid_questions(topic_qs) < 3:
+                if _count_valid_questions(warmup) < 2 or _count_valid_questions(topic_qs) < 4:
                     last_error = (
                         f"Part1 missing questions "
                         f"(warmup={_count_valid_questions(warmup)}, "
@@ -480,7 +589,7 @@ Generate NATURAL, REALISTIC questions. Return ONLY valid JSON."""
 
                 result['success'] = True
                 result['topic'] = selected_topic
-                return result
+                return sanitize_questions(fill_examiner_placeholders(result))
             except Exception as e:
                 last_error = str(e)
                 logger.warning(f"Part1 attempt {attempt+1} failed: {e}")
@@ -495,9 +604,24 @@ Generate NATURAL, REALISTIC questions. Return ONLY valid JSON."""
         if not self.ai:
             return {'error': 'AI Engine required.', 'success': False}
 
-        prompt = f"""You are an IELTS Speaking Examiner. Generate COMPLETE Part 2 with examiner script.
+        prompt = f"""You are a certified IELTS Speaking Examiner (British English).
+
+TARGET: Candidates aiming for Band 6.5-8.0.
+STYLE: Natural examiner phrasing — same as real Cambridge IELTS Part 2 cue cards.
 
 Difficulty: {difficulty}
+
+TASK: Generate Part 2 (Long Turn — cue card). Output ONLY the JSON below.
+
+CRITICAL RULES:
+  1. "title" MUST be a complete, real IELTS cue-card topic.
+     GOOD: "Describe a book you recently read"
+     BAD : "Describe [something interesting]"  ← placeholder, NOT allowed
+  2. "prompts" MUST be 4 specific bullet sub-points (what/where/when/why/how).
+  3. "examiner_follow_up_question" MUST be a complete, real follow-up question.
+     GOOD: "Do you often read books like that?"
+     BAD : "Just one quick question: [simple question]"  ← placeholder, NOT allowed
+  4. Use natural British English. No markdown. No extra text outside JSON.
 
 Return ONLY valid JSON with this EXACT structure:
 
@@ -506,24 +630,24 @@ Return ONLY valid JSON with this EXACT structure:
     "examiner_instructions": "You have one minute to prepare. You can make notes.",
     "examiner_card_presentation": "Here is your topic card.",
     "topic_card": {{
-        "title": "Describe [something interesting]",
+        "title": "Describe a REAL specific topic (e.g. 'a book you recently read')",
         "prompts": [
             "what it is",
-            "when it happened",
-            "what happened",
-            "why it is memorable"
+            "where/when it happened",
+            "what happened or who was involved",
+            "why it is memorable or important to you"
         ]
     }},
     "examiner_preparation_start": "You have one minute. Please prepare.",
     "examiner_preparation_end": "Your preparation time is up.",
     "examiner_speaking_start": "OK. Please start speaking now.",
     "examiner_speaking_end": "Thank you. Can I have the card back?",
-    "examiner_follow_up_question": "Just one quick question: [simple question]",
+    "examiner_follow_up_question": "A REAL short follow-up question about the topic above",
     "preparation_time": 60,
     "speaking_time": 120
 }}
 
-Generate a UNIQUE topic. Return ONLY valid JSON."""
+Generate a UNIQUE, REAL IELTS topic. Return ONLY valid JSON."""
 
         last_error = None
         for attempt in range(MAX_GENERATION_ATTEMPTS):
@@ -538,12 +662,12 @@ Generate a UNIQUE topic. Return ONLY valid JSON."""
                 tc = result.get('topic_card') or {}
                 if not _safe_str(tc.get('title')) or len([
                     p for p in (tc.get('prompts') or []) if _safe_str(p)
-                ]) < 3:
-                    last_error = "Part2 topic_card incomplete"
+                ]) < 4:
+                    last_error = "Part2 topic_card incomplete (need ≥4 prompts)"
                     continue
 
                 result['success'] = True
-                return result
+                return sanitize_questions(fill_examiner_placeholders(result))
             except Exception as e:
                 last_error = str(e)
                 logger.warning(f"Part2 attempt {attempt+1} failed: {e}")
@@ -559,10 +683,28 @@ Generate a UNIQUE topic. Return ONLY valid JSON."""
             return {'error': 'AI Engine required.', 'success': False}
 
         theme = _safe_str(part2_topic) or "modern life and society"
-        prompt = f"""You are an IELTS Speaking Examiner. Generate COMPLETE Part 3 discussion questions.
+        prompt = f"""You are a certified IELTS Speaking Examiner (British English).
+
+TARGET: Candidates aiming for Band 6.5-8.0.
+STYLE: Natural examiner phrasing — same as real Cambridge IELTS Part 3 discussion.
 
 Theme: {theme}
 Difficulty: {difficulty}
+
+TASK: Generate Part 3 (Two-way Discussion). Output ONLY the JSON below.
+
+CRITICAL RULES:
+  1. Every "question" must be a REAL, complete, abstract/analytical question
+     that builds on the Part 2 theme.
+  2. NEVER output instruction text like "Generate analytical question 1" —
+     those are placeholders, not real questions.
+  3. Each question must encourage a longer, abstract answer (not yes/no).
+  4. Use natural British English. No markdown. No extra text outside JSON.
+
+EXAMPLES of real Part 3 questions (do NOT copy verbatim):
+  • "Why do you think some people find it difficult to do X?"
+  • "How has X changed compared to the past?"
+  • "Do you think X will become more common in the future? Why?"
 
 Return ONLY valid JSON:
 
@@ -571,17 +713,17 @@ Return ONLY valid JSON:
     "examiner_transition": "I'd like to ask you some abstract questions now.",
     "theme": "{theme}",
     "questions": [
-        {{"question": "Generate analytical question 1", "type": "analysis"}},
-        {{"question": "Generate comparison question 2", "type": "comparison"}},
-        {{"question": "Generate evaluation question 3", "type": "evaluation"}},
-        {{"question": "Generate prediction question 4", "type": "prediction"}},
-        {{"question": "Generate opinion question 5", "type": "opinion"}},
-        {{"question": "Generate critical question 6", "type": "critical"}}
+        {{"question": "REAL analytical question about {theme}", "type": "analysis"}},
+        {{"question": "REAL comparison question about {theme}", "type": "comparison"}},
+        {{"question": "REAL evaluation question about {theme}", "type": "evaluation"}},
+        {{"question": "REAL prediction question about {theme}", "type": "prediction"}},
+        {{"question": "REAL opinion question about {theme}", "type": "opinion"}},
+        {{"question": "REAL critical thinking question about {theme}", "type": "critical"}}
     ],
     "examiner_closing": "Thank you. That is the end of the speaking test."
 }}
 
-Generate 6 ABSTRACT, ANALYTICAL questions. Return ONLY valid JSON."""
+Generate 6 ABSTRACT, ANALYTICAL, REAL questions. Return ONLY valid JSON."""
 
         last_error = None
         for attempt in range(MAX_GENERATION_ATTEMPTS):
@@ -594,12 +736,12 @@ Generate 6 ABSTRACT, ANALYTICAL questions. Return ONLY valid JSON."""
                 result = self._extract_json(response)
 
                 qs = result.get('questions') or []
-                if _count_valid_questions(qs) < 3:
-                    last_error = f"Part3 has only {_count_valid_questions(qs)} valid questions"
+                if _count_valid_questions(qs) < 4:
+                    last_error = f"Part3 has only {_count_valid_questions(qs)} valid questions (need ≥4)"
                     continue
 
                 result['success'] = True
-                return result
+                return sanitize_questions(fill_examiner_placeholders(result))
             except Exception as e:
                 last_error = str(e)
                 logger.warning(f"Part3 attempt {attempt+1} failed: {e}")
