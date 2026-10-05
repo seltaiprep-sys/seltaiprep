@@ -41,7 +41,17 @@
         .prediction-refusal { background: #c62828; color: white; }
         .score-value { font-size: 36px; font-weight: bold; color: #002b5c; }
         @media (max-width: 600px) { .result-summary { grid-template-columns: 1fr; } .btn { width: 100%; } .actions { flex-direction: column; } }
-    </style>
+    
+        /* ═══ UKVI RESULT MOBILE FIX ═══ */
+        @media (max-width: 480px) {
+            body { padding: 10px; }
+            .result-summary { grid-template-columns: 1fr; gap: 10px; }
+            .btn { width: 100%; }
+            .actions { flex-direction: column; gap: 8px; }
+            h1, h2 { font-size: 18px; }
+            .result-card { padding: 16px; }
+        }
+</style>
 <link rel="stylesheet" href="/static/css/mobile.css">
 <link rel="manifest" href="/static/manifest.json">
 </head>

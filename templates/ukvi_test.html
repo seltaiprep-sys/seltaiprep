@@ -205,14 +205,146 @@
         .rec-list .rec-item:last-child { border-bottom: none; }
 
         @media (max-width: 900px) {
-            #app { grid-template-columns: 1fr; grid-template-rows: 40vh 60vh; }
+            #app { grid-template-columns: 1fr; grid-template-rows: 40dvh 60dvh; }
             #stage { border-bottom: 1px solid rgba(108,99,255,0.15); }
             #panel { border-left: none; }
             #caption-overlay { bottom: 16px; width: 92%; }
             #caption-overlay .text { font-size: 15px; padding: 12px 16px; }
             .stage-chip, .stage-timer { padding: 6px 10px; font-size: 11px; }
         }
-    </style>
+    
+        /* ═══════════════════════════════════════════════════
+           UKVI MOBILE BOOST
+           ═══════════════════════════════════════════════════ */
+        
+        @supports (padding: env(safe-area-inset-bottom)) {
+            body {
+                padding-bottom: env(safe-area-inset-bottom);
+            }
+        }
+        
+        /* Tablet / Large phones (≤768px) */
+        @media (max-width: 768px) {
+            .container, .ukvi-container {
+                padding: 12px;
+                margin: 12px auto;
+            }
+            .header {
+                flex-direction: column;
+                gap: 8px;
+                align-items: stretch;
+            }
+            .timer {
+                font-size: 16px;
+                padding: 6px 14px;
+            }
+        }
+        
+        /* Small phones (≤480px) */
+        @media (max-width: 480px) {
+            .container, .ukvi-container { padding: 10px; }
+            
+            .header h1, .header h2 { font-size: 16px; line-height: 1.3; }
+            .header .subtitle { font-size: 12px; }
+            
+            .timer {
+                font-size: 14px;
+                padding: 5px 10px;
+            }
+            
+            .question-card, .prompt-card {
+                padding: 12px;
+            }
+            .question-text {
+                font-size: 15px;
+                line-height: 1.5;
+            }
+            
+            .answer-textarea, textarea {
+                min-height: 100px;
+                font-size: 14px;
+                padding: 10px;
+            }
+            
+            /* Prevent horizontal scroll */
+            body, html { overflow-x: hidden; }
+            img { max-width: 100%; height: auto; }
+        }
+        
+        /* Touch devices — bigger tap targets */
+        @media (hover: none) and (pointer: coarse) {
+            button, .btn {
+                min-height: 44px;
+                min-width: 44px;
+                touch-action: manipulation;
+                -webkit-tap-highlight-color: transparent;
+            }
+            
+            input, textarea, select {
+                font-size: 16px !important;
+            }
+            
+            button:hover, .btn:hover {
+                transform: none;
+            }
+        }
+
+        /* ═══════════════════════════════════════════════════
+           UKVI-SPECIFIC MOBILE FIXES
+           ═══════════════════════════════════════════════════ */
+        
+        /* Use dynamic viewport height (iOS address bar) */
+        #app {
+            height: 100vh;
+            height: 100dvh;
+        }
+        
+        /* Small phones — caption overlay positioning */
+        @media (max-width: 480px) {
+            #app {
+                grid-template-rows: 45dvh 55dvh;
+            }
+            
+            #caption-overlay {
+                bottom: 8px;
+                width: 94%;
+                max-width: 94%;
+            }
+            #caption-overlay .text {
+                font-size: 14px;
+                padding: 10px 14px;
+                line-height: 1.4;
+            }
+            #caption-overlay .category {
+                font-size: 11px;
+            }
+            
+            .stage-chip, .stage-timer {
+                padding: 5px 8px;
+                font-size: 10px;
+            }
+            
+            /* Panel — scrollable */
+            #panel {
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            
+            /* Prevent body scroll when overlay open */
+            body.overlay-open {
+                overflow: hidden;
+                position: fixed;
+                width: 100%;
+            }
+        }
+        
+        /* iOS Safari dynamic viewport support */
+        @supports (height: 100dvh) {
+            #app {
+                height: 100dvh;
+            }
+        }
+</style>
 <link rel="stylesheet" href="/static/css/mobile.css">
 <link rel="manifest" href="/static/manifest.json">
 </head>
