@@ -277,7 +277,87 @@
             .question-card { padding: 14px; }
             body.exam-focus #question-container { padding: 4px 6px 8px 6px; }
         }
-    </style>
+    
+        /* ═══════════════════════════════════════════════════
+           PTE SPEAKING/WRITING MOBILE BOOST
+           ═══════════════════════════════════════════════════ */
+        
+        /* Safe area for notched phones (iPhone X+, Android) */
+        @supports (padding: env(safe-area-inset-bottom)) {
+            body {
+                padding-bottom: env(safe-area-inset-bottom);
+            }
+            .container {
+                padding-left: max(15px, env(safe-area-inset-left));
+                padding-right: max(15px, env(safe-area-inset-right));
+            }
+        }
+        
+        /* Small phones (≤480px) */
+        @media (max-width: 480px) {
+            .container { padding: 10px; }
+            
+            .header-left h2 { font-size: 15px; line-height: 1.3; }
+            .header-right { flex-wrap: wrap; gap: 6px; }
+            
+            .question-counter { font-size: 12px; }
+            .phase-badge { font-size: 11px; padding: 4px 8px; }
+            .phase-timer, .timer {
+                font-size: 13px;
+                padding: 5px 10px;
+            }
+            
+            .start-card { padding: 24px 16px; }
+            .start-card h1 { font-size: 18px; }
+            .start-card p { font-size: 13px; }
+            
+            .question-card { padding: 12px; }
+            .question-text { font-size: 15px; line-height: 1.5; }
+            
+            .answer-textarea {
+                min-height: 90px;
+                font-size: 14px;
+                padding: 10px;
+            }
+            
+            .image-container img {
+                max-height: 200px;
+            }
+            
+            .phase-overlay {
+                top: 6px;
+                right: 6px;
+                padding: 6px 10px;
+                min-width: 110px;
+            }
+            .phase-overlay-countdown { font-size: 18px; }
+            .phase-overlay-title { font-size: 10px; }
+            
+            /* Prevent horizontal scroll */
+            body, html { overflow-x: hidden; }
+            img { max-width: 100%; height: auto; }
+        }
+        
+        /* Touch devices — bigger tap targets */
+        @media (hover: none) and (pointer: coarse) {
+            button, .btn, .nav-buttons button {
+                min-height: 44px;
+                min-width: 44px;
+                touch-action: manipulation;
+                -webkit-tap-highlight-color: transparent;
+            }
+            
+            /* Prevent iOS zoom on input focus */
+            input, textarea, select {
+                font-size: 16px !important;
+            }
+            
+            /* Disable hover effects on touch */
+            button:hover, .btn:hover {
+                transform: none;
+            }
+        }
+</style>
 <link rel="stylesheet" href="/static/css/mobile.css">
 <link rel="manifest" href="/static/manifest.json">
 </head>
