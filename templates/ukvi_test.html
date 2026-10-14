@@ -344,6 +344,45 @@
                 height: 100dvh;
             }
         }
+
+        /* ═══════════════════════════════════════════════════
+           START BUTTON — FIXED BOTTOM ON MOBILE
+           ═══════════════════════════════════════════════════ */
+        
+        @media (max-width: 900px) {
+            /* Start button always visible at bottom of screen */
+            #start-btn {
+                position: fixed !important;
+                bottom: 16px !important;
+                left: 16px !important;
+                right: 16px !important;
+                width: auto !important;
+                z-index: 9999 !important;
+                box-shadow: 0 6px 24px rgba(0,0,0,0.5) !important;
+                padding: 16px !important;
+                font-size: 16px !important;
+                font-weight: 700 !important;
+            }
+            
+            /* Safe area for iPhone notch/home bar */
+            @supports (padding: env(safe-area-inset-bottom)) {
+                #start-btn {
+                    bottom: calc(16px + env(safe-area-inset-bottom)) !important;
+                }
+            }
+            
+            /* Add padding to panel so content isn't hidden behind fixed button */
+            #panel {
+                padding-bottom: 90px !important;
+            }
+            
+            /* When test starts, remove fixed positioning */
+            body.test-running #start-btn,
+            body.test-active #start-btn {
+                position: static !important;
+                box-shadow: none !important;
+            }
+        }
 </style>
 <link rel="stylesheet" href="/static/css/mobile.css">
 <link rel="manifest" href="/static/manifest.json">
@@ -1347,6 +1386,11 @@ function beginInterviewWithQuestions(sessionIdVal, questionsArr, total) {
     questionAttempts = {};
     stepProfile.style.display = 'none';
     stepInterview.style.display = 'block';
+    // Hide fixed start button when interview starts
+    if (typeof startBtn !== 'undefined' && startBtn) {
+        startBtn.style.display = 'none';
+        document.body.classList.add('test-running');
+    }
     stepResults.style.display = 'none';
     if (startBtn) { startBtn.disabled = false; startBtn.textContent = '🚀 Start Interview'; }
     setChipStatus('Live interview', true);
@@ -1693,6 +1737,8 @@ function restart() {
     if (timerInterval) clearInterval(timerInterval);
     if (prepTimerInterval) clearInterval(prepTimerInterval);
     stepProfile.style.display = 'block';
+    if (startBtn) { startBtn.style.display = ''; }
+    document.body.classList.remove('test-running');
     stepInterview.style.display = 'none';
     stepResults.style.display = 'none';
     sessionId = null; questions = []; responses = {}; currentQ = 0; totalQ = 0;
