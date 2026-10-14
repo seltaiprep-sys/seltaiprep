@@ -252,7 +252,7 @@ app.config['MAX_CONTENT_LENGTH'] = 10*1024*1024
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['SESSION_COOKIE_SECURE'] = os.environ.get('SESSION_COOKIE_SECURE', 'false').lower() == 'true'
-app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=14)
 app.config['SESSION_COOKIE_NAME'] = 'ielts_sess'
 
 # ============================================================
@@ -2100,7 +2100,7 @@ def login():
             db.session.commit()
             session.clear()
             session['selected_module'] = module
-            login_user(user, remember=True, duration=timedelta(days=30))
+            login_user(user, remember=True, duration=timedelta(days=14))
             session.permanent = True
             log_user_activity(user.id, 'login', {'method': 'password', 'module': module})
             return redirect(url_for('dashboard'))
@@ -2176,7 +2176,7 @@ def register():
 
         session.clear()
         session['selected_module'] = module
-        login_user(user, remember=True, duration=timedelta(days=30))
+        login_user(user, remember=True, duration=timedelta(days=14))
         session.permanent = True
         log_user_activity(user.id, 'register', {'module': module, 'method': 'username_password'})
         logger.info(f" New user registered: {user.id} ({username})")
@@ -2368,7 +2368,7 @@ def google_authorized():
                 db.session.commit()
         session.clear()
         session['selected_module'] = module
-        login_user(user, remember=True, duration=timedelta(days=30))
+        login_user(user, remember=True, duration=timedelta(days=14))
         session.permanent = True
         log_user_activity(user.id, 'login', {'method': 'google', 'module': module})
         return redirect(url_for('dashboard'))
@@ -2487,7 +2487,7 @@ def facebook_authorized():
                 logger.info(f" Linked Facebook to existing user: {user.id}")
         session.clear()
         session['selected_module'] = module
-        login_user(user, remember=True, duration=timedelta(days=30))
+        login_user(user, remember=True, duration=timedelta(days=14))
         session.permanent = True
         user.last_login = datetime.now(timezone.utc)
         db.session.commit()
@@ -2545,7 +2545,7 @@ def verify_email_otp():
     session.pop('otp_module', None)
     session.clear()
     session['selected_module'] = module
-    login_user(user, remember=True, duration=timedelta(days=30))
+    login_user(user, remember=True, duration=timedelta(days=14))
     session.permanent = True
     log_user_activity(user.id, 'login', {'method': 'otp', 'module': module})
     return redirect(url_for('dashboard'))
