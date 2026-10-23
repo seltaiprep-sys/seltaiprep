@@ -212,66 +212,22 @@
             #caption-overlay .text { font-size: 15px; padding: 12px 16px; }
             .stage-chip, .stage-timer { padding: 6px 10px; font-size: 11px; }
         }
-    
-        /* ═══════════════════════════════════════════════════
-           UKVI MOBILE BOOST
-           ═══════════════════════════════════════════════════ */
-        
+
         @supports (padding: env(safe-area-inset-bottom)) {
-            body {
-                padding-bottom: env(safe-area-inset-bottom);
-            }
+            body { padding-bottom: env(safe-area-inset-bottom); }
         }
-        
-        /* Tablet / Large phones (≤768px) */
-        @media (max-width: 768px) {
-            .container, .ukvi-container {
-                padding: 12px;
-                margin: 12px auto;
-            }
-            .header {
-                flex-direction: column;
-                gap: 8px;
-                align-items: stretch;
-            }
-            .timer {
-                font-size: 16px;
-                padding: 6px 14px;
-            }
-        }
-        
-        /* Small phones (≤480px) */
+
         @media (max-width: 480px) {
             .container, .ukvi-container { padding: 10px; }
-            
             .header h1, .header h2 { font-size: 16px; line-height: 1.3; }
-            .header .subtitle { font-size: 12px; }
-            
-            .timer {
-                font-size: 14px;
-                padding: 5px 10px;
-            }
-            
-            .question-card, .prompt-card {
-                padding: 12px;
-            }
-            .question-text {
-                font-size: 15px;
-                line-height: 1.5;
-            }
-            
-            .answer-textarea, textarea {
-                min-height: 100px;
-                font-size: 14px;
-                padding: 10px;
-            }
-            
-            /* Prevent horizontal scroll */
+            .timer { font-size: 14px; padding: 5px 10px; }
+            .question-card, .prompt-card { padding: 12px; }
+            .question-text { font-size: 15px; line-height: 1.5; }
+            .answer-textarea, textarea { min-height: 100px; font-size: 14px; padding: 10px; }
             body, html { overflow-x: hidden; }
             img { max-width: 100%; height: auto; }
         }
-        
-        /* Touch devices — bigger tap targets */
+
         @media (hover: none) and (pointer: coarse) {
             button, .btn {
                 min-height: 44px;
@@ -279,78 +235,24 @@
                 touch-action: manipulation;
                 -webkit-tap-highlight-color: transparent;
             }
-            
-            input, textarea, select {
-                font-size: 16px !important;
-            }
-            
-            button:hover, .btn:hover {
-                transform: none;
-            }
+            input, textarea, select { font-size: 16px !important; }
+            button:hover, .btn:hover { transform: none; }
         }
 
-        /* ═══════════════════════════════════════════════════
-           UKVI-SPECIFIC MOBILE FIXES
-           ═══════════════════════════════════════════════════ */
-        
-        /* Use dynamic viewport height (iOS address bar) */
-        #app {
-            height: 100vh;
-            height: 100dvh;
-        }
-        
-        /* Small phones — caption overlay positioning */
+        #app { height: 100vh; height: 100dvh; }
+
         @media (max-width: 480px) {
-            #app {
-                grid-template-rows: 45dvh 55dvh;
-            }
-            
-            #caption-overlay {
-                bottom: 8px;
-                width: 94%;
-                max-width: 94%;
-            }
-            #caption-overlay .text {
-                font-size: 14px;
-                padding: 10px 14px;
-                line-height: 1.4;
-            }
-            #caption-overlay .category {
-                font-size: 11px;
-            }
-            
-            .stage-chip, .stage-timer {
-                padding: 5px 8px;
-                font-size: 10px;
-            }
-            
-            /* Panel — scrollable */
-            #panel {
-                overflow-y: auto;
-                -webkit-overflow-scrolling: touch;
-            }
-            
-            /* Prevent body scroll when overlay open */
-            body.overlay-open {
-                overflow: hidden;
-                position: fixed;
-                width: 100%;
-            }
-        }
-        
-        /* iOS Safari dynamic viewport support */
-        @supports (height: 100dvh) {
-            #app {
-                height: 100dvh;
-            }
+            #app { grid-template-rows: 45dvh 55dvh; }
+            #caption-overlay { bottom: 8px; width: 94%; max-width: 94%; }
+            #caption-overlay .text { font-size: 14px; padding: 10px 14px; line-height: 1.4; }
+            #caption-overlay .category { font-size: 11px; }
+            .stage-chip, .stage-timer { padding: 5px 8px; font-size: 10px; }
+            #panel { overflow-y: auto; -webkit-overflow-scrolling: touch; }
         }
 
-        /* ═══════════════════════════════════════════════════
-           START BUTTON — FIXED BOTTOM ON MOBILE
-           ═══════════════════════════════════════════════════ */
-        
+        @supports (height: 100dvh) { #app { height: 100dvh; } }
+
         @media (max-width: 900px) {
-            /* Start button always visible at bottom of screen */
             #start-btn {
                 position: fixed !important;
                 bottom: 16px !important;
@@ -363,45 +265,179 @@
                 font-size: 16px !important;
                 font-weight: 700 !important;
             }
-            
-            /* Safe area for iPhone notch/home bar */
             @supports (padding: env(safe-area-inset-bottom)) {
-                #start-btn {
-                    bottom: calc(16px + env(safe-area-inset-bottom)) !important;
-                }
+                #start-btn { bottom: calc(16px + env(safe-area-inset-bottom)) !important; }
             }
-            
-            /* Add padding to panel so content isn't hidden behind fixed button */
-            #panel {
-                padding-bottom: 90px !important;
-            }
-            
-            /* When test starts, remove fixed positioning */
+            #panel { padding-bottom: 90px !important; }
             body.test-running #start-btn,
             body.test-active #start-btn {
                 position: static !important;
                 box-shadow: none !important;
             }
         }
+
+        /* ═══ REAL UKVI 7-PHASE BANNER ═══ */
+        #phase-banner {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
+            color: white;
+            padding: 12px 20px;
+            display: none;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 9998;
+            box-shadow: 0 4px 20px rgba(30, 64, 175, 0.4);
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+        }
+        #phase-banner.show { display: flex; }
+        #phase-banner .phase-info { display: flex; align-items: center; gap: 14px; flex: 1; }
+        #phase-banner .phase-num {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 6px 14px; border-radius: 20px;
+            font-weight: 800; font-size: 12px;
+            letter-spacing: 0.5px; white-space: nowrap;
+        }
+        #phase-banner .phase-name { font-weight: 600; font-size: 14px; letter-spacing: 0.2px; }
+        #phase-banner .q-timer {
+            font-size: 22px; font-weight: 800;
+            font-variant-numeric: tabular-nums;
+            min-width: 70px; text-align: right;
+            letter-spacing: 0.5px; color: #fff;
+            transition: color 0.3s;
+        }
+        #phase-banner .q-timer.warning { color: #fbbf24; }
+        #phase-banner .q-timer.critical { color: #f87171; animation: pulse-crit 0.8s infinite; }
+        @keyframes pulse-crit { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+        #phase-progress { display: flex; gap: 5px; margin-top: 5px; }
+        #phase-progress .dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transition: 0.3s;
+        }
+        #phase-progress .dot.done { background: #22c55e; }
+        #phase-progress .dot.current {
+            background: #fbbf24;
+            animation: pulse-crit 1s infinite;
+            box-shadow: 0 0 8px #fbbf24;
+        }
+        body.has-phase-banner #app { padding-top: 70px; }
+
+        @media (max-width: 480px) {
+            #phase-banner { padding: 10px 14px; flex-wrap: wrap; gap: 8px; }
+            #phase-banner .phase-name { font-size: 12px; }
+            #phase-banner .phase-num { font-size: 10px; padding: 4px 10px; }
+            #phase-banner .q-timer { font-size: 18px; min-width: 60px; }
+            #phase-progress .dot { width: 6px; height: 6px; }
+            body.has-phase-banner #app { padding-top: 62px; }
+        }
+
+        /* ═══ PRESSURE UI ═══ */
+        #pressure-warning {
+            position: fixed; top: 80px; left: 50%; transform: translateX(-50%);
+            background: rgba(220, 38, 38, 0.95); color: white;
+            padding: 12px 28px; border-radius: 10px;
+            font-size: 16px; font-weight: 800; z-index: 99999;
+            box-shadow: 0 8px 32px rgba(220, 38, 38, 0.6);
+            animation: pressure-shake 0.5s infinite;
+            display: none;
+        }
+        #pressure-warning.show { display: block; }
+        @keyframes pressure-shake {
+            0%, 100% { transform: translateX(-50%) rotate(-1deg); }
+            50% { transform: translateX(-50%) rotate(1deg); }
+        }
+        #recording-indicator {
+            position: fixed; top: 80px; right: 20px;
+            background: rgba(0, 0, 0, 0.85); color: white;
+            padding: 8px 16px; border-radius: 20px;
+            font-size: 12px; font-weight: 600;
+            display: none; align-items: center; gap: 8px; z-index: 9997;
+        }
+        #recording-indicator.show { display: flex; }
+        #recording-indicator .rec-dot {
+            width: 10px; height: 10px;
+            background: #dc2626; border-radius: 50%;
+            animation: pressure-pulse 0.8s infinite;
+        }
+        @keyframes pressure-pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+        #phase-banner.challenge {
+            background: linear-gradient(135deg, #dc2626, #991b1b) !important;
+            animation: pressure-pulse 1.5s infinite;
+        }
+    
+    /* B2B 3D LAYOUT FIX — preserve 2-column grid */
+    body.b2b-test-mode #app {
+        display: grid !important;
+        grid-template-columns: 1fr 460px !important;
+        height: 100vh !important;
+    }
+
+    body.b2b-test-mode #stage {
+        position: relative !important;
+        width: 100% !important;
+        height: 100% !important;
+        min-width: 0 !important;
+        display: block !important;
+    }
+
+    body.b2b-test-mode #three-container {
+        position: absolute !important;
+        inset: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+    }
+
+    body.b2b-test-mode #panel {
+        width: 460px !important;
+        grid-column: auto !important;
+        border-left: 1px solid rgba(108,99,255,0.12) !important;
+    }
+
+    /* On mobile — stack vertically */
+    @media (max-width: 900px) {
+        body.b2b-test-mode #app {
+            grid-template-columns: 1fr !important;
+            grid-template-rows: 1fr 1fr !important;
+        }
+    }
 </style>
 <link rel="stylesheet" href="/static/css/mobile.css">
 <link rel="manifest" href="/static/manifest.json">
 </head>
 <body>
-<div id="app">
 
+<div id="pressure-warning">⏱ TIME RUNNING OUT</div>
+<div id="recording-indicator">
+    <span class="rec-dot"></span>
+    <span>REC</span>
+</div>
+
+<div id="phase-banner">
+    <div class="phase-info">
+        <span class="phase-num" id="phase-banner-num">Phase 1/7</span>
+        <div>
+            <div class="phase-name" id="phase-banner-name">ID & Introduction</div>
+            <div id="phase-progress"></div>
+        </div>
+    </div>
+    <div class="q-timer" id="q-timer">00:00</div>
+</div>
+
+<div id="app">
     <div id="stage">
         <div id="three-container"></div>
         <div id="stage-vignette"></div>
-
         <div class="stage-chip">
             <span class="dot idle" id="live-dot"></span>
             <span id="chip-status">Ready</span>
             <span id="chip-progress"></span>
         </div>
-
         <div class="stage-timer" id="stage-timer">— —</div>
-
         <div id="caption-overlay">
             <div style="text-align:center;">
                 <span class="category" id="overlay-category"></span>
@@ -430,7 +466,6 @@
                 <span style="opacity:0.6;">⏳ Loading subscription...</span>
             </div>
 
-            <!-- STEP 1: PROFILE -->
             <div id="step-profile">
                 <div class="step-title">📋 Your Profile</div>
                 <div class="step-sub">Fill in your details to generate realistic UKVI questions.</div>
@@ -514,7 +549,6 @@
                 </button>
             </div>
 
-            <!-- STEP 2: INTERVIEW -->
             <div id="step-interview" style="display:none;">
                 <div class="interview-head">
                     <span class="title">🛂 Live Interview</span>
@@ -537,7 +571,6 @@
                 </div>
             </div>
 
-            <!-- STEP 3: RESULTS -->
             <div id="step-results" style="display:none;">
                 <div class="step-title">📊 Interview Results</div>
                 <div class="step-sub">Here's how you performed.</div>
@@ -570,9 +603,6 @@
     </div>
 </div>
 
-<!-- ═══════════════════════════════════════════════════════════════
-     THREE.JS IMPORT MAP
-     ═══════════════════════════════════════════════════════════════ -->
 <script type="importmap">
 {
     "imports": {
@@ -582,38 +612,22 @@
 }
 </script>
 
-<!-- ═══════════════════════════════════════════════════════════════
-     3D SCENE  —  PRIMITIVES AVATAR (0 MB, no GLB files)
-     ═══════════════════════════════════════════════════════════════ -->
 <script type="module">
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-// ─── CONFIG: CHANGE THIS ONE LINE FOR MALE / FEMALE ─────────────
-const AVATAR_GENDER = 'female';    // 'female'  or  'male'
+const AVATAR_GENDER = 'female';
 
-// ─── SCENE ───────────────────────────────────────────────────────
 const container = document.getElementById('three-container');
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x0a0e17);
 scene.fog = new THREE.Fog(0x0a0e17, 3.5, 9);
 
-// ─── CAMERA (chest-up, video-call framing) ──────────────────────
-const camera = new THREE.PerspectiveCamera(
-    28,
-    container.clientWidth / container.clientHeight,
-    0.1,
-    100
-);
+const camera = new THREE.PerspectiveCamera(28, container.clientWidth / container.clientHeight, 0.1, 100);
 camera.position.set(0, 1.35, 1.55);
 camera.lookAt(0, 1.15, 0);
 
-// ─── RENDERER ────────────────────────────────────────────────────
-const renderer = new THREE.WebGLRenderer({
-    antialias: true,
-    alpha: false,
-    powerPreference: 'high-performance',
-});
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
 renderer.setSize(container.clientWidth, container.clientHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
@@ -622,7 +636,6 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.0;
 container.appendChild(renderer.domElement);
 
-// ─── CONTROLS ────────────────────────────────────────────────────
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.target.set(0, 1.15, 0);
 controls.enableDamping = true;
@@ -637,9 +650,7 @@ controls.minAzimuthAngle = -Math.PI / 10;
 controls.maxAzimuthAngle = Math.PI / 10;
 controls.update();
 
-// ─── LIGHTS (3-point studio) ────────────────────────────────────
-const ambient = new THREE.AmbientLight(0x8899bb, 0.35);
-scene.add(ambient);
+scene.add(new THREE.AmbientLight(0x8899bb, 0.35));
 
 const keyLight = new THREE.DirectionalLight(0xfff0dd, 2.0);
 keyLight.position.set(1.8, 2.8, 1.8);
@@ -662,16 +673,12 @@ const rimLight = new THREE.DirectionalLight(0xff9977, 0.9);
 rimLight.position.set(-0.8, 2.2, -2.2);
 scene.add(rimLight);
 
-const bounce = new THREE.HemisphereLight(0x6c63ff, 0x0a0e17, 0.25);
-scene.add(bounce);
+scene.add(new THREE.HemisphereLight(0x6c63ff, 0x0a0e17, 0.25));
 
-// ─── ENVIRONMENT ─────────────────────────────────────────────────
-const groundGeo = new THREE.CircleGeometry(1.2, 32);
-const groundMat = new THREE.MeshStandardMaterial({
-    color: 0x1a2334, roughness: 0.9, metalness: 0.1,
-    transparent: true, opacity: 0.6,
-});
-const ground = new THREE.Mesh(groundGeo, groundMat);
+const ground = new THREE.Mesh(
+    new THREE.CircleGeometry(1.2, 32),
+    new THREE.MeshStandardMaterial({ color: 0x1a2334, roughness: 0.9, metalness: 0.1, transparent: true, opacity: 0.6 })
+);
 ground.rotation.x = -Math.PI / 2;
 ground.position.y = -0.02;
 ground.receiveShadow = true;
@@ -683,9 +690,6 @@ grid.material.opacity = 0.25;
 grid.material.transparent = true;
 scene.add(grid);
 
-// ═══════════════════════════════════════════════════════════════════
-// AVATAR — built from Three.js primitives (no GLB file needed)
-// ═══════════════════════════════════════════════════════════════════
 let character = null;
 let jawMesh = null;
 let headGroup = null;
@@ -695,46 +699,33 @@ let talkInterval = null;
 let idleInterval = null;
 let thinkInterval = null;
 let blinkInterval = null;
+let browRig = [];
 
 function buildAvatar(gender = 'female') {
     const group = new THREE.Group();
     const isFemale = gender === 'female';
 
-    // ─── Materials ────────────────────────────────────────────
     const skinColor   = isFemale ? 0xf2cda9 : 0xd9b28a;
     const hairColor   = isFemale ? 0x1f1410 : 0x1a1008;
     const shirtColor  = isFemale ? 0x6c63ff : 0x3b5b8c;
     const lipColor    = isFemale ? 0xc97070 : 0xa85860;
 
-    const skinMat = new THREE.MeshStandardMaterial({
-        color: skinColor, roughness: 0.75, metalness: 0.0,
-    });
-    const hairMat = new THREE.MeshStandardMaterial({
-        color: hairColor, roughness: 0.55, metalness: 0.05,
-    });
-    const shirtMat = new THREE.MeshStandardMaterial({
-        color: shirtColor, roughness: 0.85, metalness: 0.0,
-    });
+    const skinMat = new THREE.MeshStandardMaterial({ color: skinColor, roughness: 0.75, metalness: 0.0 });
+    const hairMat = new THREE.MeshStandardMaterial({ color: hairColor, roughness: 0.55, metalness: 0.05 });
+    const shirtMat = new THREE.MeshStandardMaterial({ color: shirtColor, roughness: 0.85, metalness: 0.0 });
     const eyeWhiteMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4 });
     const irisMat     = new THREE.MeshStandardMaterial({ color: 0x3a2a1a, roughness: 0.3 });
     const pupilMat    = new THREE.MeshStandardMaterial({ color: 0x000000, roughness: 0.2 });
     const browMat     = new THREE.MeshStandardMaterial({ color: 0x1a0f08, roughness: 0.7 });
     const lipMat      = new THREE.MeshStandardMaterial({ color: lipColor, roughness: 0.6 });
 
-    // ═══════════════════════════════════════════════════════════
-    // TORSO / SHOULDERS
-    // ═══════════════════════════════════════════════════════════
     const shoulderW = isFemale ? 0.38 : 0.44;
-    const torsoGeo = new THREE.CylinderGeometry(
-        shoulderW, shoulderW * 0.95, 0.55, 24, 1
-    );
-    const torso = new THREE.Mesh(torsoGeo, shirtMat);
+    const torso = new THREE.Mesh(new THREE.CylinderGeometry(shoulderW, shoulderW * 0.95, 0.55, 24, 1), shirtMat);
     torso.position.y = 0.82;
     torso.castShadow = true;
     torso.receiveShadow = true;
     group.add(torso);
 
-    // Chest curve (for female)
     if (isFemale) {
         const chestGeo = new THREE.SphereGeometry(0.18, 20, 16);
         for (const side of [-1, 1]) {
@@ -746,155 +737,91 @@ function buildAvatar(gender = 'female') {
         }
     }
 
-    // Shoulders (rounded caps)
     for (const side of [-1, 1]) {
-        const shoulder = new THREE.Mesh(
-            new THREE.SphereGeometry(0.12, 16, 12),
-            shirtMat
-        );
+        const shoulder = new THREE.Mesh(new THREE.SphereGeometry(0.12, 16, 12), shirtMat);
         shoulder.position.set(side * shoulderW * 0.95, 1.05, 0);
         shoulder.castShadow = true;
         group.add(shoulder);
     }
 
-    // ═══════════════════════════════════════════════════════════
-    // ARMS
-    // ═══════════════════════════════════════════════════════════
-    const armMat = shirtMat;
-    const upperArmLen = 0.42;
     for (const side of [-1, 1]) {
-        const arm = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.075, 0.065, upperArmLen, 12),
-            armMat
-        );
-        arm.position.set(
-            side * (shoulderW + 0.06),
-            0.88,
-            0
-        );
+        const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.065, 0.42, 12), shirtMat);
+        arm.position.set(side * (shoulderW + 0.06), 0.88, 0);
         arm.rotation.z = side * 0.1;
         arm.castShadow = true;
         group.add(arm);
     }
 
-    // ═══════════════════════════════════════════════════════════
-    // NECK
-    // ═══════════════════════════════════════════════════════════
-    const neck = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.062, 0.075, 0.14, 16),
-        skinMat
-    );
+    const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.062, 0.075, 0.14, 16), skinMat);
     neck.position.y = 1.15;
     neck.castShadow = true;
     group.add(neck);
 
-    // ═══════════════════════════════════════════════════════════
-    // HEAD GROUP (so we can rotate head separately)
-    // ═══════════════════════════════════════════════════════════
     headGroup = new THREE.Group();
     headGroup.position.y = 1.34;
     group.add(headGroup);
 
-    // Head (slightly squashed sphere)
-    const headGeo = new THREE.SphereGeometry(0.145, 32, 24);
-    const head = new THREE.Mesh(headGeo, skinMat);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.145, 32, 24), skinMat);
     head.scale.set(0.92, 1.05, 0.95);
     head.castShadow = true;
     headGroup.add(head);
 
-    // Jaw line (for male — slightly wider chin)
     if (!isFemale) {
-        const jaw = new THREE.Mesh(
-            new THREE.SphereGeometry(0.13, 20, 12),
-            skinMat
-        );
+        const jaw = new THREE.Mesh(new THREE.SphereGeometry(0.13, 20, 12), skinMat);
         jaw.position.y = -0.055;
         jaw.scale.set(1.0, 0.7, 1.0);
         jaw.castShadow = true;
         headGroup.add(jaw);
     }
 
-    // ═══════════════════════════════════════════════════════════
-    // HAIR
-    // ═══════════════════════════════════════════════════════════
     if (isFemale) {
-        // Hair cap (covers top and sides)
-        const capGeo = new THREE.SphereGeometry(0.16, 24, 20);
-        const cap = new THREE.Mesh(capGeo, hairMat);
+        const cap = new THREE.Mesh(new THREE.SphereGeometry(0.16, 24, 20), hairMat);
         cap.scale.set(1.05, 1.1, 1.05);
         cap.position.y = 0.02;
         cap.castShadow = true;
         headGroup.add(cap);
 
-        // Hair back (long, flowing down)
-        const backHair = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.14, 0.17, 0.30, 20),
-            hairMat
-        );
+        const backHair = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.17, 0.30, 20), hairMat);
         backHair.position.set(0, -0.12, -0.02);
         backHair.scale.set(1, 1, 0.85);
         backHair.castShadow = true;
         headGroup.add(backHair);
 
-        // Side hair (left & right)
         for (const side of [-1, 1]) {
-            const sideHair = new THREE.Mesh(
-                new THREE.SphereGeometry(0.07, 16, 12),
-                hairMat
-            );
+            const sideHair = new THREE.Mesh(new THREE.SphereGeometry(0.07, 16, 12), hairMat);
             sideHair.position.set(side * 0.13, -0.02, 0);
             sideHair.scale.set(0.8, 1.6, 0.9);
             sideHair.castShadow = true;
             headGroup.add(sideHair);
         }
 
-        // Fringe/bangs
-        const fringe = new THREE.Mesh(
-            new THREE.SphereGeometry(0.135, 20, 16),
-            hairMat
-        );
+        const fringe = new THREE.Mesh(new THREE.SphereGeometry(0.135, 20, 16), hairMat);
         fringe.position.set(0, 0.06, 0.06);
         fringe.scale.set(1.0, 0.55, 0.6);
         fringe.castShadow = true;
         headGroup.add(fringe);
     } else {
-        // Male — short hair cap only
-        const capGeo = new THREE.SphereGeometry(0.155, 24, 20);
-        const cap = new THREE.Mesh(capGeo, hairMat);
+        const cap = new THREE.Mesh(new THREE.SphereGeometry(0.155, 24, 20), hairMat);
         cap.scale.set(1.0, 0.85, 1.0);
         cap.position.y = 0.04;
         cap.castShadow = true;
         headGroup.add(cap);
 
-        // Small sideburns
         for (const side of [-1, 1]) {
-            const burn = new THREE.Mesh(
-                new THREE.SphereGeometry(0.04, 10, 8),
-                hairMat
-            );
+            const burn = new THREE.Mesh(new THREE.SphereGeometry(0.04, 10, 8), hairMat);
             burn.position.set(side * 0.13, -0.03, 0.01);
             burn.scale.set(1, 1.8, 0.8);
             headGroup.add(burn);
         }
     }
 
-    // ═══════════════════════════════════════════════════════════
-    // EARS
-    // ═══════════════════════════════════════════════════════════
     for (const side of [-1, 1]) {
-        const ear = new THREE.Mesh(
-            new THREE.SphereGeometry(0.035, 12, 10),
-            skinMat
-        );
+        const ear = new THREE.Mesh(new THREE.SphereGeometry(0.035, 12, 10), skinMat);
         ear.position.set(side * 0.14, 0, 0);
         ear.scale.set(0.5, 1.1, 0.8);
-        group.add; // no-op to keep linter happy
         headGroup.add(ear);
     }
 
-    // ═══════════════════════════════════════════════════════════
-    // EYES
-    // ═══════════════════════════════════════════════════════════
     eyesGroup = new THREE.Group();
     headGroup.add(eyesGroup);
 
@@ -903,82 +830,73 @@ function buildAvatar(gender = 'female') {
     const eyeZ = 0.125;
 
     for (const side of [-1, 1]) {
-        // Eye white (flattened)
-        const white = new THREE.Mesh(
-            new THREE.SphereGeometry(0.025, 16, 12),
-            eyeWhiteMat
-        );
+        const white = new THREE.Mesh(new THREE.SphereGeometry(0.025, 16, 12), eyeWhiteMat);
         white.position.set(side * eyeSpacing, eyeY, eyeZ);
         white.scale.set(1, 0.85, 0.4);
         eyesGroup.add(white);
 
-        // Iris
-        const iris = new THREE.Mesh(
-            new THREE.SphereGeometry(0.013, 12, 10),
-            irisMat
-        );
+        const iris = new THREE.Mesh(new THREE.SphereGeometry(0.013, 12, 10), irisMat);
         iris.position.set(side * eyeSpacing, eyeY, eyeZ + 0.008);
         iris.scale.set(1, 1, 0.5);
         eyesGroup.add(iris);
 
-        // Pupil
-        const pupil = new THREE.Mesh(
-            new THREE.SphereGeometry(0.007, 10, 8),
-            pupilMat
-        );
+        const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.007, 10, 8), pupilMat);
         pupil.position.set(side * eyeSpacing, eyeY, eyeZ + 0.012);
         pupil.scale.set(1, 1, 0.5);
+        pupil.userData.isPupil = true;
+        pupil.userData.baseX = side * eyeSpacing;
+        pupil.userData.baseZ = eyeZ + 0.012;
         eyesGroup.add(pupil);
     }
 
-    // ═══════════════════════════════════════════════════════════
-    // EYEBROWS
-    // ═══════════════════════════════════════════════════════════
+    browRig = [];
     for (const side of [-1, 1]) {
-        const brow = new THREE.Mesh(
-            new THREE.BoxGeometry(0.055, 0.012, 0.008),
-            browMat
-        );
+        const brow = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.012, 0.008), browMat);
         brow.position.set(side * eyeSpacing, eyeY + 0.045, eyeZ + 0.005);
         brow.rotation.z = side * -0.12;
+        brow.userData.baseY = eyeY + 0.045;
+        browRig.push(brow);
         headGroup.add(brow);
     }
 
-    // ═══════════════════════════════════════════════════════════
-    // NOSE
-    // ═══════════════════════════════════════════════════════════
-    const nose = new THREE.Mesh(
-        new THREE.ConeGeometry(0.015, 0.045, 10),
-        skinMat
-    );
+    const nose = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.045, 10), skinMat);
     nose.position.set(0, -0.02, 0.145);
     nose.rotation.x = Math.PI;
     nose.scale.set(1, 1, 0.8);
     headGroup.add(nose);
 
-    // ═══════════════════════════════════════════════════════════
-    // MOUTH (animated for talking)
-    // ═══════════════════════════════════════════════════════════
-    jawMesh = new THREE.Mesh(
-        new THREE.SphereGeometry(0.022, 16, 10),
-        lipMat
-    );
+    jawMesh = new THREE.Mesh(new THREE.SphereGeometry(0.022, 16, 10), lipMat);
     jawMesh.position.set(0, -0.06, 0.14);
     jawMesh.scale.set(1.4, 0.5, 0.6);
     headGroup.add(jawMesh);
 
-    // ═══════════════════════════════════════════════════════════
-    // FINALIZE
-    // ═══════════════════════════════════════════════════════════
+    // ═══ REALISM: Micro-expressions + head nods ═══
+    headGroup.userData.microInterval = setInterval(() => {
+        if (!headGroup || !browRig.length) return;
+        browRig.forEach(brow => {
+            if (Math.random() < 0.15) {
+                brow.position.y = brow.userData.baseY + 0.006;
+                setTimeout(() => { if (brow) brow.position.y = brow.userData.baseY; }, 400);
+            }
+        });
+    }, 3000);
+
+    headGroup.userData.nodInterval = setInterval(() => {
+        if (!headGroup || isTalking) return;
+        if (Math.random() < 0.1) {
+            const origY = headGroup.rotation.x;
+            headGroup.rotation.x = origY + 0.04;
+            setTimeout(() => { if (headGroup) headGroup.rotation.x = origY; }, 200);
+        }
+    }, 2000);
+
     scene.add(group);
     return group;
 }
 
-// ─── BUILD & START ──────────────────────────────────────────────
 character = buildAvatar(AVATAR_GENDER);
-console.log(`✅ 3D avatar built (${AVATAR_GENDER}) — 0 MB download`);
+console.log(`✅ 3D avatar built (${AVATAR_GENDER}) — with eye tracking + micro-expressions`);
 
-// ─── IDLE BREATHING ─────────────────────────────────────────────
 function startIdleAnimation() {
     if (idleInterval) clearInterval(idleInterval);
     const baseY = character.position.y;
@@ -988,39 +906,28 @@ function startIdleAnimation() {
         if (!character) return;
         phase += 0.02;
         character.position.y = baseY + Math.sin(phase) * 0.008;
-        if (headGroup) {
-            headGroup.position.y = baseHeadY + Math.sin(phase * 1.3) * 0.003;
-        }
+        if (headGroup) headGroup.position.y = baseHeadY + Math.sin(phase * 1.3) * 0.003;
     }, 50);
 }
 
-// ─── BLINKING (natural eye blinks) ──────────────────────────────
 function startBlinking() {
     if (blinkInterval) clearInterval(blinkInterval);
     const doBlink = () => {
         if (!eyesGroup) return;
         eyesGroup.scale.y = 0.1;
-        setTimeout(() => {
-            if (eyesGroup) eyesGroup.scale.y = 1;
-        }, 120);
+        setTimeout(() => { if (eyesGroup) eyesGroup.scale.y = 1; }, 120);
     };
-    // Random blink every 2-6 seconds
     const schedule = () => {
         const delay = 2000 + Math.random() * 4000;
-        setTimeout(() => {
-            doBlink();
-            schedule();
-        }, delay);
+        setTimeout(() => { doBlink(); schedule(); }, delay);
     };
     schedule();
 }
 
-// ─── TALKING (mouth animation) ──────────────────────────────────
 function startTalking() {
     if (isTalking) return;
     isTalking = true;
     if (talkInterval) clearInterval(talkInterval);
-
     if (jawMesh) {
         talkInterval = setInterval(() => {
             if (!isTalking) return;
@@ -1034,64 +941,62 @@ function startTalking() {
 function stopTalking() {
     isTalking = false;
     if (talkInterval) { clearInterval(talkInterval); talkInterval = null; }
-    if (jawMesh) {
-        jawMesh.scale.y = 0.5;
-        jawMesh.scale.x = 1.4;
-    }
+    if (jawMesh) { jawMesh.scale.y = 0.5; jawMesh.scale.x = 1.4; }
 }
 
-// ─── THINKING (head tilt) ───────────────────────────────────────
 function startThinking() {
     if (thinkInterval) return;
     if (!headGroup) return;
     const baseRotZ = headGroup.rotation.z;
-    const baseRotY = headGroup.rotation.y;
     let phase = 0;
     thinkInterval = setInterval(() => {
         if (!headGroup) return;
         phase += 0.04;
         headGroup.rotation.z = baseRotZ + Math.sin(phase) * 0.05;
-        headGroup.rotation.y = baseY_rotY(headGroup) + Math.sin(phase * 0.7) * 0.04;
+        headGroup.rotation.y = Math.sin(phase * 0.7) * 0.04;
     }, 50);
 }
-
-function baseY_rotY(g) { return g.userData._baseRotY ?? 0; }
 
 function stopThinking() {
     if (thinkInterval) {
         clearInterval(thinkInterval);
         thinkInterval = null;
-        if (headGroup) {
-            headGroup.rotation.z = 0;
-            headGroup.rotation.y = 0;
-        }
+        if (headGroup) { headGroup.rotation.z = 0; headGroup.rotation.y = 0; }
     }
 }
 
-// Save baseline rotation for head
-if (headGroup) headGroup.userData._baseRotY = 0;
-
-// Expose to UI
 window.startTalking = startTalking;
 window.stopTalking = stopTalking;
 window.startThinking = startThinking;
 window.stopThinking = stopThinking;
 
-// ─── START ──────────────────────────────────────────────────────
 startIdleAnimation();
 startBlinking();
 
-// ─── ANIMATION LOOP ─────────────────────────────────────────────
 const clock = new THREE.Clock();
 function animate() {
     requestAnimationFrame(animate);
     clock.getDelta();
+
+    // ═══ Eye tracking — pupils follow camera subtly ═══
+    if (eyesGroup) {
+        const camX = camera.position.x;
+        const camY = camera.position.y;
+        eyesGroup.children.forEach(child => {
+            if (child.userData?.isPupil) {
+                const offsetX = Math.max(-0.008, Math.min(0.008, camX * 0.01));
+                const offsetY = Math.max(-0.006, Math.min(0.006, (camY - 1.15) * 0.01));
+                child.position.x = child.userData.baseX + offsetX;
+                child.position.y = 0.015 + offsetY;
+            }
+        });
+    }
+
     controls.update();
     renderer.render(scene, camera);
 }
 animate();
 
-// ─── RESIZE ─────────────────────────────────────────────────────
 function onResize() {
     const w = container.clientWidth;
     const h = container.clientHeight;
@@ -1101,15 +1006,13 @@ function onResize() {
     renderer.setSize(w, h);
 }
 window.addEventListener('resize', onResize);
-if (window.ResizeObserver) {
-    new ResizeObserver(onResize).observe(container);
-}
+if (window.ResizeObserver) new ResizeObserver(onResize).observe(container);
 </script>
 
-<!-- ═══════════════════════════════════════════════════════════════
-     UI LOGIC
-     ═══════════════════════════════════════════════════════════════ -->
 <script>
+// ═══════════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════════
 let sessionId = null;
 let questions = [];
 let responses = {};
@@ -1118,15 +1021,16 @@ let totalQ = 0;
 let isSubmitting = false;
 let timerInterval = null;
 let prepTimerInterval = null;
-let prepTime = 15;
-let answerTime = 45;
 let currentQuestionText = '';
 let currentCategory = '';
-let isPlaying = false;
 let recognition = null;
 let isListening = false;
 let questionAttempts = {};
-let isPrepPhase = false;
+
+// ═══ RECORDING STATE ═══
+let audioRecorder = null;
+let audioChunks = [];
+let recordingStream = null;
 
 const $ = (id) => document.getElementById(id);
 const subStatusBar    = $('sub-status-bar');
@@ -1148,10 +1052,10 @@ const resultPrediction = $('result-prediction');
 const resultScore     = $('result-score');
 const resultCredibility = $('result-credibility');
 const recList         = $('rec-list');
-const chipStatus   = $('chip-status');
-const chipProgress = $('chip-progress');
-const liveDot      = $('live-dot');
-const stageTimer   = $('stage-timer');
+const chipStatus      = $('chip-status');
+const chipProgress    = $('chip-progress');
+const liveDot         = $('live-dot');
+const stageTimer      = $('stage-timer');
 const overlay          = $('caption-overlay');
 const overlayCategory  = $('overlay-category');
 const overlayText      = $('overlay-text');
@@ -1164,7 +1068,6 @@ function setChipStatus(text, live = false) {
 function setChipProgress(text) {
     chipProgress.textContent = text ? '· ' + text : '';
 }
-
 function showOverlay(category, text, attempt = 0) {
     overlayCategory.textContent = category || '';
     overlayText.textContent = text;
@@ -1184,10 +1087,7 @@ function startCaptions(text) {
     captionWords = text.split(/\s+/);
     captionIndex = 0;
     overlayText.textContent = '';
-    if (captionWords.length) {
-        overlayText.textContent = captionWords[0];
-        captionIndex = 1;
-    }
+    if (captionWords.length) { overlayText.textContent = captionWords[0]; captionIndex = 1; }
     captionInterval = setInterval(() => {
         if (captionIndex < captionWords.length) {
             overlayText.textContent += ' ' + captionWords[captionIndex];
@@ -1207,20 +1107,20 @@ function getUserId() {
 
 function collectProfile() {
     return {
-        full_name:        $('fullname').value.trim(),
-        father_name:      $('father_name').value.trim(),
-        mother_name:      $('mother_name').value.trim(),
-        university:       $('university').value.trim(),
-        university_city:  $('university_city').value.trim(),
-        course:           $('course').value.trim(),
-        course_duration:  $('course_duration').value.trim(),
-        ielts_score:      $('ielts_score').value.trim(),
-        tuition_fee:      $('tuition_fee').value.trim(),
-        living_cost:      $('living_cost').value.trim(),
-        sponsor_name:     $('sponsor_name').value.trim(),
-        sponsor_income:   $('sponsor_income').value.trim(),
-        sponsor_savings:  $('sponsor_savings').value.trim(),
-        home_country:     $('home_country').value.trim() || 'Nepal',
+        full_name: $('fullname').value.trim(),
+        father_name: $('father_name').value.trim(),
+        mother_name: $('mother_name').value.trim(),
+        university: $('university').value.trim(),
+        university_city: $('university_city').value.trim(),
+        course: $('course').value.trim(),
+        course_duration: $('course_duration').value.trim(),
+        ielts_score: $('ielts_score').value.trim(),
+        tuition_fee: $('tuition_fee').value.trim(),
+        living_cost: $('living_cost').value.trim(),
+        sponsor_name: $('sponsor_name').value.trim(),
+        sponsor_income: $('sponsor_income').value.trim(),
+        sponsor_savings: $('sponsor_savings').value.trim(),
+        home_country: $('home_country').value.trim() || 'Nepal',
     };
 }
 
@@ -1283,6 +1183,71 @@ function fetchSubscriptionStatus() {
         });
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// RECORDING
+// ═══════════════════════════════════════════════════════════════════
+async function startRecording() {
+    if (!navigator.mediaDevices || !window.MediaRecorder) return;
+    try {
+        recordingStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        audioChunks = [];
+        audioRecorder = new MediaRecorder(recordingStream, {
+            mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+                ? 'audio/webm;codecs=opus' : 'audio/webm'
+        });
+        audioRecorder.ondataavailable = (e) => {
+            if (e.data.size > 0) audioChunks.push(e.data);
+        };
+        audioRecorder.start();
+        const ind = document.getElementById('recording-indicator');
+        if (ind) ind.classList.add('show');
+    } catch (e) {
+        console.warn('Recording failed:', e);
+    }
+}
+
+async function stopAndUploadRecording() {
+    if (!audioRecorder || audioRecorder.state === 'inactive') return null;
+    return new Promise((resolve) => {
+        audioRecorder.onstop = async () => {
+            const ind = document.getElementById('recording-indicator');
+            if (ind) ind.classList.remove('show');
+            if (audioChunks.length === 0) { resolve(null); return; }
+            const blob = new Blob(audioChunks, { type: 'audio/webm' });
+            const formData = new FormData();
+            formData.append('audio', blob, 'answer.webm');
+            formData.append('session_id', sessionId || 'unknown');
+            formData.append('question_index', currentQ);
+            try {
+                const resp = await fetch('/api/ukvi/record-answer', {
+                    method: 'POST', body: formData,
+                });
+                resolve(await resp.json());
+            } catch (e) {
+                console.warn('Upload failed:', e);
+                resolve(null);
+            }
+            audioChunks = [];
+            if (recordingStream) {
+                recordingStream.getTracks().forEach(t => t.stop());
+                recordingStream = null;
+            }
+        };
+        audioRecorder.stop();
+    });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// REAL UKVI — 7-PHASE TRACKING
+// ═══════════════════════════════════════════════════════════════════
+const UKVI_PHASES = {
+    currentPhase: 1,
+    totalPhases: 7,
+    phaseQuestionCount: {},
+    phaseStartIndex: {},
+    interviewData: null,
+};
+
 async function startInterview() {
     const profile = collectProfile();
     if (!profile.full_name || !profile.university) { alert('Full Name and University are required.'); return; }
@@ -1304,222 +1269,233 @@ async function startInterview() {
         const saveData = await saveRes.json();
         if (!saveData.success) throw new Error(saveData.error || 'Profile save failed');
 
-        startBtn.textContent = '⏳ Starting...';
-        const startRes = await fetch('/api/ukvi/start-async', {
+        startBtn.textContent = '⏳ Generating interview...';
+        const genRes = await fetch('/api/ukvi/interview/generate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ user_id: parseInt(userId), difficulty: 'medium' }),
+            body: JSON.stringify({ difficulty: 'medium' }),
         });
 
-        if (startRes.status === 402) {
-            const data = await startRes.json();
-            alert(data.error || 'Free limit reached.');
+        if (genRes.status === 400) {
+            const errData = await genRes.json();
+            alert(errData.error || 'Profile incomplete');
+            throw new Error(errData.error || 'Profile required');
+        }
+        if (genRes.status === 402) {
+            const errData = await genRes.json();
+            alert(errData.error || 'Free limit reached.');
             window.location.href = '/subscription?module=ukvi';
             throw new Error('Subscription required');
         }
 
-        const startData = await startRes.json();
-        if (!startData.success) throw new Error(startData.error || 'Start failed');
+        const genData = await genRes.json();
+        if (!genData.success) throw new Error(genData.error || 'Interview generation failed');
 
-        if (startData.source === 'cache') {
-            beginInterviewWithQuestions(startData.session_id, startData.questions, startData.total_questions);
-            return;
-        }
-        if (startData.job_id) { await pollJobStatus(startData.job_id); return; }
-        throw new Error('Unexpected response');
+        beginInterviewWithPhases(genData);
+
     } catch (err) {
-        if (err.message !== 'Subscription required') alert('Error: ' + err.message);
-        setChipStatus('Error', false);
-    } finally {
-        if (startBtn && startBtn.textContent !== '🚀 Start Interview') {
-            startBtn.disabled = false;
-            startBtn.textContent = '🚀 Start Interview';
+        if (err.message !== 'Subscription required' && err.message !== 'Profile required') {
+            alert('Error: ' + err.message);
         }
+        setChipStatus('Error', false);
+        if (startBtn) { startBtn.disabled = false; startBtn.textContent = '🚀 Start Interview'; }
     }
 }
 
-async function pollJobStatus(jobId) {
-    setChipStatus('Preparing…', true);
-    statusText.textContent = '⏳ Preparing your questions...';
-    let attempts = 0;
-    const maxAttempts = 60;
+function beginInterviewWithPhases(interviewData) {
+    console.log('[UKVI] Starting 7-phase interview:', interviewData.total_questions, 'questions');
 
-    while (attempts < maxAttempts) {
-        await new Promise(r => setTimeout(r, 2000));
-        attempts++;
-        try {
-            const res = await fetch(`/api/ukvi/job-status/${jobId}`);
-            const data = await res.json();
-            if (data.status === 'complete') {
-                beginInterviewWithQuestions(data.session_id, data.questions, data.total_questions);
-                return;
-            }
-            if (data.status === 'failed') {
-                alert('Generation failed: ' + (data.error || 'Unknown error'));
-                setChipStatus('Failed', false);
-                if (startBtn) { startBtn.disabled = false; startBtn.textContent = '🚀 Start Interview'; }
-                return;
-            }
-            if (data.status === 'queued') {
-                const pos = data.position || '?';
-                startBtn.textContent = `⏳ Queue #${pos}`;
-                statusText.textContent = `⏳ Waiting in queue (position ${pos})...`;
-                setChipStatus(`Queue #${pos}`, true);
-            } else if (data.status === 'generating') {
-                startBtn.textContent = '⏳ Generating...';
-                statusText.textContent = '⏳ AI is generating your questions...';
-                setChipStatus('Generating…', true);
-            }
-        } catch (err) { console.warn('Poll error:', err); }
-    }
-    alert('Timeout — could not generate questions.');
-    if (startBtn) { startBtn.disabled = false; startBtn.textContent = '🚀 Start Interview'; }
-    setChipStatus('Timeout', false);
-}
+    UKVI_PHASES.currentPhase = 1;
+    UKVI_PHASES.totalPhases = interviewData.total_phases || 7;
+    UKVI_PHASES.phaseQuestionCount = {};
+    UKVI_PHASES.phaseStartIndex = {};
+    UKVI_PHASES.interviewData = interviewData;
 
-function beginInterviewWithQuestions(sessionIdVal, questionsArr, total) {
-    sessionId = sessionIdVal;
-    questions = questionsArr || [];
-    totalQ = total || questions.length;
+    interviewData.questions.forEach((q, i) => {
+        if (!UKVI_PHASES.phaseStartIndex[q.phase]) UKVI_PHASES.phaseStartIndex[q.phase] = i;
+        UKVI_PHASES.phaseQuestionCount[q.phase] = (UKVI_PHASES.phaseQuestionCount[q.phase] || 0) + 1;
+    });
+
+    sessionId = interviewData.session_id || 'phase_' + Date.now();
+    questions = interviewData.questions;
+    totalQ = interviewData.total_questions;
     currentQ = 0;
     responses = {};
     questionAttempts = {};
+
     stepProfile.style.display = 'none';
     stepInterview.style.display = 'block';
-    // Hide fixed start button when interview starts
-    if (typeof startBtn !== 'undefined' && startBtn) {
-        startBtn.style.display = 'none';
-        document.body.classList.add('test-running');
-    }
     stepResults.style.display = 'none';
-    if (startBtn) { startBtn.disabled = false; startBtn.textContent = '🚀 Start Interview'; }
+    document.body.classList.add('test-running', 'has-phase-banner');
+
+    if (startBtn) startBtn.style.display = 'none';
+    document.getElementById('phase-banner').classList.add('show');
+
     setChipStatus('Live interview', true);
-    showQuestion();
+    showPhaseQuestion();
 }
 
-function showQuestion() {
+function showPhaseQuestion() {
     if (isSubmitting) return;
-    if (currentQ >= totalQ) { finishInterview(); return; }
+    if (currentQ >= totalQ) { finishPhaseInterview(); return; }
+
     const q = questions[currentQ];
     currentQuestionText = q.question || 'No question';
-    currentCategory = q.category || '';
+    currentCategory = q.category || q.phase_name || '';
     questionAttempts[currentQ] = 0;
+
+    updatePhaseBanner(q);
     progressText.textContent = `Q ${currentQ + 1}/${totalQ}`;
-    setChipProgress(`Q ${currentQ + 1}/${totalQ}`);
+    setChipProgress(`Q ${currentQ + 1}/${totalQ} · Phase ${q.phase}`);
+
     answerInput.value = '';
     feedbackArea.classList.remove('visible');
     manualSubmit.style.display = 'none';
     statusText.textContent = '🔊 Speaking question...';
-    stageTimer.textContent = '— —';
-    stageTimer.classList.remove('warning');
-    speakQuestion(currentQuestionText, currentCategory, 0);
+
+    speakQuestionWithPhaseTimer(q, 0);
 }
 
-function speakQuestion(text, category, attempt = 0) {
+function updatePhaseBanner(q) {
+    const phase = q.phase || 1;
+    UKVI_PHASES.currentPhase = phase;
+    document.getElementById('phase-banner-num').textContent = `Phase ${phase}/${UKVI_PHASES.totalPhases}`;
+    document.getElementById('phase-banner-name').textContent = q.phase_name || 'Interview';
+    renderPhaseProgress(phase);
+}
+
+function renderPhaseProgress(currentPhase) {
+    const container = document.getElementById('phase-progress');
+    if (!container) return;
+    container.innerHTML = '';
+    for (let i = 1; i <= UKVI_PHASES.totalPhases; i++) {
+        const dot = document.createElement('div');
+        dot.className = 'dot';
+        if (i < currentPhase) dot.classList.add('done');
+        else if (i === currentPhase) dot.classList.add('current');
+        container.appendChild(dot);
+    }
+}
+
+function speakQuestionWithPhaseTimer(question, attempt) {
     stopCurrentAudio();
     if (recognition) recognition.abort();
     isListening = false;
     clearInterval(timerInterval);
     clearInterval(prepTimerInterval);
-    isPrepPhase = false;
+
+    const category = question.category || question.phase_name || '';
     showOverlay(category, '', attempt);
-    startCaptions(text);
+    startCaptions(question.question);
+
     if (window.startTalking) window.startTalking();
     setChipStatus('Speaking…', true);
 
     fetch('/api/ukvi/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ text: question.question }),
     })
         .then(r => r.json())
         .then(data => {
             if (data.audio_url) {
                 const audio = new Audio(data.audio_url);
-                audio.onplay = () => { isPlaying = true; statusText.textContent = '🔊 Speaking...'; };
                 audio.onended = () => {
-                    isPlaying = false;
                     if (window.stopTalking) window.stopTalking();
                     stopCaptions();
-                    setTimeout(() => startPrepPhase(attempt), 400);
+                    startPhaseQuestionTimer(question, attempt);
                 };
                 audio.onerror = () => {
-                    isPlaying = false;
                     if (window.stopTalking) window.stopTalking();
                     stopCaptions();
-                    startPrepPhase(attempt);
+                    startPhaseQuestionTimer(question, attempt);
                 };
-                audio.play().catch(() => fallbackSpeak(text, category, attempt));
+                audio.play().catch(() => fallbackSpeakPhase(question, attempt));
             } else {
-                fallbackSpeak(text, category, attempt);
+                fallbackSpeakPhase(question, attempt);
             }
         })
-        .catch(() => fallbackSpeak(text, category, attempt));
+        .catch(() => fallbackSpeakPhase(question, attempt));
 }
 
-function fallbackSpeak(text, category, attempt) {
+function fallbackSpeakPhase(question, attempt) {
     if (!window.speechSynthesis) {
         if (window.stopTalking) window.stopTalking();
         stopCaptions();
-        startPrepPhase(attempt);
+        startPhaseQuestionTimer(question, attempt);
         return;
     }
     window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
+    const u = new SpeechSynthesisUtterance(question.question);
     u.lang = 'en-GB';
     u.rate = 0.9;
     const voices = window.speechSynthesis.getVoices();
     const uk = voices.find(v => v.lang.startsWith('en-GB'));
     if (uk) u.voice = uk;
-    u.onstart = () => { isPlaying = true; statusText.textContent = '🔊 Speaking...'; };
+    u.onstart = () => { statusText.textContent = '🔊 Speaking...'; };
     u.onend = () => {
-        isPlaying = false;
         if (window.stopTalking) window.stopTalking();
         stopCaptions();
-        setTimeout(() => startPrepPhase(attempt), 400);
+        startPhaseQuestionTimer(question, attempt);
     };
     u.onerror = () => {
-        isPlaying = false;
         if (window.stopTalking) window.stopTalking();
         stopCaptions();
-        startPrepPhase(attempt);
+        startPhaseQuestionTimer(question, attempt);
     };
     window.speechSynthesis.speak(u);
 }
 
-function stopCurrentAudio() {
-    window.speechSynthesis.cancel();
-    document.querySelectorAll('audio').forEach(a => a.pause());
-    isPlaying = false;
-    if (window.stopTalking) window.stopTalking();
-    stopCaptions();
-    hideOverlay();
-}
+function startPhaseQuestionTimer(question, attempt) {
+    const answerTimeSec = question.time_seconds || 20;
+    statusText.textContent = '🎙️ Listening... speak now';
+    setChipStatus('Listening…', true);
 
-function startPrepPhase(attempt) {
-    isPrepPhase = true;
-    let remaining = prepTime;
-    stageTimer.textContent = `⏱ ${remaining}s`;
-    statusText.textContent = `⏳ Preparing... ${remaining}s to think.`;
-    overlayAttempt.textContent = attempt > 0 ? `Attempt ${attempt}/3` : '';
-    setChipStatus('Thinking time', false);
-    prepTimerInterval = setInterval(() => {
+    startRecording();
+    startListeningForPhase(attempt);
+
+    let remaining = answerTimeSec;
+    updatePhaseTimerDisplay(remaining);
+
+    if (timerInterval) clearInterval(timerInterval);
+    timerInterval = setInterval(() => {
         remaining--;
-        stageTimer.textContent = `⏱ ${remaining}s`;
-        statusText.textContent = `⏳ Preparing... ${remaining}s to think.`;
+        updatePhaseTimerDisplay(remaining);
+
+        const warning = document.getElementById('pressure-warning');
+        if (remaining === 10) {
+            if (warning) { warning.textContent = '⏱ 10 SECONDS LEFT'; warning.classList.add('show'); }
+        } else if (remaining === 5) {
+            if (warning) warning.textContent = '⚠️ 5 SECONDS — WRAP UP';
+        }
+
         if (remaining <= 0) {
-            clearInterval(prepTimerInterval);
-            isPrepPhase = false;
-            startListeningPhase(attempt);
+            clearInterval(timerInterval);
+            if (warning) warning.classList.remove('show');
+            if (isListening && recognition) { recognition.abort(); isListening = false; }
+            if (!answerInput.value.trim()) handleNoAnswer(attempt);
+            else submitManualText();
         }
     }, 1000);
 }
 
-function startListeningPhase(attempt) {
-    stageTimer.textContent = `⏱ ${answerTime}s`;
-    statusText.textContent = '🎙️ Listening... speak now';
-    setChipStatus('Listening…', true);
+function updatePhaseTimerDisplay(remaining) {
+    const el = document.getElementById('q-timer');
+    if (!el) return;
+    const mins = String(Math.floor(remaining / 60)).padStart(2, '0');
+    const secs = String(remaining % 60).padStart(2, '0');
+    el.textContent = `${mins}:${secs}`;
+    el.classList.remove('warning', 'critical');
+    if (remaining <= 5) el.classList.add('critical');
+    else if (remaining <= 15) el.classList.add('warning');
 
+    if (stageTimer) {
+        stageTimer.textContent = `⏱ ${remaining}s`;
+        stageTimer.classList.toggle('warning', remaining <= 10);
+    }
+}
+
+function startListeningForPhase(attempt) {
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
         statusText.textContent = '🎙️ Please type your answer.';
         manualSubmit.style.display = 'block';
@@ -1530,7 +1506,12 @@ function startListeningPhase(attempt) {
     recognition.lang = 'en-GB';
     recognition.interimResults = false;
     recognition.continuous = false;
-    recognition.onstart = () => { isListening = true; statusText.textContent = '🎙️ Listening... speak now'; };
+
+    recognition.onstart = () => {
+        isListening = true;
+        statusText.textContent = '🎙️ Listening... speak now';
+    };
+
     recognition.onresult = (event) => {
         const transcript = event.results[0][0].transcript;
         answerInput.value = transcript;
@@ -1538,6 +1519,7 @@ function startListeningPhase(attempt) {
         questionAttempts[currentQ] = 0;
         setTimeout(() => submitManualText(), 1400);
     };
+
     recognition.onerror = (event) => {
         console.warn('Speech error:', event.error);
         if (event.error === 'not-allowed') {
@@ -1547,43 +1529,87 @@ function startListeningPhase(attempt) {
         }
         isListening = false;
     };
-    recognition.onend = () => {
-        isListening = false;
-        if (!isSubmitting && !answerInput.value.trim()) handleNoAnswer(attempt);
-    };
+
+    recognition.onend = () => { isListening = false; };
+
     try { recognition.start(); }
     catch (e) {
         manualSubmit.style.display = 'block';
         statusText.textContent = '⛔ Speech error — type answer';
     }
-    let timeLeft = answerTime;
-    stageTimer.textContent = `⏱ ${timeLeft}s`;
-    timerInterval = setInterval(() => {
-        timeLeft--;
-        stageTimer.textContent = `⏱ ${timeLeft}s`;
-        if (timeLeft <= 10) stageTimer.classList.add('warning');
-        if (timeLeft <= 0) {
-            clearInterval(timerInterval);
-            if (isListening && recognition) { recognition.abort(); isListening = false; }
-            if (!answerInput.value.trim()) handleNoAnswer(attempt);
-        }
-    }, 1000);
+}
+
+function finishPhaseInterview() {
+    if (isListening && recognition) recognition.abort();
+    if (timerInterval) clearInterval(timerInterval);
+    if (prepTimerInterval) clearInterval(prepTimerInterval);
+
+    stepInterview.style.display = 'none';
+    stepResults.style.display = 'block';
+    document.getElementById('phase-banner').classList.remove('show');
+    document.body.classList.remove('has-phase-banner');
+
+    setChipStatus('Completed', false);
+    setChipProgress('');
+
+    fetch('/api/ukvi/finish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: parseInt(getUserId()), session_id: sessionId }),
+    })
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) { alert('Finish error: ' + data.error); return; }
+            const ev = data.evaluation || {};
+            resultPrediction.textContent = ev.prediction || 'Completed';
+            resultScore.textContent = ev.overall_score ? ev.overall_score.toFixed(1) : '--';
+            resultCredibility.textContent = ev.credibility_avg ? ev.credibility_avg.toFixed(0) + '%' : '--';
+            recList.innerHTML = '';
+            (ev.recommendations || []).forEach(r => {
+                const div = document.createElement('div');
+                div.className = 'rec-item';
+                div.textContent = '• ' + r;
+                recList.appendChild(div);
+            });
+
+            fetch('/api/ukvi/cleanup-recordings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ session_id: sessionId }),
+            })
+                .then(r => r.json())
+                .then(d => { if (d.success) console.log('[UKVI] Recordings cleaned:', d.deleted); })
+                .catch(() => {});
+        })
+        .catch(console.error);
+}
+
+function stopCurrentAudio() {
+    window.speechSynthesis.cancel();
+    document.querySelectorAll('audio').forEach(a => a.pause());
+    if (window.stopTalking) window.stopTalking();
+    stopCaptions();
+    hideOverlay();
 }
 
 function handleNoAnswer(attempt) {
     if (isSubmitting) return;
     const attempts = (questionAttempts[currentQ] || 0) + 1;
     questionAttempts[currentQ] = attempts;
+
+    stopAndUploadRecording().catch(() => {});
+
     if (attempts >= 3) {
-        statusText.textContent = '❌ Interview stopped.';
-        speakWarning('You are not answering questions. The interview is being stopped.');
-        setTimeout(() => forceExit('You did not answer. Interview stopped.'), 3000);
+        statusText.textContent = '❌ INTERVIEW TERMINATED';
+        speakWarning('You are not answering questions. The interview is being terminated.');
+        setTimeout(() => forceExit('Interview terminated — no responses'), 3000);
         return;
     }
-    const msg = `You have not answered. Let me repeat. Attempt ${attempts} of 3.`;
-    statusText.textContent = `🔄 ${msg}`;
+
+    const msg = 'Answer required. I will ask once more.';
+    statusText.textContent = '🔄 ' + msg + ' (Attempt ' + attempts + '/3)';
     speakWarning(msg);
-    setTimeout(() => speakQuestion(currentQuestionText, currentCategory, attempts), 2000);
+    setTimeout(() => speakQuestionWithPhaseTimer(questions[currentQ], attempts), 500);
 }
 
 function forceExit(message) {
@@ -1591,6 +1617,8 @@ function forceExit(message) {
     if (prepTimerInterval) clearInterval(prepTimerInterval);
     stepInterview.style.display = 'none';
     stepResults.style.display = 'block';
+    document.getElementById('phase-banner').classList.remove('show');
+    document.body.classList.remove('has-phase-banner');
     resultPrediction.textContent = 'Stopped';
     resultScore.textContent = '--';
     resultCredibility.textContent = '--';
@@ -1632,54 +1660,105 @@ function repeatQuestion() {
     stopCurrentAudio();
     clearInterval(timerInterval);
     clearInterval(prepTimerInterval);
-    isPrepPhase = false;
     const attempts = questionAttempts[currentQ] || 0;
     stageTimer.textContent = '— —';
     stageTimer.classList.remove('warning');
-    speakQuestion(currentQuestionText, currentCategory, attempts);
+    speakQuestionWithPhaseTimer(questions[currentQ], attempts);
 }
 
-function submitManualText() {
+// ═══════════════════════════════════════════════════════════════════
+// SUBMIT ANSWER + FOLLOW-UP + CONSISTENCY
+// ═══════════════════════════════════════════════════════════════════
+async function submitManualText() {
     const txt = answerInput.value.trim();
     if (!txt) { alert('Please type or speak an answer.'); return; }
     if (isSubmitting) return;
-    questionAttempts[currentQ] = 0;
     isSubmitting = true;
+    questionAttempts[currentQ] = 0;
+
+    stopAndUploadRecording().catch(() => {});
+
     statusText.textContent = '🤔 Thinking...';
     setChipStatus('Thinking…', false);
     if (window.startThinking) window.startThinking();
 
-    fetch('/api/ukvi/answer', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            user_id: parseInt(getUserId()),
-            session_id: sessionId,
-            question_index: currentQ,
-            question_text: currentQuestionText,
-            answer: txt,
-        }),
-    })
-        .then(r => r.json())
-        .then(data => {
-            isSubmitting = false;
-            if (window.stopThinking) window.stopThinking();
-            if (data.error) { alert('Submit error: ' + data.error); return; }
-            const evalData = data.evaluation || {};
-            const nextQ = data.next_question;
-            responses[currentQ] = { response: txt, evaluation: evalData };
-            showFeedback(evalData);
-            if (nextQ) {
-                questions.splice(currentQ + 1, 0, { question: nextQ, category: 'Follow-up' });
-                totalQ++;
-            }
-            setTimeout(() => { currentQ++; showQuestion(); }, 1500);
-        })
-        .catch(err => {
-            isSubmitting = false;
-            if (window.stopThinking) window.stopThinking();
-            alert('Error: ' + err);
+    const thisQ = questions[currentQ];
+    const thisQIdx = currentQ;
+
+    try {
+        // Check follow-up + consistency
+        const followupResp = await fetch('/api/ukvi/interview/follow-up', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                question: currentQuestionText,
+                answer: txt,
+                category: currentCategory,
+                difficulty: 'medium',
+                question_index: thisQIdx,
+                session_id: sessionId,
+            }),
         });
+        const followupData = await followupResp.json();
+
+        // Submit to backend
+        const answerResp = await fetch('/api/ukvi/answer', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                user_id: parseInt(getUserId()),
+                session_id: sessionId,
+                question_index: thisQIdx,
+                question_text: currentQuestionText,
+                answer: txt,
+            }),
+        });
+        const answerData = await answerResp.json();
+
+        isSubmitting = false;
+        if (window.stopThinking) window.stopThinking();
+
+        if (answerData.error) {
+            alert('Submit error: ' + answerData.error);
+            return;
+        }
+
+        const evalData = answerData.evaluation || {};
+        responses[thisQIdx] = { response: txt, evaluation: evalData };
+        showFeedback(evalData);
+
+        // Handle follow-up
+        if (followupData.success && followupData.needs_followup && followupData.followup_question) {
+            const reason = followupData.followup_reason || 'followup';
+            const isInconsistency = reason === 'inconsistency_detected';
+
+            questions.splice(thisQIdx + 1, 0, {
+                question: followupData.followup_question,
+                category: isInconsistency ? '⚠️ Consistency Challenge' : 'Follow-up',
+                phase: thisQ.phase,
+                phase_name: thisQ.phase_name + (isInconsistency ? ' · Challenge' : ' · Follow-up'),
+                time_seconds: 60,
+                is_followup: true,
+                is_consistency: isInconsistency,
+            });
+            totalQ++;
+
+            if (isInconsistency) {
+                const banner = document.getElementById('phase-banner');
+                if (banner) {
+                    banner.classList.add('challenge');
+                    setTimeout(() => banner.classList.remove('challenge'), 3000);
+                }
+            }
+        }
+
+        setTimeout(() => { currentQ++; showPhaseQuestion(); }, 1500);
+
+    } catch (err) {
+        isSubmitting = false;
+        if (window.stopThinking) window.stopThinking();
+        alert('Error: ' + err);
+    }
 }
 
 function showFeedback(evalData) {
@@ -1693,55 +1772,33 @@ function exitTest() {
     if (isListening && recognition) recognition.abort();
     if (timerInterval) clearInterval(timerInterval);
     if (prepTimerInterval) clearInterval(prepTimerInterval);
-    if (confirm('Are you sure you want to exit?')) {
-        window.location.href = '/dashboard';
-    }
-}
-
-function finishInterview() {
-    if (isListening && recognition) recognition.abort();
-    if (timerInterval) clearInterval(timerInterval);
-    if (prepTimerInterval) clearInterval(prepTimerInterval);
-    stepInterview.style.display = 'none';
-    stepResults.style.display = 'block';
-    setChipStatus('Completed', false);
-    setChipProgress('');
-    fetch('/api/ukvi/finish', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            user_id: parseInt(getUserId()),
-            session_id: sessionId,
-        }),
-    })
-        .then(r => r.json())
-        .then(data => {
-            if (data.error) { alert('Finish error: ' + data.error); return; }
-            const ev = data.evaluation || {};
-            resultPrediction.textContent = ev.prediction || 'Completed';
-            resultScore.textContent = ev.overall_score ? ev.overall_score.toFixed(1) : '--';
-            resultCredibility.textContent = ev.credibility_avg ? ev.credibility_avg.toFixed(0) + '%' : '--';
-            recList.innerHTML = '';
-            (ev.recommendations || []).forEach(r => {
-                const div = document.createElement('div');
-                div.className = 'rec-item';
-                div.textContent = '• ' + r;
-                recList.appendChild(div);
-            });
-        })
-        .catch(console.error);
+    if (confirm('Are you sure you want to exit?')) window.location.href = '/dashboard';
 }
 
 function restart() {
     if (isListening && recognition) recognition.abort();
     if (timerInterval) clearInterval(timerInterval);
     if (prepTimerInterval) clearInterval(prepTimerInterval);
+
+    UKVI_PHASES.currentPhase = 1;
+    UKVI_PHASES.interviewData = null;
+    UKVI_PHASES.phaseQuestionCount = {};
+    UKVI_PHASES.phaseStartIndex = {};
+
+    document.getElementById('phase-banner').classList.remove('show');
+    document.body.classList.remove('has-phase-banner');
+
     stepProfile.style.display = 'block';
-    if (startBtn) { startBtn.style.display = ''; }
+    if (startBtn) startBtn.style.display = '';
     document.body.classList.remove('test-running');
     stepInterview.style.display = 'none';
     stepResults.style.display = 'none';
-    sessionId = null; questions = []; responses = {}; currentQ = 0; totalQ = 0;
+
+    sessionId = null;
+    questions = [];
+    responses = {};
+    currentQ = 0;
+    totalQ = 0;
     questionAttempts = {};
     answerInput.value = '';
     feedbackArea.classList.remove('visible');
@@ -1751,7 +1808,6 @@ function restart() {
     stageTimer.classList.remove('warning');
     hideOverlay();
     isListening = false;
-    isPrepPhase = false;
     stopCaptions();
     setChipStatus('Ready', false);
     setChipProgress('');
@@ -1767,9 +1823,312 @@ fetchSubscriptionStatus();
 loadSavedProfile();
 if (window.speechSynthesis) window.speechSynthesis.getVoices();
 setChipStatus('Ready', false);
-console.log('✅ UKVI 3D Interview ready (v4.0 — primitives avatar)');
+console.log('✅ UKVI Real 7-Phase Interview ready — Follow-ups + Consistency + Pressure + Recording');
 </script>
 <script src="/static/js/sw-register.js"></script>
 <script src="/static/js/push-notifications.js"></script>
+
+{% if b2b_profile %}
+<script>
+(function(){
+window._B2B_PROFILE = {{ b2b_profile | tojson | safe }};
+window._B2B_SKIP = {{ 'true' if b2b_skip_profile else 'false' }};
+console.log('[B2B] profile:', window._B2B_PROFILE);
+console.log('[B2B] skip:', window._B2B_SKIP);
+
+// ── Auto-fill every profile value into matching input ──
+function _b2bFill(){
+    const p = window._B2B_PROFILE;
+    if(!p) return 0;
+    let n=0;
+    Object.keys(p).forEach(function(key){
+        const val = p[key];
+        if(!val) return;
+        // Try IDs/names with key, key-without-underscore, key-with-hyphen
+        const cands = [key, key.replace(/_/g,''), key.replace(/_/g,'-')];
+        for(const c of cands){
+            const el = document.getElementById(c)
+                    || document.querySelector('[name="'+c+'"]');
+            if(el && !el.value){
+                el.value = val;
+                el.dispatchEvent(new Event('input',{bubbles:true}));
+                el.dispatchEvent(new Event('change',{bubbles:true}));
+                n++;
+                break;
+            }
+        }
+    });
+    console.log('[B2B] auto-filled '+n+' fields');
+    return n;
+}
+
+// ── Auto-advance past profile step ──
+function _b2bAdvance(){
+    // Strategy 1: find button inside #step-profile
+    const profileStep = document.getElementById('step-profile');
+    if(profileStep && profileStep.offsetParent !== null){
+        // It's still visible — look for buttons inside it
+        const btns = profileStep.querySelectorAll('button, a.btn, [role=button], input[type=submit]');
+        for(const b of btns){
+            const txt = (b.textContent || b.value || '').trim();
+            if(/start|begin|continue|next|proceed|generate|interview/i.test(txt)){
+                console.log('[B2B] clicking (in profile step):', txt);
+                b.click();
+                return true;
+            }
+        }
+    }
+    // Strategy 2: any visible button matching
+    const all = document.querySelectorAll('button, a.btn, a.button, [role=button], input[type=submit]');
+    for(const b of all){
+        const txt = (b.textContent || b.value || '').trim();
+        if(/start\\s*interview|begin\\s*interview|start\\s*test/i.test(txt)){
+            console.log('[B2B] clicking:', txt);
+            b.click();
+            return true;
+        }
+    }
+    return false;
+}
+
+// ── Kick off on DOM ready ──
+function _b2bKick(){
+    const n = _b2bFill();
+    if(window._B2B_SKIP && n >= 5){
+        // Wait a bit for any validation handlers, then advance
+        setTimeout(function(){
+            if(!_b2bAdvance()){
+                // Retry up to 5x
+                let i = 0;
+                const iv = setInterval(function(){
+                    if(_b2bAdvance() || ++i > 5) clearInterval(iv);
+                }, 400);
+            }
+        }, 800);
+    }
+}
+
+if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', _b2bKick);
+} else {
+    _b2bKick();
+}
+})();
+</script>
+{% endif %}
+
+    <style>
+    /* B2B_MODE_HIDE_NAV: hide dashboard/nav links for B2B students */
+    body.b2b-mode .sidebar,
+    body.b2b-mode .nav-dashboard,
+    body.b2b-mode a[href="/dashboard"],
+    body.b2b-mode a[href="/saved-tests"],
+    body.b2b-mode a[href="/select-module"] {
+        display: none !important;
+    }
+    </style>
+    
+    <script>
+    // B2B_MODE_HIDE_NAV: detect B2B session and hide nav
+    (function() {
+        // If _B2B_PROFILE exists, this is a B2B student
+        if (window._B2B_PROFILE || window._B2B_SKIP) {
+            document.addEventListener('DOMContentLoaded', function() {
+                document.body.classList.add('b2b-mode');
+                // Hide all dashboard links
+                document.querySelectorAll('a[href*="/dashboard"], a[href*="/saved-tests"]').forEach(function(el) {
+                    el.style.display = 'none';
+                });
+                console.log('[B2B] Nav links hidden for B2B student');
+            });
+        }
+    })();
+    </script>
+    
+
+<!-- B2B_HIDE_HEADER_V3: hide header/nav for B2B students -->
+<style>
+    /* B2B test mode — hide panel header entirely */
+    body.b2b-test-mode .panel-header {
+        display: none !important;
+    }
+
+    /* Hide subscription/free badges */
+    body.b2b-test-mode .badge-free,
+    body.b2b-test-mode .sub-bar,
+    body.b2b-test-mode #sub-status-bar {
+        display: none !important;
+    }
+
+    /* Hide dashboard exit button in test panel */
+    body.b2b-test-mode a[href="/dashboard"],
+    body.b2b-test-mode a[href*="/dashboard"],
+    body.b2b-test-mode a[href="/logout"],
+    body.b2b-test-mode a[href*="/logout"] {
+        display: none !important;
+    }
+
+    /* Free interview count text — hide adjacent elements */
+    body.b2b-test-mode .free-count,
+    body.b2b-test-mode .subscription-info {
+        display: none !important;
+    }
+
+
+</style>
+
+<script>
+(function(){
+    // B2B_HIDE_HEADER_V3
+    function detectB2B() {
+        // Check session markers on window + DOM
+        if (window._B2B_PROFILE || window._B2B_SKIP) return true;
+        if (document.body.innerHTML.indexOf('"b2b_profile"') >= 0) return true;
+        if (document.cookie.indexOf('b2b_verified') >= 0) return true;
+        return false;
+    }
+
+    function applyB2B() {
+        if (!detectB2B()) {
+            // Retry up to ~5 seconds (async profile load)
+            if (!window.__b2bRetries) window.__b2bRetries = 0;
+            if (window.__b2bRetries++ < 20) {
+                setTimeout(applyB2B, 250);
+            }
+            return;
+        }
+
+        document.body.classList.add('b2b-test-mode');
+        console.log('[B2B] Test mode active — header hidden');
+
+        // Force-hide specific known elements by class/content
+        var selectors = [
+            '.panel-header',
+            '.badge-free',
+            '#sub-status-bar',
+            '.sub-bar',
+            'a[href="/dashboard"]',
+            'a[href*="/dashboard"]',
+            'a[href="/logout"]',
+            'a[href*="/logout"]'
+        ];
+        var n = 0;
+        selectors.forEach(function(sel){
+            document.querySelectorAll(sel).forEach(function(el){
+                el.style.display = 'none';
+                n++;
+            });
+        });
+
+        // Fallback: content-based hide for text nodes
+        document.querySelectorAll('div, span, a, p, button, h1, h2, h3').forEach(function(el){
+            var txt = (el.textContent || '').trim();
+            if (!txt || txt.length > 80) return;
+            if (el.dataset.b2bHidden) return;
+
+            if (txt === 'Dashboard' ||
+                txt === 'Logout' ||
+                txt === 'Log out' ||
+                txt === '⚡ Free' ||
+                /^[0-9]+ of [0-9]+ free interviews? left$/.test(txt) ||
+                /free interviews? left/i.test(txt)) {
+                el.style.display = 'none';
+                el.dataset.b2bHidden = '1';
+                n++;
+            }
+        });
+
+        console.log('[B2B] Hidden ' + n + ' elements');
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', applyB2B);
+    } else {
+        applyB2B();
+    }
+})();
+</script>
+
+<!-- ANSWER_INPUT_FIX_V1: ensure answer input is typeable -->
+<style>
+    /* Force answer input to be interactive */
+    #answer-input,
+    textarea[id*="answer"],
+    input[id*="answer"],
+    .answer-box,
+    .answer-textarea,
+    [contenteditable="true"] {
+        pointer-events: auto !important;
+        user-select: text !important;
+        -webkit-user-select: text !important;
+        cursor: text !important;
+    }
+
+    /* Ensure no overlay blocks the input */
+    .answer-overlay,
+    .input-overlay,
+    .disabled-overlay {
+        pointer-events: none !important;
+    }
+</style>
+
+<script>
+(function(){
+    function fixAnswerInput() {
+        var fixed = 0;
+        var candidates = document.querySelectorAll(
+            '#answer-input, textarea, input[type="text"], ' +
+            'input:not([type]), [contenteditable], ' +
+            'div[class*="answer"], div[id*="answer"]'
+        );
+
+        candidates.forEach(function(el){
+            if (el.offsetWidth < 30) return;  // skip hidden
+            var txt = (el.placeholder || el.textContent || '').toLowerCase();
+            // Only fix answer-related inputs
+            if (txt.indexOf('answer') >= 0 || txt.indexOf('response') >= 0 ||
+                (el.tagName === 'TEXTAREA') ||
+                (el.id && el.id.indexOf('answer') >= 0) ||
+                (el.className && el.className.indexOf('answer') >= 0)) {
+
+                el.readOnly = false;
+                el.disabled = false;
+                el.style.pointerEvents = 'auto';
+                el.style.userSelect = 'text';
+                el.style.cursor = 'text';
+                el.removeAttribute('readonly');
+                el.removeAttribute('disabled');
+
+                if (el.tagName === 'DIV' && !el.isContentEditable) {
+                    el.contentEditable = 'true';
+                }
+                fixed++;
+            }
+        });
+
+        if (fixed > 0) {
+            console.log('[AnswerFix] Enabled ' + fixed + ' input(s)');
+        }
+    }
+
+    // Run on load
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', fixAnswerInput);
+    } else {
+        fixAnswerInput();
+    }
+
+    // Re-run every 2 sec (in case element appears later)
+    setInterval(fixAnswerInput, 2000);
+
+    // Run when mic denied indicator appears
+    var observer = new MutationObserver(function(mutations){
+        mutations.forEach(function(m){
+            if (m.addedNodes.length) fixAnswerInput();
+        });
+    });
+    document.body && observer.observe(document.body, { childList: true, subtree: true });
+})();
+</script>
 </body>
 </html>

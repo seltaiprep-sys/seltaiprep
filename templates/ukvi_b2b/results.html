@@ -1,0 +1,50 @@
+{% extends 'ukvi_b2b/base.html' %}
+{% block title %}Results{% endblock %}
+{% block content %}
+<h2 style="margin-bottom: 20px;">Completed Tests ({{ students|length }})</h2>
+
+<div class="card">
+    {% if students %}
+    <table>
+        <thead>
+            <tr>
+                <th>Student</th>
+                <th>Scheduled</th>
+                <th>Completed</th>
+                <th>Score</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for s in students %}
+            <tr>
+                <td>
+                    <strong>{{ s.full_name }}</strong>
+                    {% if s.phone %}<br><small style="color: #6b7280;">{{ s.phone }}</small>{% endif %}
+                </td>
+                <td>{{ s.scheduled_date }} {{ s.scheduled_time.strftime('%H:%M') }}</td>
+                <td>{{ s.test_completed_at.strftime('%Y-%m-%d %H:%M') if s.test_completed_at else '-' }}</td>
+                <td>
+                    {% if s.result_score %}
+                        <strong>{{ '%.1f'|format(s.result_score) }}</strong>
+                    {% else %}
+                        <span style="color: #6b7280;">—</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="{{ url_for('ukvi_b2b_student_detail', student_id=s.id) }}"
+                       class="btn btn-sm btn-outline">View</a>
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+        <div class="icon">📊</div>
+        <h3>No completed tests yet</h3>
+        <p>Results will appear here after students complete their tests.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

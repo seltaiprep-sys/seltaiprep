@@ -1,0 +1,377 @@
+{% extends 'ukvi_b2b/base.html' %}
+{% block title %}{{ student.full_name }}{% endblock %}
+{% block content %}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: start; flex-wrap: wrap; gap: 10px;">
+        <div>
+            <h2>{{ student.full_name }}</h2>
+            <span class="badge badge-{{ student.window_status }}" style="margin-top: 8px;">
+                {{ student.window_status|upper }}
+            </span>
+        </div>
+        <div style="text-align: right; font-size: 12px; color: #6b7280;">
+            Added: {{ student.created_at.strftime('%Y-%m-%d') if student.created_at else '-' }}
+        </div>
+    </div>
+    
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 20px;">
+        <div>
+            <div style="font-size: 11px; color: #6b7280; text-transform: uppercase; font-weight: 700;">Scheduled</div>
+            <div style="font-size: 15px; font-weight: 600;">
+                {% if sched_local %}
+                    {{ sched_local.strftime('%Y-%m-%d') }}<br>
+                    {{ sched_local.strftime('%I:%M %p') }} <small style="color: #059669;">NPT</small>
+                    <br><small style="color: #6b7280; font-size: 11px;">({{ student.scheduled_time.strftime('%H:%M') }} UTC)</small>
+                {% else %}
+                    {{ student.scheduled_date }}<br>
+                    {{ student.scheduled_time.strftime('%H:%M') }} UTC
+                {% endif %}
+            </div>
+        </div>
+        <div>
+            <div style="font-size: 11px; color: #6b7280; text-transform: uppercase; font-weight: 700;">Window</div>
+            <div style="font-size: 13px; font-weight: 500;">
+                {% if window_start_local %}
+                    {{ window_start_local.strftime('%b %d %I:%M %p') }} NPT<br>
+                    → {{ window_end_local.strftime('%b %d %I:%M %p') }} NPT
+                {% else %}
+                    {{ student.window_start.strftime('%Y-%m-%d %H:%M') }}<br>
+                    → {{ student.window_end.strftime('%Y-%m-%d %H:%M') }}
+                {% endif %}
+            </div>
+        </div>
+        {% if student.phone %}
+        <div>
+            <div style="font-size: 11px; color: #6b7280; text-transform: uppercase; font-weight: 700;">Phone</div>
+            <div style="font-size: 15px; font-weight: 600;">{{ student.phone }}</div>
+        </div>
+        {% endif %}
+        {% if student.email %}
+        <div>
+            <div style="font-size: 11px; color: #6b7280; text-transform: uppercase; font-weight: 700;">Email</div>
+            <div style="font-size: 13px; font-weight: 500;">{{ student.email }}</div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<!-- STUDENT LOGIN CREDENTIALS                           -->
+<!-- ═══════════════════════════════════════════════════ -->
+<div class="card" style="background: #f0f9ff; border: 2px solid #1e40af;">
+    <h3 style="margin-bottom: 12px; color: #1e40af;">🔑 Student Login Credentials</h3>
+    <p style="color: #6b7280; font-size: 13px; margin-bottom: 15px;">
+        Share these with the student so they can access the test:
+    </p>
+    
+    <table style="width: 100%; border-collapse: collapse;">
+        <tr style="border-bottom: 1px solid #e5e7eb;">
+            <td style="padding: 10px 0; color: #6b7280; font-size: 13px; width: 130px;">
+                <strong>Username:</strong>
+            </td>
+            <td style="padding: 10px 0;">
+                <code style="background: white; padding: 5px 12px; border-radius: 6px; font-size: 14px; font-weight: 600; color: #1e40af; border: 1px solid #dbeafe;">
+                    {{ ukvi_user.username if ukvi_user else 'N/A' }}
+                </code>
+            </td>
+        </tr>
+        <tr>
+            <td style="padding: 10px 0; color: #6b7280; font-size: 13px; vertical-align: top;">
+                <strong>Password:</strong>
+            </td>
+            <td style="padding: 10px 0;">
+                <div style="color: #6b7280; font-size: 13px; font-style: italic;">
+                    Set by institute — share your password with the student
+                </div>
+            </td>
+        </tr>
+    </table>
+    
+    <div style="background: #fef3c7; padding: 12px; border-radius: 8px; margin-top: 15px; font-size: 12px; color: #92400e; line-height: 1.6;">
+        ⚠️ <strong>Note:</strong> Password is encrypted and cannot be retrieved. If forgotten, use the reset form below.
+    </div>
+    
+    <form method="POST" action="{{ url_for('ukvi_b2b_reset_student_password', student_id=student.id) }}" style="margin-top: 15px;">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+        <label style="display: block; margin-bottom: 6px; font-size: 12px; font-weight: 600; color: #4b5563;">
+            🔄 Reset Password
+        </label>
+        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+            <input type="text" name="new_password" 
+                   placeholder="New password (min 6 chars)" 
+                   required minlength="6" maxlength="100"
+                   autocomplete="off"
+                   style="flex: 1; min-width: 200px; padding: 9px 12px; border: 2px solid #e5e7eb; border-radius: 6px; font-size: 13px; font-family: inherit;">
+            <button type="submit" class="btn btn-warning btn-sm" 
+                    onclick="return confirm('Reset password for {{ student.full_name }}?')">
+                🔄 Reset Password
+            </button>
+        </div>
+    </form>
+</div>
+
+{% if student.token_revoked or student.credit_refunded or student.token_used or student.test_completed_at %}
+<!-- ═══ REVOKED or COMPLETED — Schedule New Test ═══ -->
+<div class="card" style="background: {% if student.test_completed_at %}#f0fdf4{% else %}#fef2f2{% endif %}; border: 2px solid {% if student.test_completed_at %}#16a34a{% else %}#dc2626{% endif %};">
+    <h3 style="margin-bottom: 12px; color: {% if student.test_completed_at %}#065f46{% else %}#991b1b{% endif %};">
+        {% if student.test_completed_at %}
+            ✅ Test Completed — Schedule New Attempt
+        {% else %}
+            ❌ Student Revoked — Re-enable
+        {% endif %}
+    </h3>
+    <p style="color: #6b7280; font-size: 13px; margin-bottom: 15px;">
+        {% if student.test_completed_at %}
+            This student already completed their test. Schedule a new attempt for another day.
+        {% else %}
+            This student was cancelled. Re-enable with a fresh test link.
+        {% endif %}
+    </p>
+
+    {% if student.test_completed_at and student.result_score %}
+    <div style="background: #dbeafe; padding: 12px; border-radius: 8px; margin-bottom: 15px; font-size: 13px; color: #1e40af;">
+        <strong>Previous Result:</strong> {{ '%.1f'|format(student.result_score) }}
+        {% if student.result_grade %} ({{ student.result_grade }}){% endif %}
+    </div>
+    {% endif %}
+
+    <div style="background: #fef3c7; padding: 12px; border-radius: 8px; margin-bottom: 15px; font-size: 12px; color: #92400e;">
+        ⚠️ Scheduling a new test will deduct <strong>1 credit</strong> from your balance.
+        Current balance: <strong>{{ partner.credits_balance }}</strong>
+    </div>
+
+    <form method="POST" action="{{ url_for('ukvi_b2b_new_test_attempt', student_id=student.id) }}"
+          onsubmit="return confirm('Schedule new test? 1 credit will be deducted.')">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+            <div>
+                <label style="display: block; font-size: 11px; font-weight: 600; color: #4b5563; margin-bottom: 4px;">
+                    New Scheduled Date *
+                </label>
+                <input type="date" name="new_scheduled_date" required
+                       style="width: 100%; padding: 8px 10px; border: 2px solid #e5e7eb; border-radius: 6px; font-size: 13px;"
+                       min="{{ today_date }}">
+            </div>
+            <div>
+                <label style="display: block; font-size: 11px; font-weight: 600; color: #4b5563; margin-bottom: 4px;">
+                    New Scheduled Time (UTC) *
+                </label>
+                <input type="time" name="new_scheduled_time" required
+                       style="width: 100%; padding: 8px 10px; border: 2px solid #e5e7eb; border-radius: 6px; font-size: 13px;">
+            </div>
+        </div>
+
+        
+<!-- 🎓 Optional Profile Update — reuse student, change university -->
+<div style="margin-top: 16px; padding: 16px; background: #f0f9ff; border-radius: 8px; border-left: 4px solid #3b82f6;">
+    <label style="display: flex; align-items: center; cursor: pointer; font-weight: 600; color: #1e40af; font-size: 14px;">
+        <input type="checkbox" name="update_profile" value="1"
+               id="toggle-profile-edit"
+               style="width: 18px; height: 18px; margin-right: 8px;"
+               onchange="document.getElementById('profile-fields-renew').style.display = this.checked ? 'block' : 'none';">
+        🎓 Update Interview Profile (change university/course for next attempt)
+    </label>
+    <p style="color: #1e40af; font-size: 12px; margin: 6px 0 0 26px;">
+        💡 Reuse this student with new university — no new student needed. Uses same credit (1).
+    </p>
+
+    <div id="profile-fields-renew" style="display: none; margin-top: 16px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-group">
+                <label style="font-size: 12px;">Father's Name</label>
+                <input type="text" name="father_name" class="form-control" value="{{ student.father_name or '' }}" placeholder="Hari Bahadur">
+            </div>
+            <div class="form-group">
+                <label style="font-size: 12px;">Mother's Name</label>
+                <input type="text" name="mother_name" class="form-control" value="{{ student.mother_name or '' }}" placeholder="Sita Devi">
+            </div>
+            <div class="form-group">
+                <label style="font-size: 12px;">University *</label>
+                <input type="text" name="university" class="form-control" value="{{ student.university or '' }}" placeholder="University of East London">
+            </div>
+            <div class="form-group">
+                <label style="font-size: 12px;">City</label>
+                <input type="text" name="university_city" class="form-control" value="{{ student.university_city or '' }}" placeholder="London">
+            </div>
+            <div class="form-group">
+                <label style="font-size: 12px;">Course *</label>
+                <input type="text" name="course" class="form-control" value="{{ student.course or '' }}" placeholder="MSc Computer Science">
+            </div>
+            <div class="form-group">
+                <label style="font-size: 12px;">Duration</label>
+                <input type="text" name="course_duration" class="form-control" value="{{ student.course_duration or '' }}" placeholder="1 year">
+            </div>
+            <div class="form-group">
+                <label style="font-size: 12px;">IELTS Score</label>
+                <input type="text" name="ielts_score" class="form-control" value="{{ student.ielts_score or '' }}" placeholder="6.5">
+            </div>
+            <div class="form-group">
+                <label style="font-size: 12px;">Home Country</label>
+                <input type="text" name="home_country" class="form-control" value="{{ student.home_country or 'Nepal' }}" placeholder="Nepal">
+            </div>
+            <div class="form-group">
+                <label style="font-size: 12px;">Tuition Fee</label>
+                <input type="text" name="tuition_fee" class="form-control" value="{{ student.tuition_fee or '' }}" placeholder="£15,000">
+            </div>
+            <div class="form-group">
+                <label style="font-size: 12px;">Living Cost</label>
+                <input type="text" name="living_cost" class="form-control" value="{{ student.living_cost or '' }}" placeholder="£12,000">
+            </div>
+            <div class="form-group">
+                <label style="font-size: 12px;">Sponsor Name</label>
+                <input type="text" name="sponsor_name" class="form-control" value="{{ student.sponsor_name or '' }}" placeholder="Father">
+            </div>
+            <div class="form-group">
+                <label style="font-size: 12px;">Sponsor Income</label>
+                <input type="text" name="sponsor_income" class="form-control" value="{{ student.sponsor_income or '' }}" placeholder="NPR 15,00,000/yr">
+            </div>
+            <div class="form-group">
+                <label style="font-size: 12px;">Sponsor Savings</label>
+                <input type="text" name="sponsor_savings" class="form-control" value="{{ student.sponsor_savings or '' }}" placeholder="NPR 50,00,000">
+            </div>
+        </div>
+    </div>
+</div>
+
+<button type="submit" class="btn btn-primary" style="width: 100%;">
+            {% if student.test_completed_at %}
+                🆕 Schedule New Test (1 credit)
+            {% else %}
+                🔄 Re-enable & Generate Link (1 credit)
+            {% endif %}
+        </button>
+    </form>
+</div>
+
+{% elif not student.token_used %}
+<div class="card">
+    <h3 style="margin-bottom: 12px;">🔗 Test Link</h3>
+    <p style="color: #6b7280; font-size: 13px; margin-bottom: 12px;">
+        Share this link with the student along with the credentials above. They will enter their password to access the test.
+    </p>
+    <div class="link-box">
+        <code id="testLink">{{ full_link }}</code>
+    </div>
+    <div style="display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap;">
+        <button onclick="copyLink()" class="btn btn-primary btn-sm">
+            📋 Copy Link
+        </button>
+        <button onclick="copyCredentials()" class="btn btn-success btn-sm">
+            📋 Copy All (Link + Credentials)
+        </button>
+        <a href="https://wa.me/?text={{ ('Test Link: ' + full_link + '%0AUsername: ' + (ukvi_user.username if ukvi_user else 'N/A') + '%0APassword: [your password]')|urlencode }}" 
+           target="_blank" class="btn btn-success btn-sm">
+            📱 WhatsApp
+        </a>
+        <a href="mailto:?subject=Your UKVI Test Details&body={{ ('Test Link: ' + full_link + '%0AUsername: ' + (ukvi_user.username if ukvi_user else 'N/A') + '%0APassword: [your password]')|urlencode }}" 
+           class="btn btn-outline btn-sm">
+            ✉️ Email
+        </a>
+    </div>
+    
+    <hr style="margin: 20px 0; border: none; border-top: 1px solid #e5e7eb;">
+    
+    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+        <form method="POST" action="{{ url_for('ukvi_b2b_regenerate_link', student_id=student.id) }}"
+              onsubmit="return confirm('Regenerate the link? Old link will stop working.')">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+            <button class="btn btn-warning btn-sm">🔄 Regenerate Link</button>
+        </form>
+        {% if not student.test_completed_at %}
+        <form method="POST" action="{{ url_for('ukvi_b2b_cancel_student', student_id=student.id) }}"
+              onsubmit="return confirm('Cancel this student? 1 credit will be refunded.')">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+            <button class="btn btn-danger btn-sm">❌ Cancel & Refund</button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+{% if student.registered_at %}
+<div class="card">
+    <h3 style="margin-bottom: 12px;">✅ Student Activity</h3>
+    <p style="color: #6b7280; font-size: 13px;">
+        Account created on <strong>{{ student.registered_at.strftime('%Y-%m-%d %H:%M') }}</strong>
+    </p>
+    {% if student.test_started_at %}
+    <p style="color: #6b7280; font-size: 13px; margin-top: 8px;">
+        Test started: <strong>{{ student.test_started_at.strftime('%Y-%m-%d %H:%M') }}</strong>
+    </p>
+    {% endif %}
+    {% if student.test_completed_at %}
+    <p style="color: #059669; font-size: 13px; margin-top: 8px;">
+        Test completed: <strong>{{ student.test_completed_at.strftime('%Y-%m-%d %H:%M') }}</strong>
+    </p>
+    {% endif %}
+</div>
+{% endif %}
+
+{% if sessions %}
+<div class="card">
+    <h3 style="margin-bottom: 12px;">📊 Test Sessions</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Session</th>
+                <th>Status</th>
+                <th>Started</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for s in sessions %}
+            <tr>
+                <td>#{{ s.id }}</td>
+                <td><span class="badge badge-{{ 'completed' if s.status=='completed' else 'scheduled' }}">{{ s.status }}</span></td>
+                <td>{{ s.start_time.strftime('%Y-%m-%d %H:%M') if s.start_time else '-' }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<a href="{{ url_for('ukvi_b2b_students') }}" class="btn btn-outline">← Back to Students</a>
+<form method="POST"
+      action="{{ url_for('ukvi_b2b_student_delete', student_id=student.id) }}"
+      onsubmit="return confirm('Delete &quot;{{ student.full_name }}&quot;? This cannot be undone. Credit will be refunded if test not completed.');"
+      style="display:inline; margin-left: 10px;">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+    <button type="submit"
+            style="background:#dc2626; color:white; border:none; padding:8px 16px; border-radius:6px; cursor:pointer; font-size:13px; font-weight: 600;"
+            id="delete-student-detail">🗑️ Delete Student</button>
+</form>
+
+
+{% block extra_js %}
+<script>
+function copyLink() {
+    const link = document.getElementById('testLink').textContent;
+    navigator.clipboard.writeText(link).then(() => {
+        showToast('✅ Test link copied!');
+    });
+}
+
+function copyCredentials() {
+    const link = document.getElementById('testLink').textContent;
+    const username = "{{ ukvi_user.username if ukvi_user else 'N/A' }}";
+    const text = 'UKVI Test Access\n\n' +
+                 'Link: ' + link + '\n' +
+                 'Username: ' + username + '\n' +
+                 'Password: [your password]';
+    navigator.clipboard.writeText(text).then(() => {
+        showToast('✅ Link + credentials copied!');
+    });
+}
+
+function showToast(msg) {
+    const toast = document.createElement('div');
+    toast.textContent = msg;
+    toast.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#059669;color:white;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:600;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,0.2);';
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 2500);
+}
+</script>
+{% endblock %}
+{% endblock %}

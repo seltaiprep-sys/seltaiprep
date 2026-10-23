@@ -1,0 +1,96 @@
+{% extends 'ukvi_b2b/base.html' %}
+{% block title %}Credits{% endblock %}
+{% block content %}
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-value">{{ partner.credits_balance }}</div>
+        <div class="stat-label">Current Balance</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value" style="color: #059669;">{{ partner.total_credits_purchased or 0 }}</div>
+        <div class="stat-label">Purchased</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value" style="color: #f59e0b;">{{ partner.total_credits_used or 0 }}</div>
+        <div class="stat-label">Used</div>
+    </div>
+</div>
+
+<h3 style="margin-bottom: 15px;">Buy Credits — Rs 100/credit</h3>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 30px;">
+{% for p in packages %}
+    <div class="card" style="text-align: center; position: relative; {% if p.is_featured %}border: 2px solid #f59e0b;{% endif %}">
+        {% if p.is_featured %}
+            <div style="position: absolute; top: -8px; left: 50%; transform: translateX(-50%); background: #f59e0b; color: white; padding: 2px 10px; border-radius: 10px; font-size: 10px; font-weight: 700;">POPULAR</div>
+        {% endif %}
+        <h4 style="margin-bottom: 10px;">{{ p.name }}</h4>
+        <div style="font-size: 32px; font-weight: 800; color: #1e40af; margin: 10px 0;">
+            {{ p.credits }}<span style="font-size: 14px;"> cr</span>
+        </div>
+        <div style="font-size: 22px; font-weight: 700; color: #059669;">
+            Rs {{ '{:,.0f}'.format(p.price_npr) }}
+        </div>
+        <div style="font-size: 12px; color: #6b7280; margin-top: 5px;">
+            Rs {{ p.price_per_credit }}/credit
+            {% if p.discount_percent > 0 %}
+                <br><span style="color: #f59e0b; font-weight: 700;">{{ p.discount_percent }}% OFF</span>
+            {% endif %}
+        </div>
+        <form method="POST" action="{{ url_for('ukvi_b2b_buy_credits', package_id=p.id) }}" style="margin-top: 15px;">
+            <select name="payment_method" class="form-control" style="margin-bottom: 8px; font-size: 13px; padding: 8px;">
+                <option value="manual">Manual (Bank Transfer)</option>
+                <option value="esewa">eSewa</option>
+                <option value="khalti">Khalti</option>
+            </select>
+            <button type="submit" class="btn btn-primary btn-block btn-sm">Buy Now</button>
+        </form>
+    </div>
+{% endfor %}
+</div>
+
+<div class="card">
+    <h3 style="margin-bottom: 15px;">Purchase History</h3>
+    {% if purchases %}
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Credits</th>
+                <th>Amount</th>
+                <th>Method</th>
+                <th>Status</th>
+                <th>Date</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for pu in purchases %}
+            <tr>
+                <td>#{{ pu.id }}</td>
+                <td><strong>+{{ pu.credits }}</strong></td>
+                <td>Rs {{ '{:,.0f}'.format(pu.amount_npr) }}</td>
+                <td>{{ pu.payment_method }}</td>
+                <td><span class="badge badge-{{ pu.payment_status }}">{{ pu.payment_status }}</span></td>
+                <td>{{ pu.created_at.strftime('%Y-%m-%d') if pu.created_at else '-' }}</td>
+                <td>
+                    {% if pu.payment_status == 'pending' %}
+                    <a href="{{ url_for('ukvi_b2b_purchase_detail', purchase_id=pu.id) }}"
+                       class="btn btn-sm btn-outline">Pay</a>
+                    {% else %}
+                    <a href="{{ url_for('ukvi_b2b_purchase_detail', purchase_id=pu.id) }}"
+                       class="btn btn-sm btn-outline">View</a>
+                    {% endif %}
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+        <div class="icon">💳</div>
+        <p>No purchases yet.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

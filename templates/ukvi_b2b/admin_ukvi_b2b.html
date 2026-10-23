@@ -1,0 +1,184 @@
+{% extends 'admin_dashboard.html' if False else '' %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin — UKVI B2B</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, sans-serif; background: #f5f7fa; color: #2c3e50; }
+        .navbar { background: #1e40af; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+        .navbar h1 { font-size: 18px; }
+        .navbar a { color: white; text-decoration: none; margin-left: 15px; font-size: 14px; }
+        .container { max-width: 1200px; margin: 20px auto; padding: 0 15px; }
+        .card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 20px; }
+        h2 { margin-bottom: 15px; }
+        h3 { color: #1e40af; margin: 15px 0 10px; font-size: 16px; }
+        .btn { padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; text-decoration: none; display: inline-block; transition: 0.2s; }
+        .btn-primary { background: #1e40af; color: white; }
+        .btn-success { background: #059669; color: white; }
+        .btn-danger { background: #dc2626; color: white; }
+        .btn-sm { padding: 5px 10px; font-size: 12px; }
+        .form-group { margin-bottom: 12px; }
+        .form-group label { display: block; margin-bottom: 4px; font-size: 12px; font-weight: 600; color: #4b5563; }
+        .form-control { width: 100%; padding: 9px 11px; border: 2px solid #e5e7eb; border-radius: 6px; font-size: 13px; font-family: inherit; }
+        .form-control:focus { outline: none; border-color: #1e40af; }
+        .alert { padding: 12px 16px; border-radius: 8px; margin-bottom: 15px; font-size: 14px; }
+        .alert-success { background: #d1fae5; color: #065f46; }
+        .alert-error { background: #fee2e2; color: #991b1b; }
+        .alert-warning { background: #fef3c7; color: #92400e; }
+        .alert-info { background: #dbeafe; color: #1e40af; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #e5e7eb; font-size: 13px; }
+        th { background: #f9fafb; font-weight: 700; font-size: 11px; text-transform: uppercase; color: #374151; }
+        .badge { display: inline-block; padding: 3px 8px; border-radius: 10px; font-size: 10px; font-weight: 700; }
+        .badge-active { background: #d1fae5; color: #065f46; }
+        .badge-pending { background: #fef3c7; color: #92400e; }
+        .badge-submitted { background: #dbeafe; color: #1e40af; }
+        .badge-completed { background: #d1fae5; color: #065f46; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        @media (max-width: 768px) {
+            .grid-2 { grid-template-columns: 1fr; }
+            .navbar { flex-direction: column; align-items: flex-start; }
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <h1>🏛️ Admin — UKVI B2B</h1>
+        <nav>
+            <a href="{{ url_for('admin_dashboard') }}">Admin Home</a>
+            <a href="{{ url_for('ukvi_b2b_login') }}">B2B Login</a>
+            <a href="{{ url_for('admin_logout') }}">Logout</a>
+        </nav>
+    </div>
+    
+    <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for cat, msg in messages %}
+                <div class="alert alert-{{ cat }}">{{ msg }}</div>
+            {% endfor %}
+        {% endwith %}
+        
+        <div class="card">
+            <h2>➕ Create New Partner</h2>
+            <form method="POST" action="{{ url_for('admin_ukvi_b2b_create_partner') }}">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label>Institute Name *</label>
+                        <input type="text" name="name" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Email *</label>
+                        <input type="email" name="email" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Password *</label>
+                        <input type="text" name="password" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Phone</label>
+                        <input type="text" name="phone" class="form-control">
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary">Create Partner</button>
+            </form>
+        </div>
+        
+        <div class="card">
+            <h2>⏳ Pending Purchases ({{ pending_purchases|length }})</h2>
+            {% if pending_purchases %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Partner</th>
+                        <th>Credits</th>
+                        <th>Amount</th>
+                        <th>Ref</th>
+                        <th>Date</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for p in pending_purchases %}
+                    <tr>
+                        <td>#{{ p.id }}</td>
+                        <td>{{ p.partner.name if p.partner else 'N/A' }}</td>
+                        <td><strong>+{{ p.credits }}</strong></td>
+                        <td>Rs {{ '{:,.0f}'.format(p.amount_npr) }}</td>
+                        <td><code>{{ p.payment_ref or '-' }}</code></td>
+                        <td>{{ p.created_at.strftime('%Y-%m-%d') if p.created_at else '-' }}</td>
+                        <td>
+                            <form method="POST" action="{{ url_for('admin_ukvi_b2b_verify_purchase', purchase_id=p.id) }}" style="display: inline;">
+                                <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                                <button type="submit" class="btn btn-success btn-sm">✅ Verify</button>
+                            </form>
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p style="color: #6b7280;">No pending purchases.</p>
+            {% endif %}
+        </div>
+        
+        <div class="card">
+            <h2>🏛️ Partners ({{ partners|length }})</h2>
+            {% if partners %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Credits</th>
+                        <th>Students</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for p in partners %}
+                    <tr>
+                        <td>#{{ p.id }}</td>
+                        <td><strong>{{ p.name }}</strong></td>
+                        <td>{{ p.email }}</td>
+                        <td><strong>{{ p.credits_balance }}</strong></td>
+                        <td>{{ p.students.count() }}</td>
+                        <td>
+                            {% if not p.is_admin_approved %}
+                                <span class="badge badge-pending">PENDING</span>
+                            {% elif not p.is_active %}
+                                <span class="badge" style="background:#e5e7eb;">DISABLED</span>
+                            {% else %}
+                                <span class="badge badge-active">ACTIVE</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if not p.is_admin_approved %}
+                            <form method="POST" action="{{ url_for('admin_ukvi_b2b_approve_partner', partner_id=p.id) }}" style="display: inline;">
+                                <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                                <button type="submit" class="btn btn-success btn-sm">✅ Approve</button>
+                            </form>
+                            {% endif %}
+                            <form method="POST" action="{{ url_for('admin_ukvi_b2b_add_credits', partner_id=p.id) }}" style="display: inline;">
+                                <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                                <input type="number" name="amount" placeholder="+/-" style="width: 60px; padding: 4px; font-size: 12px;">
+                                <button type="submit" class="btn btn-primary btn-sm">Adjust</button>
+                            </form>
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p style="color: #6b7280;">No partners yet. Create one above.</p>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>

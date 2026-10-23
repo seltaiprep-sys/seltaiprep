@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin — UKVI B2B Management</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #f0f2f5;
+            margin: 0;
+            padding: 0;
+        }
+        .admin-header {
+            background: #1a2b4a;
+            color: white;
+            padding: 18px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .admin-header .logo {
+            font-size: 22px;
+            font-weight: 700;
+        }
+        .admin-header .logo span { color: #667eea; }
+        .admin-header .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        .admin-header .user-info a {
+            color: #ddd;
+            text-decoration: none;
+            padding: 6px 16px;
+            border-radius: 6px;
+            transition: 0.2s;
+            font-size: 14px;
+        }
+        .admin-header .user-info a:hover {
+            background: rgba(255,255,255,0.1);
+            color: white;
+        }
+        .admin-header .user-info .logout-btn {
+            background: #e74c3c;
+            color: white;
+        }
+        .admin-header .user-info .logout-btn:hover {
+            background: #c0392b;
+        }
+
+        .admin-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+
+        .page-title {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .page-title h1 {
+            margin: 0;
+            color: #1a2b4a;
+            font-size: 26px;
+        }
+        .page-title .badge-count {
+            background: #1e40af;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .admin-menu {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 25px;
+            background: white;
+            padding: 16px 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        .admin-menu a {
+            padding: 8px 18px;
+            background: #f0f2f5;
+            border-radius: 6px;
+            text-decoration: none;
+            color: #1a2b4a;
+            font-weight: 500;
+            font-size: 14px;
+            transition: 0.2s;
+        }
+        .admin-menu a:hover {
+            background: #667eea;
+            color: white;
+        }
+        .admin-menu a.active {
+            background: linear-gradient(135deg, #1e40af, #1e3a8a);
+            color: white;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 22px 26px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            margin-bottom: 22px;
+        }
+        .card h2 {
+            margin: 0 0 18px;
+            color: #1a2b4a;
+            font-size: 18px;
+            border-bottom: 2px solid #eef2f7;
+            padding-bottom: 12px;
+        }
+        .card h3 {
+            margin: 20px 0 12px;
+            color: #1a2b4a;
+            font-size: 15px;
+        }
+
+        .alert {
+            padding: 14px 18px;
+            border-radius: 10px;
+            margin-bottom: 18px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .alert-success { background: #d1fae5; color: #065f46; border-left: 4px solid #059669; }
+        .alert-error { background: #fee2e2; color: #991b1b; border-left: 4px solid #dc2626; }
+        .alert-warning { background: #fef3c7; color: #92400e; border-left: 4px solid #f59e0b; }
+        .alert-info { background: #dbeafe; color: #1e40af; border-left: 4px solid #1e40af; }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 14px;
+            margin-bottom: 16px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #4b5563;
+        }
+        .form-control {
+            width: 100%;
+            padding: 10px 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: 0.2s;
+        }
+        .form-control:focus {
+            outline: none;
+            border-color: #1e40af;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 9px 18px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: 0.2s;
+            font-family: inherit;
+        }
+        .btn-primary { background: #1e40af; color: white; }
+        .btn-primary:hover { background: #1e3a8a; }
+        .btn-success { background: #059669; color: white; }
+        .btn-success:hover { background: #047857; }
+        .btn-danger { background: #dc2626; color: white; }
+        .btn-danger:hover { background: #b91c1c; }
+        .btn-warning { background: #f59e0b; color: white; }
+        .btn-warning:hover { background: #d97706; }
+        .btn-outline { background: transparent; border: 2px solid #1e40af; color: #1e40af; }
+        .btn-outline:hover { background: #1e40af; color: white; }
+        .btn-sm { padding: 6px 12px; font-size: 12px; }
+
+        table { width: 100%; border-collapse: collapse; }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+            font-size: 13px;
+        }
+        th {
+            background: #f9fafb;
+            font-weight: 700;
+            color: #374151;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        tr:hover { background: #f9fafb; }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        .badge-active { background: #d1fae5; color: #065f46; }
+        .badge-pending { background: #fef3c7; color: #92400e; }
+        .badge-disabled { background: #e5e7eb; color: #374151; }
+        .badge-submitted { background: #dbeafe; color: #1e40af; }
+        .badge-completed { background: #d1fae5; color: #065f46; }
+        .badge-rejected { background: #fee2e2; color: #991b1b; }
+
+        .empty-state {
+            text-align: center;
+            padding: 30px 20px;
+            color: #6b7280;
+        }
+        .empty-state .icon {
+            font-size: 40px;
+            margin-bottom: 8px;
+        }
+
+        .credit-input {
+            width: 70px;
+            padding: 5px 8px;
+            border: 2px solid #e5e7eb;
+            border-radius: 6px;
+            font-size: 12px;
+            text-align: center;
+        }
+
+        .stats-mini {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .stat-mini {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            border-left: 4px solid #1e40af;
+        }
+        .stat-mini .value {
+            font-size: 24px;
+            font-weight: 800;
+            color: #1e40af;
+        }
+        .stat-mini .label {
+            font-size: 11px;
+            color: #6b7280;
+            margin-top: 4px;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .partner-row-actions {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        @media (max-width: 768px) {
+            .admin-header { flex-direction: column; text-align: center; }
+            .page-title { flex-direction: column; align-items: flex-start; }
+            th, td { padding: 8px; font-size: 12px; }
+            .form-row { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-header">
+        <div class="logo">🏛️ <span>UKVI</span> B2B Admin</div>
+        <div class="user-info">
+            <a href="{{ url_for('admin_dashboard') }}">← Back to Admin</a>
+            <a href="{{ url_for('admin_logout') }}" class="logout-btn">Logout</a>
+        </div>
+    </div>
+
+    <div class="admin-container">
+        <div class="page-title">
+            <h1>🏛️ B2B Institute Management</h1>
+            <span class="badge-count">{{ partners|length }} Partner{{ 's' if partners|length != 1 }}</span>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for cat, msg in messages %}
+                <div class="alert alert-{{ cat }}">{{ msg }}</div>
+            {% endfor %}
+        {% endwith %}
+
+        <div class="admin-menu">
+            <a href="{{ url_for('admin_dashboard') }}">📊 Dashboard</a>
+            <a href="{{ url_for('admin_ukvi_b2b') }}" class="active">🏛️ B2B Partners</a>
+            <a href="{{ url_for('ukvi_b2b_login') }}" target="_blank">🔗 B2B Login Page</a>
+        </div>
+
+        <!-- Quick Stats -->
+        <div class="stats-mini">
+            <div class="stat-mini">
+                <div class="value">{{ partners|length }}</div>
+                <div class="label">Total Partners</div>
+            </div>
+            <div class="stat-mini">
+                <div class="value">{{ partners|selectattr('is_admin_approved')|list|length }}</div>
+                <div class="label">Approved</div>
+            </div>
+            <div class="stat-mini">
+                <div class="value">{{ pending_purchases|length }}</div>
+                <div class="label">Pending Purchases</div>
+            </div>
+            <div class="stat-mini">
+                <div class="value">{{ partners|sum(attribute='credits_balance') or 0 }}</div>
+                <div class="label">Total Credits</div>
+            </div>
+        </div>
+
+        <!-- ═══ CREATE PARTNER ═══ -->
+        <div class="card">
+            <h2>➕ Create New Partner</h2>
+            <form method="POST" action="{{ url_for('admin_ukvi_b2b_create_partner') }}">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Institute Name *</label>
+                        <input type="text" name="name" class="form-control" 
+                               placeholder="e.g., ABC Institute" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Email *</label>
+                        <input type="email" name="email" class="form-control" 
+                               placeholder="institute@example.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Password *</label>
+                        <input type="text" name="password" class="form-control" 
+                               placeholder="Min 6 characters" required minlength="6">
+                    </div>
+                    <div class="form-group">
+                        <label>Phone (optional)</label>
+                        <input type="text" name="phone" class="form-control" 
+                               placeholder="+977-98XXXXXXXX">
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary">
+                    ✨ Create Partner
+                </button>
+            </form>
+        </div>
+
+        
+<!-- ═══ AUTO-REFUND ═══ -->
+<div class="card">
+    <h2>💰 Auto-Refund — Incomplete Tests</h2>
+    <p style="color: #6b7280; font-size: 13px; margin-bottom: 15px;">
+        Auto-refund credits for tests that expired without completion.
+        Runs daily at 3:00 AM. Run manually below:
+    </p>
+    <div style="background: #f0f9ff; padding: 12px; border-radius: 8px; margin-bottom: 15px; font-size: 12px; color: #1e40af; line-height: 1.7;">
+        <strong>Refund Rules (Option A+):</strong><br>
+        ✅ Test <strong>completed</strong> → No refund<br>
+        ✅ Test <strong>started, but not completed</strong> → +1 credit auto-refund<br>
+        ✅ Test <strong>never started</strong> → +1 credit auto-refund<br>
+        ⏰ Only after 24-hour window expires
+    </div>
+    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <form method="POST" action="{{ url_for('admin_ukvi_auto_refund_now') }}"
+              onsubmit="return confirm('Run auto-refund now? This will refund all expired incomplete tests.');">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="btn btn-primary">
+                🚀 Run Auto-Refund Now
+            </button>
+        </form>
+        <button onclick="previewRefundAdmin()" class="btn"
+                style="background: #f59e0b; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px;">
+            👁️ Preview (Dry Run)
+        </button>
+    </div>
+    <div id="refund-preview-admin" style="margin-top: 15px; display: none;"></div>
+</div>
+
+<script>
+async function previewRefundAdmin() {
+    const box = document.getElementById('refund-preview-admin');
+    box.style.display = 'block';
+    box.innerHTML = '<p style="color: #6b7280; font-size: 13px;">Loading preview...</p>';
+    try {
+        const r = await fetch('/admin/ukvi/auto-refund-preview');
+        const data = await r.json();
+        if (!data.success) {
+            box.innerHTML = '<p style="color: #dc2626;">Error: ' + (data.error || 'unknown') + '</p>';
+            return;
+        }
+        let html = '<div style="background: #fef3c7; padding: 12px; border-radius: 8px; font-size: 13px;">';
+        html += '<strong style="color: #92400e;">Would refund: ' + data.would_refund + ' student(s)</strong><br>';
+        html += '<small style="color: #6b7280;">Skipped: ' + data.skipped + ' | Errors: ' + data.errors + '</small>';
+        if (data.details && data.details.length) {
+            html += '<ul style="margin: 10px 0 0 20px; color: #4b5563;">';
+            data.details.forEach(d => {
+                html += '<li>' + (d.name || 'Student #' + d.student_id) +
+                        (d.partner ? ' — ' + d.partner : '') +
+                        (d.reason ? ' (' + d.reason + ')' : '') + '</li>';
+            });
+            html += '</ul>';
+        }
+        if (data.would_refund === 0) {
+            html += '<p style="color: #6b7280; margin-top: 8px; font-size: 12px;">No expired tests to refund right now.</p>';
+        }
+        html += '</div>';
+        box.innerHTML = html;
+    } catch (e) {
+        box.innerHTML = '<p style="color: #dc2626;">Error: ' + e + '</p>';
+    }
+}
+</script>
+
+<!-- ═══ PENDING PURCHASES ═══ -->
+        <div class="card">
+            <h2>⏳ Pending Credit Purchases ({{ pending_purchases|length }})</h2>
+            {% if pending_purchases %}
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Partner</th>
+                            <th>Credits</th>
+                            <th>Amount</th>
+                            <th>Method</th>
+                            <th>Ref / Txn ID</th>
+                            <th>Submitted</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for p in pending_purchases %}
+                        <tr>
+                            <td><strong>#{{ p.id }}</strong></td>
+                            <td>
+                                {{ p.partner.name if p.partner else 'N/A' }}<br>
+                                <small style="color: #6b7280;">{{ p.partner.email if p.partner else '' }}</small>
+                            </td>
+                            <td><strong>+{{ p.credits }}</strong></td>
+                            <td>Rs {{ '{:,.0f}'.format(p.amount_npr) }}</td>
+                            <td>{{ p.payment_method|capitalize }}</td>
+                            <td><code style="font-size: 11px;">{{ p.payment_ref or '—' }}</code></td>
+                            <td>{{ p.created_at.strftime('%Y-%m-%d %H:%M') if p.created_at else '—' }}</td>
+                            <td>
+                                <form method="POST" 
+                                      action="{{ url_for('admin_ukvi_b2b_verify_purchase', purchase_id=p.id) }}"
+                                      onsubmit="return confirm('Verify this purchase and add {{ p.credits }} credits to {{ p.partner.name if p.partner else 'partner' }}?')">
+                                    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                                    <button type="submit" class="btn btn-success btn-sm">
+                                        ✅ Verify
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <div class="icon">✅</div>
+                <p>No pending purchases to verify.</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- ═══ PARTNERS LIST ═══ -->
+        <div class="card">
+            <h2>🏛️ All Partners ({{ partners|length }})</h2>
+            {% if partners %}
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Institute</th>
+                            <th>Contact</th>
+                            <th>Credits</th>
+                            <th>Students</th>
+                            <th>Status</th>
+                            <th>Last Login</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for p in partners %}
+                        <tr>
+                            <td><strong>#{{ p.id }}</strong></td>
+                            <td>
+                                <strong>{{ p.name }}</strong>
+                                {% if not p.is_admin_approved %}
+                                    <br><span class="badge badge-pending" style="margin-top:4px;">Pending Approval</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div>{{ p.email }}</div>
+                                {% if p.phone %}
+                                <small style="color: #6b7280;">{{ p.phone }}</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <strong style="color: #1e40af; font-size: 16px;">{{ p.credits_balance }}</strong>
+                                <div style="font-size: 10px; color: #6b7280;">
+                                    ↑{{ p.total_credits_purchased or 0 }} 
+                                    ↓{{ p.total_credits_used or 0 }}
+                                </div>
+                            </td>
+                            <td>{{ p.students.count() }}</td>
+                            <td>
+                                {% if not p.is_admin_approved %}
+                                    <span class="badge badge-pending">PENDING</span>
+                                {% elif not p.is_active %}
+                                    <span class="badge badge-disabled">DISABLED</span>
+                                {% else %}
+                                    <span class="badge badge-active">ACTIVE</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if p.last_login %}
+                                    {{ p.last_login.strftime('%Y-%m-%d') }}
+                                {% else %}
+                                    <span style="color: #6b7280;">Never</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="partner-row-actions">
+                                    {% if not p.is_admin_approved %}
+                                    <form method="POST" 
+                                          action="{{ url_for('admin_ukvi_b2b_approve_partner', partner_id=p.id) }}"
+                                          style="display: inline;">
+                                        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                                        <button type="submit" class="btn btn-success btn-sm" title="Approve">
+                                            ✅
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                    <form method="POST" 
+                                          action="{{ url_for('admin_ukvi_b2b_add_credits', partner_id=p.id) }}"
+                                          style="display: inline-flex; gap: 4px; align-items: center;">
+                                        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                                        <input type="number" name="amount" 
+                                               class="credit-input" 
+                                               placeholder="+/-"
+                                               required>
+                                        <button type="submit" class="btn btn-primary btn-sm" title="Adjust credits">
+                                            💰
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <div class="icon">🏛️</div>
+                <h3 style="margin: 10px 0; color: #1a2b4a;">No partners yet</h3>
+                <p>Create your first B2B partner using the form above.</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Help Card -->
+        <div class="card" style="background: #f8fafc; border-left: 4px solid #1e40af;">
+            <h3 style="margin-top: 0; color: #1e40af;">💡 How it works</h3>
+            <ol style="color: #4b5563; font-size: 13px; line-height: 1.8; margin: 0; padding-left: 20px;">
+                <li><strong>Create Partner</strong> — Institute account with 0 credits</li>
+                <li><strong>Adjust Credits</strong> — Add credits manually (+10) or wait for purchase verification</li>
+                <li><strong>Institute logs in</strong> at <code>/ukvi/b2b/login</code> — Sees dashboard, adds students</li>
+                <li><strong>Institute adds student</strong> — Selects date + time, generates unique test link (1 credit deducted)</li>
+                <li><strong>Student clicks link</strong> — Registers username/password, sees scheduled time</li>
+                <li><strong>Test opens</strong> — At scheduled time, student takes UKVI test (24-hour window)</li>
+                <li><strong>Results</strong> — Institute sees all completed tests with scores</li>
+            </ol>
+        </div>
+    </div>
+</body>
+</html>+.

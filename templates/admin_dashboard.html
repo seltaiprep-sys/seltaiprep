@@ -134,6 +134,15 @@
             background: #f59e0b;
             color: white;
         }
+        /* 🆕 B2B link */
+        .admin-menu a.b2b-link {
+            background: linear-gradient(135deg, #1e40af, #1e3a8a);
+            color: white;
+        }
+        .admin-menu a.b2b-link:hover {
+            background: linear-gradient(135deg, #1e3a8a, #1e40af);
+            box-shadow: 0 4px 12px rgba(30, 64, 175, 0.3);
+        }
 
         .free-usage-grid {
             display: grid;
@@ -234,6 +243,7 @@
             <a href="{{ url_for('admin_test_bank') }}">🏦 Test Bank</a>
             <a href="{{ url_for('admin_pte_dashboard') }}">📘 PTE Admin</a>
             <a href="{{ url_for('admin_pte_settings') }}">⚙️ PTE Settings</a>
+            <a href="{{ url_for('admin_ukvi_b2b') }}" class="b2b-link">🏛️ UKVI B2B</a>
         </div>
 
         <div class="content-card">
@@ -285,6 +295,9 @@
                 </a>
                 <a href="{{ url_for('admin_pte_settings') }}" style="padding:10px 20px; background:#ffc107; color:#1a2b4a; border-radius:6px; text-decoration:none; font-weight:600;">
                     ⚙️ PTE Settings
+                </a>
+                <a href="{{ url_for('admin_ukvi_b2b') }}" style="padding:10px 20px; background:linear-gradient(135deg, #1e40af, #1e3a8a); color:white; border-radius:6px; text-decoration:none; font-weight:600;">
+                    🏛️ B2B Management
                 </a>
             </div>
         </div>

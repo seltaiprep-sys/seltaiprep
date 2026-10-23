@@ -40,32 +40,87 @@ class UKVITestManager:
         conversation_history: Optional[List[Dict]] = None,
     ) -> tuple:
         """
-        One AI call: returns (evaluation_dict, next_question_or_None)
-        Uses full conversation history for context.
+        Returns (evaluation_dict, next_question_or_None)
+
+        Step 1: Full UKVIEvaluator.evaluate() — AI language, profile
+                consistency, cross-answer, genuineness, post-study,
+                financial plausibility, immigration.
+        Step 2: Separate AI call for follow-up question only.
         """
-        # Build conversation history text (last 5 turns)
-        history_text = ""
+        # ─── Step 1: Full evaluation ───
+        previous_qa = []
         if conversation_history:
-            for i, turn in enumerate(conversation_history[-5:], 1):
-                q = turn.get('question', '')
-                a = turn.get('answer', '')
-                history_text += f"Previous Q{i}: {q}\nPrevious A{i}: {a}\n"
+            for t in conversation_history:
+                q_ = t.get('question', '')
+                a_ = t.get('answer', '')
+                if q_ or a_:
+                    previous_qa.append({
+                        'question': q_,
+                        'answer': a_,
+                        'category': t.get('category', 'general'),
+                    })
 
-        profile_text = ""
-        if profile:
-            name = profile.get('full_name', 'the student')
-            uni = profile.get('university', '')
-            course = profile.get('course', '')
-            profile_text = f"The student is {name}"
-            if uni:
-                profile_text += f", applying to {uni}"
-            if course:
-                profile_text += f" for {course}"
-            profile_text += "."
+        try:
+            from ..evaluators.evaluator import UKVIEvaluator
+            ev = UKVIEvaluator(ai_engine=self.service.ai_engine)
+            evaluation = ev.evaluate(
+                question,
+                answer,
+                category=category,
+                profile=profile or {},
+                previous_answers=[p['answer'] for p in previous_qa if p.get('answer')],
+                previous_qa=previous_qa,
+            )
+        except Exception as e:
+            logger.warning(f'UKVIEvaluator failed in follow-up: {e}')
+            # Fallback minimal eval
+            evaluation = {
+                'overall_score': 5.0,
+                'fluency': 5.0,
+                'grammar': 5.0,
+                'vocabulary': 5.0,
+                'coherence': 5.0,
+                'content_score': 5.0,
+                'contradictions': [],
+                'genuineness_flags': [],
+                'genuineness_score': 100,
+                'feedback': 'Fallback evaluation',
+                'word_count': len((answer or '').split()),
+                'category': category,
+            }
 
-        prompt = f"""You are a UKVI examiner for a student visa credibility interview.
-Question category: {category}
-Difficulty: {difficulty}
+        evaluation['category'] = category
+
+        # ─── Step 2: Follow-up question (AI only) ───
+        next_question = None
+        try:
+            # Skip follow-up if contradictions detected — evaluate first
+            if not evaluation.get('contradictions'):
+                # Build history
+                history_text = ''
+                if conversation_history:
+                    for i, turn in enumerate(conversation_history[-5:], 1):
+                        q_ = turn.get('question', '')
+                        a_ = turn.get('answer', '')
+                        history_text += f"Previous Q{i}: {q_}\nPrevious A{i}: {a_}\n"
+
+                profile_text = ''
+                if profile:
+                    name = profile.get('full_name', 'the student')
+                    uni = profile.get('university', '')
+                    course = profile.get('course', '')
+                    profile_text = f"The student is {name}"
+                    if uni:
+                        profile_text += f", applying to {uni}"
+                    if course:
+                        profile_text += f" for {course}"
+                    profile_text += "."
+
+                prompt = f"""You are a UKVI examiner. Based on this answer, decide
+whether to ask ONE follow-up question (if the answer was vague/short/incomplete)
+or return "None" (if the answer was complete).
+
+Category: {category}
 {profile_text}
 
 Conversation so far:
@@ -74,56 +129,29 @@ Conversation so far:
 Current question: "{question}"
 Student's answer: "{answer}"
 
-Based on the entire conversation, provide:
-1. An IELTS-style band score (0-9) for overall performance.
-2. A short, constructive feedback message (2-3 sentences) that references the conversation.
-3. The next question to ask — IF the answer was vague or incomplete, probe deeper.
-   If the answer was complete, output "None".
-   The next question should sound like a real UKVI officer — firm but fair.
+Return ONLY valid JSON:
+{{"next_question": "<question text or null>"}}
 
-Return ONLY valid JSON with keys: "score", "feedback", "next_question".
-Do not include any other text.
+If the student gave a complete, specific answer → next_question = null.
+If vague/short/evasive → next_question = one probing question.
+Do NOT output anything else.
 """
-        try:
-            raw = self.service.ai_engine.generate(
-                prompt, max_tokens=300, temperature=0.3
-            )
-            match = re.search(r'\{.*\}', raw, re.DOTALL)
-            if match:
-                data = json.loads(match.group())
-            else:
-                data = {
-                    "score": 6.0,
-                    "feedback": "Good attempt.",
-                    "next_question": None,
-                }
+                raw = self.service.ai_engine.generate(
+                    prompt, max_tokens=150, temperature=0.3
+                )
+                match = re.search(r'\{.*\}', raw, re.DOTALL)
+                if match:
+                    data = json.loads(match.group())
+                    next_question = data.get('next_question')
+                    if next_question in (None, 'None', 'null', ''):
+                        next_question = None
         except Exception as e:
-            logger.warning(f"Combined AI call failed: {e}, using fallback")
-            data = {
-                "score": 6.0,
-                "feedback": "Good attempt.",
-                "next_question": None,
-            }
-
-        # Build evaluation dict
-        score = float(data.get('score', 6.0))
-        evaluation = {
-            'overall_score': score,
-            'feedback': data.get('feedback', ''),
-            'fluency': score,
-            'grammar': score,
-            'vocabulary': score,
-            'coherence': score,
-        }
-        next_question = data.get('next_question')
-        if next_question in ("None", "none", "", None):
+            logger.warning(f'Follow-up generation failed: {e}')
             next_question = None
 
         return evaluation, next_question
 
-    # ═══════════════════════════════════════════════════════════════
-    # START INTERVIEW
-    # ═══════════════════════════════════════════════════════════════
+
     def start_interview(
         self,
         user_id: int,
@@ -326,7 +354,7 @@ Do not include any other text.
         if not answers:
             return {'error': 'No answers found to evaluate'}
 
-        # Build list of evaluations
+        # Build list of evaluations (already stored from submit_answer_adaptive)
         evaluations = []
         for idx, ans in answers.items():
             ev = ans.get('evaluation', {})
@@ -336,22 +364,135 @@ Do not include any other text.
         if not evaluations:
             return {'error': 'No valid evaluations found'}
 
-        # Final evaluation
+        # ── Final evaluation via UKVIEvaluator ──
         profile = self.service.get_profile(user_id)
-        final = self.service.evaluate_interview(evaluations, profile)
+        try:
+            from ..evaluators.evaluator import UKVIEvaluator
+            ev = UKVIEvaluator(ai_engine=self.service.ai_engine)
+            final = ev.final_evaluation(evaluations, profile=profile)
+        except Exception as e:
+            logger.warning(f'final_evaluation failed: {e}')
+            final = self.service.evaluate_interview(evaluations, profile)
 
-        # Store result
+        # ── Save UKVITestResult ──
         result = UKVITestResult(
             user_id=user_id,
             test_type='interview',
             score=final.get('overall_score', 0),
-            band_score=final.get('overall_score', 0),
+            band_score=round(final.get('credibility_avg', 0) / 10.0, 1),
             answers=json.dumps(answers),
             feedback=json.dumps(final.get('recommendations', [])),
-            detailed_evaluation=json.dumps(final),
+            detailed_evaluation=json.dumps({
+                'overall_score': final.get('overall_score', 0),
+                'credibility_avg': final.get('credibility_avg', 0),
+                'breakdown': final.get('breakdown', {}),
+                'total_contradictions': final.get('total_contradictions', 0),
+                'total_genuineness_flags': final.get('total_genuineness_flags', 0),
+                'contradictions': final.get('contradictions', []),
+                'recommendations': final.get('recommendations', []),
+            }),
         )
         self.db.session.add(result)
 
+        # ── Update linked B2B student ──
+        b2b_student_id = session.get('_b2b_student_id')
+        if b2b_student_id:
+            try:
+                from ..models import UKVIB2BStudent
+                student = self.db.session.get(UKVIB2BStudent, b2b_student_id)
+                if student:
+                    student.result_score = final.get('overall_score', 0)
+                    cred = final.get('credibility_avg', 0)
+                    student.result_grade = (
+                        'A' if cred >= 80 else
+                        'B' if cred >= 60 else
+                        'C' if cred >= 40 else 'D'
+                    )
+                    if not student.test_completed_at:
+                        student.test_completed_at = datetime.now(timezone.utc)
+
+                    # ── Refund on 5th attempt (NEW) ──
+                    _max_att = student.max_attempts or 5
+                    _curr_att = student.attempt_count or 0
+                    if _curr_att >= _max_att and student.credit_deducted and not student.credit_refunded:
+                        try:
+                            partner_obj = self.db.session.get(UKVIB2BPartner, student.partner_id)
+                            if partner_obj:
+                                partner_obj.credits_balance = (partner_obj.credits_balance or 0) + 1
+                                student.credit_refunded = True
+                                from ..models import UKVIB2BTransaction
+                                txn = UKVIB2BTransaction(
+                                    partner_id=student.partner_id,
+                                    type='refund',
+                                    credits_change=1,
+                                    description=f'Refund on {_max_att}th attempt: {student.full_name}',
+                                )
+                                self.db.session.add(txn)
+                                logger.info(f'REFUND: student #{student.id} exhausted {_max_att} attempts — +1 credit')
+                        except Exception as _e:
+                            logger.warning(f'Refund on exhaustion failed: {_e}')
+
+                    
+
+                    # ── Update attempts table (attempt-level tracking) ──
+
+                    try:
+
+                        from sqlalchemy import text as _text
+
+                        self.db.session.execute(_text("""
+
+                            UPDATE ukvi_b2b_student_attempts
+
+                            SET score = :score,
+
+                                band_score = :band,
+
+                                grade = :grade,
+
+                                credibility = :cred,
+
+                                contradictions = :contra,
+
+                                test_completed_at = :completed,
+
+                                status = 'completed'
+
+                            WHERE student_id = :sid AND test_token = :token
+
+                        """), {
+
+                            'score': final.get('overall_score', 0),
+
+                            'band': round(cred / 10.0, 1),
+
+                            'grade': student.result_grade,
+
+                            'cred': cred,
+
+                            'contra': final.get('total_contradictions', 0),
+
+                            'completed': datetime.now(timezone.utc),
+
+                            'sid': student.id,
+
+                            'token': student.test_token,
+
+                        })
+
+                        logger.info('Attempt updated for student #%s', student.id)
+
+                    except Exception as _e:
+
+                        logger.warning('Attempt update failed: %s', _e)
+                    logger.info(
+                        f'B2B student #{student.id} completed: '
+                        f'score={student.result_score}, grade={student.result_grade}'
+                    )
+            except Exception as e:
+                logger.warning(f'B2B student update failed: {e}')
+
+        # ── Mark session complete ──
         session_obj.status = 'completed'
         session_obj.completed_at = datetime.now(timezone.utc)
         session_obj.last_updated = datetime.now(timezone.utc)
@@ -365,11 +506,11 @@ Do not include any other text.
             'answered': len(answers),
             'evaluation': final,
             'result_id': result.id,
+            'credibility': final.get('credibility_avg', 0),
+            'contradictions': final.get('total_contradictions', 0),
         }
 
-    # ═══════════════════════════════════════════════════════════════
-    # HISTORY / PROGRESS
-    # ═══════════════════════════════════════════════════════════════
+
     def get_history(self, user_id: int) -> Dict:
         """List all interview sessions for a user."""
         try:

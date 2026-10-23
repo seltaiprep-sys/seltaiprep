@@ -49,6 +49,12 @@ from typing import Optional, Tuple, Dict, Any
 
 import redis as _redis
 
+from modules.ukvi.models import UKVITestSession, UKVIUser
+
+from modules.ukvi.models import UKVIUser
+
+from modules.ukvi.models import UKVIUser
+
 env_path = os.path.join(os.path.dirname(__file__), '.env')
 load_dotenv(dotenv_path=env_path, encoding='utf-8-sig')
 
@@ -1272,7 +1278,13 @@ def ukvi_static(filename):
 # SCHEDULER — single-process leader lock
 # Prevents duplicate jobs across multiple Gunicorn workers
 # ═══════════════════════════════════════════════════════════
-import fcntl as _fcntl
+# Cross-platform file locking (Linux: fcntl, Windows: no-op dev)
+try:
+    import fcntl as _fcntl
+    _HAS_FCNTL = True
+except ImportError:
+    _fcntl = None
+    _HAS_FCNTL = False
 
 _SCHEDULER_LOCK_FILE = '/tmp/seltaiprep_scheduler.lock'
 _scheduler_lock_handle = None
@@ -1282,7 +1294,8 @@ def _try_acquire_scheduler_lock():
     global _scheduler_lock_handle
     try:
         _scheduler_lock_handle = open(_SCHEDULER_LOCK_FILE, 'w')
-        _fcntl.flock(_scheduler_lock_handle, _fcntl.LOCK_EX | _fcntl.LOCK_NB)
+        if _HAS_FCNTL:
+            _fcntl.flock(_scheduler_lock_handle, _fcntl.LOCK_EX | _fcntl.LOCK_NB)
         _scheduler_lock_handle.write(str(os.getpid()))
         _scheduler_lock_handle.flush()
         return True
@@ -2255,6 +2268,11 @@ def select_module():
 @app.route('/dashboard')
 @login_required
 def dashboard():
+    # ── B2B student redirect — skip master dashboard ──
+    if session.get('_b2b_student_id'):
+        flash('Please complete your UKVI interview.', 'info')
+        return redirect(url_for('ukvi'))
+
     q_module = request.args.get('module')
     if q_module in ('ielts', 'pte', 'ukvi'):
         session['selected_module'] = q_module
@@ -2954,8 +2972,11 @@ def manual_payment(module):
         return redirect(url_for('dashboard'))
     try:
         settings = PaymentSettings.get()
-        if not settings.manual_enabled:
-            flash('Manual payment is currently disabled.', 'warning')
+        # Manual payment is disabled only if explicitly set to False
+        # Default to ENABLED if the setting is missing (backward compat)
+        if hasattr(settings, 'manual_enabled') and settings.manual_enabled is False:
+            # Check if admin explicitly disabled
+            flash('Manual payment is currently disabled by admin.', 'warning')
             return redirect(url_for('subscription_page', module=module))
     except Exception:
         pass
@@ -2975,7 +2996,32 @@ def manual_payment(module):
     db.session.add(pending)
     db.session.commit()
     csrf_token = session.get('_csrf_token', '')
-    return render_template('manual_payment.html', module=module, amount=amount, reference=ref, qr_base64=None, pending_id=pending.id, merchant_id=ESEWA_MERCHANT_CODE or "your-esewa-id", plans=PLAN_CONFIG, prices=PRICE_CONFIG.get(module, {}), selected_plan=plan_key, csrf_token=csrf_token)
+    # ── Load QR from static (base64 + URL) ──
+    try:
+        import base64 as _b64
+        _qr_path = os.path.join('static', 'images', 'qr_code.png')
+        _qr_b64 = None
+        if os.path.exists(_qr_path):
+            with open(_qr_path, 'rb') as _f:
+                _qr_b64 = _b64.b64encode(_f.read()).decode('ascii')
+    except Exception as _e:
+        logger.warning(f'QR load failed: {_e}')
+        _qr_b64 = None
+
+    return render_template(
+        'manual_payment.html',
+        module=module,
+        amount=amount,
+        reference=ref,
+        qr_base64=_qr_b64,
+        qr_url='/static/images/qr_code.png',
+        pending_id=pending.id,
+        merchant_id=ESEWA_MERCHANT_CODE or "your-esewa-id",
+        plans=PLAN_CONFIG,
+        prices=PRICE_CONFIG.get(module, {}),
+        selected_plan=plan_key,
+        csrf_token=csrf_token,
+    )
 
 
 @app.route('/verify-manual-payment', methods=['POST'])
@@ -4649,7 +4695,9 @@ def pte_speaking_writing_redirect_underscore():
 @login_required
 def ukvi():
     session['selected_module'] = 'ukvi'
-    return render_template('ukvi_test.html')
+    return render_template('ukvi_test.html',
+        b2b_profile=session.get('_b2b_profile'),
+        b2b_skip_profile=session.get('_b2b_skip_profile', False))
 
 
 @app.route('/ukvi/audio/submit', methods=['POST'])
@@ -7585,6 +7633,1799 @@ def admin_push_send():
 # ============================================================
 # RUN THE APP
 # ============================================================
+
+
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# B2B TIMEZONE HELPERS
+# ═══════════════════════════════════════════════════════════════════════
+
+B2B_TIMEZONE_OFFSETS = {
+    'NPT': (5, 45),   # Nepal Time
+    'IST': (5, 30),   # India
+    'GST': (4, 0),    # Dubai
+    'BST': (1, 0),    # UK Summer
+    'GMT': (0, 0),    # UK Winter
+    'UTC': (0, 0),    # UTC
+    'EST': (-5, 0),   # US East
+    'PST': (-8, 0),   # US West
+}
+
+
+def _b2b_local_to_utc(date_str: str, time_str: str, tz_code: str = 'NPT') -> tuple:
+    """
+    Convert institute local date/time → UTC.
+    Returns (scheduled_date, scheduled_time) as UTC.
+    """
+    try:
+        local_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        local_time = datetime.strptime(time_str, '%H:%M').time()
+    except ValueError as e:
+        raise ValueError('Invalid date/time format: ' + str(e))
+
+    offset = B2B_TIMEZONE_OFFSETS.get(tz_code, (5, 45))
+    hours_offset, minutes_offset = offset
+
+    # Build local datetime (naive)
+    local_dt = datetime.combine(local_date, local_time)
+
+    # Subtract offset to get UTC
+    from datetime import timedelta
+    total_offset = timedelta(hours=hours_offset, minutes=minutes_offset)
+    utc_dt = local_dt - total_offset
+
+    return utc_dt.date(), utc_dt.time()
+
+
+def _b2b_utc_to_local(utc_dt, tz_code: str = 'NPT'):
+    """Convert UTC datetime → local timezone datetime"""
+    offset = B2B_TIMEZONE_OFFSETS.get(tz_code, (5, 45))
+    from datetime import timedelta
+    total_offset = timedelta(hours=offset[0], minutes=offset[1])
+    return utc_dt + total_offset
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# B2B UKVI — Institute + Credits + Students
+# ═══════════════════════════════════════════════════════════════════════
+try:
+    from modules.ukvi.models import (
+        UKVIB2BPartner, UKVIB2BCreditPackage, UKVIB2BCreditPurchase,
+        UKVIB2BStudent, UKVIB2BTransaction,
+    )
+    import secrets as _b2b_secrets
+    from functools import wraps as _b2b_wraps
+    _B2B_AVAILABLE = True
+except ImportError as _b2b_err:
+    logger.error(f"B2B models import failed: {_b2b_err}")
+    _B2B_AVAILABLE = False
+
+
+# Free credits granted on new partner registration
+FREE_CREDITS = 5
+
+if _B2B_AVAILABLE:
+    def _b2b_partner_required(f):
+        @_b2b_wraps(f)
+        def wrapper(*args, **kwargs):
+            pid = session.get('ukvi_b2b_partner_id')
+            if not pid:
+                flash('Please login to access institute dashboard', 'warning')
+                return redirect(url_for('ukvi_b2b_login'))
+            partner = db.session.get(UKVIB2BPartner, pid)
+            if not partner or not partner.is_active:
+                session.pop('ukvi_b2b_partner_id', None)
+                flash('Account disabled — contact admin', 'error')
+                return redirect(url_for('ukvi_b2b_login'))
+            if not partner.is_admin_approved:
+                session.pop('ukvi_b2b_partner_id', None)
+                flash('Account pending admin approval', 'warning')
+                return redirect(url_for('ukvi_b2b_login'))
+            return f(*args, **kwargs)
+        return wrapper
+
+    def _get_b2b_partner():
+        pid = session.get('ukvi_b2b_partner_id')
+        return db.session.get(UKVIB2BPartner, pid) if pid else None
+
+    @app.route('/ukvi/b2b/login', methods=['GET', 'POST'])
+    def ukvi_b2b_login():
+        if session.get('ukvi_b2b_partner_id'):
+            return redirect(url_for('ukvi_b2b_dashboard'))
+        if request.method == 'POST':
+            email = (request.form.get('email') or '').lower().strip()
+            password = request.form.get('password') or ''
+            partner = UKVIB2BPartner.query.filter_by(email=email).first()
+            if not partner or not partner.check_password(password):
+                flash('Invalid email or password', 'error')
+                return render_template('ukvi_b2b/login.html')
+            if not partner.is_active:
+                flash('Account disabled', 'error')
+                return render_template('ukvi_b2b/login.html')
+            if not partner.is_admin_approved:
+                flash('Account pending approval', 'warning')
+                return render_template('ukvi_b2b/login.html')
+            session['ukvi_b2b_partner_id'] = partner.id
+            partner.last_login = datetime.now(timezone.utc)
+            db.session.commit()
+            flash(f'Welcome, {partner.name}', 'success')
+            return redirect(url_for('ukvi_b2b_dashboard'))
+        return render_template('ukvi_b2b/login.html')
+
+    @app.route('/ukvi/b2b/logout')
+    def ukvi_b2b_logout():
+        session.pop('ukvi_b2b_partner_id', None)
+        flash('Logged out', 'success')
+        return redirect(url_for('ukvi_b2b_login'))
+
+    @app.route('/ukvi/b2b/dashboard')
+    @_b2b_partner_required
+    def ukvi_b2b_dashboard():
+        partner = _get_b2b_partner()
+        total_students = partner.students.count()
+        completed = partner.students.filter(
+            UKVIB2BStudent.test_completed_at.isnot(None)).count()
+        pending = partner.students.filter(
+            UKVIB2BStudent.test_completed_at.is_(None),
+            UKVIB2BStudent.token_used == False).count()
+        recent = partner.students.order_by(
+            UKVIB2BStudent.created_at.desc()).limit(5).all()
+        return render_template('ukvi_b2b/dashboard.html',
+            partner=partner, total_students=total_students,
+            completed=completed, pending=pending, recent=recent)
+
+    @app.route('/ukvi/b2b/credits')
+    @_b2b_partner_required
+    def ukvi_b2b_credits():
+        partner = _get_b2b_partner()
+        packages = UKVIB2BCreditPackage.query.filter_by(is_active=True).order_by(
+            UKVIB2BCreditPackage.display_order).all()
+        purchases = partner.purchases.order_by(
+            UKVIB2BCreditPurchase.created_at.desc()).limit(10).all()
+        return render_template('ukvi_b2b/credits.html',
+            partner=partner, packages=packages, purchases=purchases)
+
+    @app.route('/ukvi/b2b/credits/buy/<int:package_id>', methods=['POST'])
+    @_b2b_partner_required
+    def ukvi_b2b_buy_credits(package_id):
+        try:
+            from payment_b2b import (
+                esewa_build_payment_data, ESEWA_INITIATE_URL,
+                khalti_initiate_payment,
+            )
+        except ImportError:
+            flash('Payment system not configured', 'error')
+            return redirect(url_for('ukvi_b2b_credits'))
+
+        partner = _get_b2b_partner()
+        package = db.session.get(UKVIB2BCreditPackage, package_id)
+        if not package:
+            abort(404)
+
+        method = (request.form.get('payment_method') or 'manual').strip()
+        if method not in ('manual', 'esewa', 'khalti'):
+            method = 'manual'
+
+        purchase = UKVIB2BCreditPurchase(
+            partner_id=partner.id,
+            package_id=package.id,
+            credits=package.credits,
+            amount_npr=package.price_npr,
+            payment_method=method,
+            payment_status='pending',
+        )
+        db.session.add(purchase)
+        db.session.commit()
+
+        if method == 'esewa':
+            success_url = url_for('ukvi_b2b_esewa_success', _external=True)
+            failure_url = url_for('ukvi_b2b_esewa_failure', _external=True)
+            payment_data = esewa_build_payment_data(
+                purchase, partner.id, success_url, failure_url
+            )
+            session['b2b_esewa_txn_' + str(purchase.id)] = payment_data['transaction_uuid']
+            session.modified = True
+
+            form_html = '<!DOCTYPE html><html><head><title>Redirecting to eSewa...</title></head><body>'
+            form_html += '<h2 style="font-family:sans-serif;text-align:center;padding:40px;">Redirecting to eSewa Payment...</h2>'
+            form_html += '<p style="text-align:center;font-family:sans-serif;">Please wait, do not close this window.</p>'
+            form_html += '<form id="esewa-form" method="POST" action="' + ESEWA_INITIATE_URL + '">'
+            for key, val in payment_data.items():
+                form_html += '<input type="hidden" name="' + key + '" value="' + str(val) + '">'
+            form_html += '</form>'
+            form_html += '<script>document.getElementById("esewa-form").submit();</script>'
+            form_html += '</body></html>'
+            return form_html
+
+        elif method == 'khalti':
+            return_url = url_for('ukvi_b2b_khalti_callback', _external=True)
+            website_url = request.host_url.rstrip('/')
+            result = khalti_initiate_payment(
+                purchase, partner, return_url, website_url
+            )
+            if result.get('success'):
+                purchase.payment_ref = result.get('pidx', '')
+                db.session.commit()
+                return redirect(result['payment_url'])
+            else:
+                flash('Khalti error: ' + str(result.get('error', 'Unknown')), 'error')
+                return redirect(url_for('ukvi_b2b_purchase_detail', purchase_id=purchase.id))
+
+        flash('Purchase #' + str(purchase.id) + ': Rs ' + str(package.price_npr) + '. Complete bank transfer and submit reference.', 'info')
+        return redirect(url_for('ukvi_b2b_purchase_detail', purchase_id=purchase.id))
+
+
+    @app.route('/ukvi/b2b/credits/purchase/<int:purchase_id>')
+    @_b2b_partner_required
+    def ukvi_b2b_purchase_detail(purchase_id):
+        partner = _get_b2b_partner()
+        purchase = db.session.get(UKVIB2BCreditPurchase, purchase_id)
+        if not purchase or purchase.partner_id != partner.id:
+            abort(403)
+        return render_template('ukvi_b2b/purchase_detail.html',
+            partner=partner, purchase=purchase)
+
+    @app.route('/ukvi/b2b/credits/purchase/<int:purchase_id>/submit', methods=['POST'])
+    @_b2b_partner_required
+    def ukvi_b2b_submit_proof(purchase_id):
+        partner = _get_b2b_partner()
+        purchase = db.session.get(UKVIB2BCreditPurchase, purchase_id)
+        if not purchase or purchase.partner_id != partner.id:
+            abort(403)
+        if purchase.payment_status != 'pending':
+            flash('Already submitted', 'warning')
+            return redirect(url_for('ukvi_b2b_purchase_detail', purchase_id=purchase_id))
+        ref = (request.form.get('transaction_id') or request.form.get('payment_ref') or '').strip()
+        if not ref:
+            flash('Transaction reference required', 'error')
+            return redirect(url_for('ukvi_b2b_purchase_detail', purchase_id=purchase_id))
+        # ── Handle screenshot upload (optional) ──
+        _screenshot_url = None
+        _uploaded = request.files.get('payment_screenshot') or request.files.get('screenshot')
+        if _uploaded and _uploaded.filename:
+            try:
+                from werkzeug.utils import secure_filename as _secure
+                import uuid as _uuid
+                _allowed = {'png', 'jpg', 'jpeg', 'webp', 'gif'}
+                _fname = _secure(_uploaded.filename)
+                _ext = _fname.rsplit('.', 1)[-1].lower() if '.' in _fname else ''
+                if _ext in _allowed:
+                    _updir = os.path.join('static', 'uploads', 'payment_proofs')
+                    os.makedirs(_updir, exist_ok=True)
+                    _safe = f"b2b_{purchase_id}_{_uuid.uuid4().hex[:8]}.{_ext}"
+                    _savepath = os.path.join(_updir, _safe)
+                    _uploaded.save(_savepath)
+                    _screenshot_url = '/' + _savepath.replace('\\', '/')
+                    logger.info(f'Payment proof uploaded: {_savepath}')
+            except Exception as _e:
+                logger.warning(f'Screenshot upload failed: {_e}')
+
+        purchase.payment_ref = ref
+        if _screenshot_url:
+            purchase.payment_screenshot = _screenshot_url
+        purchase.payment_status = 'submitted'
+        db.session.commit()
+        flash('Proof submitted — admin will verify', 'success')
+        return redirect(url_for('ukvi_b2b_credits'))
+
+    @app.route('/ukvi/b2b/students')
+    @_b2b_partner_required
+    def ukvi_b2b_students():
+        partner = _get_b2b_partner()
+        search = (request.args.get('q') or '').strip()
+        status = (request.args.get('status') or 'all').lower()
+        q = partner.students
+        if search:
+            like = f'%{search}%'
+            q = q.filter(db.or_(
+                UKVIB2BStudent.full_name.ilike(like),
+                UKVIB2BStudent.email.ilike(like),
+                UKVIB2BStudent.phone.ilike(like)))
+        students = q.order_by(UKVIB2BStudent.created_at.desc()).all()
+        if status != 'all':
+            students = [s for s in students if s.window_status == status]
+        return render_template('ukvi_b2b/students.html',
+            partner=partner, students=students, search=search, status=status)
+
+    @app.route('/ukvi/b2b/students/add', methods=['GET', 'POST'])
+    @_b2b_partner_required
+    def ukvi_b2b_add_student():
+        partner = _get_b2b_partner()
+        if partner.credits_balance < 1:
+            flash('Insufficient credits — buy credits first', 'warning')
+            return redirect(url_for('ukvi_b2b_credits'))
+        if request.method == 'POST':
+            full_name = (request.form.get('full_name') or '').strip()
+            email = (request.form.get('email') or '').strip().lower()
+            phone = (request.form.get('phone') or '').strip()
+            passport = (request.form.get('passport_number') or '').strip()
+            notes = (request.form.get('notes') or '').strip()
+            date_str = (request.form.get('scheduled_date') or '').strip()
+            time_str = (request.form.get('scheduled_time') or '').strip()
+            username = (request.form.get('username') or '').strip()
+            password = (request.form.get('password') or '').strip()
+
+            if not full_name or not date_str or not time_str:
+                flash('Name, date, time required', 'error')
+                return render_template('ukvi_b2b/student_add.html', partner=partner)
+            if not username or len(username) < 3:
+                flash('Username (min 3 chars) required', 'error')
+                return render_template('ukvi_b2b/student_add.html', partner=partner)
+            if not password or len(password) < 6:
+                flash('Password (min 6 chars) required', 'error')
+                return render_template('ukvi_b2b/student_add.html', partner=partner)
+            
+            if not re.match(r'^[a-zA-Z0-9._-]+$', username):
+                flash('Username: letters, numbers, dot, underscore, hyphen only', 'error')
+                return render_template('ukvi_b2b/student_add.html', partner=partner)
+            
+            if UKVIUser.query.filter_by(username=username).first():
+                flash('Username "' + username + '" already taken', 'error')
+                return render_template('ukvi_b2b/student_add.html', partner=partner)
+            
+            tz_code = (request.form.get('timezone') or 'NPT').strip().upper()
+            if tz_code not in B2B_TIMEZONE_OFFSETS:
+                tz_code = 'NPT'
+            
+            try:
+                sched_date, sched_time = _b2b_local_to_utc(date_str, time_str, tz_code)
+            except ValueError:
+                flash('Invalid date/time', 'error')
+                return render_template('ukvi_b2b/student_add.html', partner=partner)
+            
+            sched_dt = datetime.combine(sched_date, sched_time).replace(tzinfo=timezone.utc)
+            if sched_dt < datetime.now(timezone.utc) - timedelta(minutes=5):
+                flash('Cannot schedule in past (local: ' + date_str + ' ' + time_str + ' ' + tz_code + ')', 'error')
+                return render_template('ukvi_b2b/student_add.html', partner=partner)
+            
+            temp_email = email or (username + '@b2b.local')
+            if UKVIUser.query.filter_by(email=temp_email).first():
+                temp_email = username + '_' + _b2b_secrets.token_hex(4) + '@b2b.local'
+            
+            ukvi_user = UKVIUser(
+                username=username, email=temp_email,
+                full_name=full_name, phone=phone or None)
+            ukvi_user.set_password(password)
+            db.session.add(ukvi_user)
+            db.session.flush()
+            
+            partner.credits_balance -= 1
+            partner.total_credits_used = (partner.total_credits_used or 0) + 1
+            
+            student = UKVIB2BStudent(
+                partner_id=partner.id, ukvi_user_id=ukvi_user.id,
+                full_name=full_name, email=email or None,
+                phone=phone or None, passport_number=passport or None,
+                notes=notes or None,
+                scheduled_date=sched_date, scheduled_time=sched_time,
+                credit_deducted=True,
+                registered_at=datetime.now(timezone.utc))
+            # ── Save interview profile ──
+            student.father_name = (request.form.get('father_name') or '').strip() or None
+            student.mother_name = (request.form.get('mother_name') or '').strip() or None
+            student.university = (request.form.get('university') or '').strip() or None
+            student.university_city = (request.form.get('university_city') or '').strip() or None
+            student.course = (request.form.get('course') or '').strip() or None
+            student.course_duration = (request.form.get('course_duration') or '').strip() or None
+            student.ielts_score = (request.form.get('ielts_score') or '').strip() or None
+            student.tuition_fee = (request.form.get('tuition_fee') or '').strip() or None
+            student.living_cost = (request.form.get('living_cost') or '').strip() or None
+            student.sponsor_name = (request.form.get('sponsor_name') or '').strip() or None
+            student.sponsor_income = (request.form.get('sponsor_income') or '').strip() or None
+            student.sponsor_savings = (request.form.get('sponsor_savings') or '').strip() or None
+            student.home_country = (request.form.get('home_country') or 'Nepal').strip()
+            student.profile_completed = bool(student.university and student.course)
+            
+            db.session.add(student)
+            db.session.flush()
+            
+            db.session.add(UKVIB2BTransaction(
+                partner_id=partner.id, type='student_added',
+                credits_change=-1, balance_after=partner.credits_balance,
+                description='Added: ' + full_name,
+                reference_id=student.id, reference_type='student'))
+            db.session.commit()
+            
+            flash('Student added — 1 credit deducted. Balance: ' + str(partner.credits_balance), 'success')
+            flash('Username: ' + username + ' | Password: ' + password + ' — Share with student', 'info')
+            return redirect(url_for('ukvi_b2b_student_detail', student_id=student.id))
+        return render_template('ukvi_b2b/student_add.html', partner=partner)
+
+    @app.route('/ukvi/b2b/students/<int:student_id>')
+    @_b2b_partner_required
+    def ukvi_b2b_student_detail(student_id):
+        partner = _get_b2b_partner()
+        student = db.session.get(UKVIB2BStudent, student_id)
+        if not student or student.partner_id != partner.id:
+            abort(403)
+        
+        ukvi_user = db.session.get(UKVIUser, student.ukvi_user_id) if student.ukvi_user_id else None
+        
+        sessions_list = []
+        if student.ukvi_user_id:
+            sessions_list = UKVITestSession.query.filter_by(
+                user_id=student.ukvi_user_id
+            ).order_by(UKVITestSession.id.desc()).all()
+        
+        full_link = request.host_url.rstrip('/') + student.test_url
+
+        # Compute local (NPT) scheduled time for display
+        try:
+            sched_utc = student.scheduled_datetime
+            sched_local = _b2b_utc_to_local(sched_utc.replace(tzinfo=None), 'NPT')
+            window_start_local = sched_local
+            window_end_local = sched_local + timedelta(hours=24)
+        except Exception:
+            sched_local = None
+            window_start_local = None
+            window_end_local = None
+
+        return render_template('ukvi_b2b/student_detail.html',
+            partner=partner, student=student,
+            ukvi_user=ukvi_user,
+            sessions=sessions_list, full_link=full_link,
+            sched_local=sched_local,
+            window_start_local=window_start_local,
+            window_end_local=window_end_local)
+
+
+
+
+    @app.route('/ukvi/b2b/students/<int:student_id>/delete', methods=['POST'])
+    @_b2b_partner_required
+    def ukvi_b2b_student_delete(student_id):
+        """Delete a B2B student (institute removes student permanently)"""
+        partner = _get_b2b_partner()
+        student = UKVIB2BStudent.query.filter_by(
+            id=student_id, partner_id=partner.id
+        ).first_or_404()
+
+        name = student.full_name
+        ukvi_user_id = student.ukvi_user_id
+        credit_refundable = (
+            student.credit_deducted
+            and not student.credit_refunded
+            and not student.test_completed_at
+        )
+
+        # Refund credit if test never completed
+        if credit_refundable:
+            try:
+                partner.credits_balance = (partner.credits_balance or 0) + 1
+                student.credit_refunded = True
+                txn = UKVIB2BTransaction(
+                    partner_id=partner.id,
+                    type='refund',
+                    credits_change=1,
+                    balance_after=partner.credits_balance,
+                    reference_id=student.id,
+                    reference_type='student',
+                    description=f'Refund on delete: {name}',
+                )
+                db.session.add(txn)
+                logger.info(f'Credit refunded on delete: partner #{partner.id}, +1')
+            except Exception as e:
+                logger.warning(f'Refund on delete failed: {e}')
+
+        # Delete linked UKVIUser + all child records (FK cascade safety)
+        if ukvi_user_id:
+            try:
+                from sqlalchemy import text as _sql_text
+
+                # ── Step 1: Delete all child records that reference this user ──
+                _child_tables = [
+                    'ukvi_subscriptions',
+                    'ukvi_test_sessions',
+                    'ukvi_test_results',
+                    'ukvi_answers',
+                    'ukvi_interview_sessions',
+                ]
+
+                for _table in _child_tables:
+                    try:
+                        db.session.execute(
+                            _sql_text(f"DELETE FROM {_table} WHERE user_id = :uid"),
+                            {'uid': ukvi_user_id},
+                        )
+                        logger.info(f'Deleted {_table} rows for UKVIUser #{ukvi_user_id}')
+                    except Exception as _e:
+                        # Table may not exist — non-fatal
+                        logger.debug(f'Skip {_table}: {_e}')
+
+                db.session.flush()
+
+                # ── Step 2: Now delete the user itself ──
+                linked_user = db.session.get(UKVIUser, ukvi_user_id)
+                if linked_user:
+                    db.session.delete(linked_user)
+                    db.session.flush()
+                    logger.info(f'Deleted linked UKVIUser #{ukvi_user_id}')
+
+            except Exception as e:
+                logger.warning(f'UKVIUser delete failed: {e}')
+                # ── CRITICAL: rollback so main student delete can proceed ──
+                db.session.rollback()
+
+        # Delete student
+        db.session.delete(student)
+        try:
+            db.session.commit()
+        except Exception as _commit_err:
+            db.session.rollback()
+            logger.exception(f'Delete commit failed: {_commit_err}')
+            flash('Delete failed — please try again or contact support.', 'error')
+            return redirect(url_for('ukvi_b2b_students'))
+
+        msg = f'Student "{name}" deleted'
+        if credit_refundable:
+            msg += ' — 1 credit refunded'
+        flash(msg, 'success')
+        logger.info(f'B2B student #{student_id} deleted by partner #{partner.id}')
+
+        return redirect(url_for('ukvi_b2b_students'))
+
+
+    @app.route('/ukvi/b2b/students/<int:student_id>/new-test', methods=['POST'])
+    @_b2b_partner_required
+    def ukvi_b2b_new_test_attempt(student_id):
+        # ── Check attempt limit ──
+        _max = student.max_attempts or 5
+        _curr = student.attempt_count or 0
+        if _curr >= _max:
+            flash(f'Maximum attempts ({_max}) reached — cannot re-enable. Student must contact support.', 'error')
+            return redirect(url_for('ukvi_b2b_student_detail', student_id=student.id))
+
+        """Schedule a NEW test for same student (revoked OR completed)"""
+        partner = _get_b2b_partner()
+        student = db.session.get(UKVIB2BStudent, student_id)
+        if not student or student.partner_id != partner.id:
+            abort(403)
+
+        # Must be either revoked or completed (test already used)
+        can_schedule = (
+            student.token_revoked
+            or student.credit_refunded
+            or student.token_used
+            or student.test_completed_at is not None
+        )
+        if not can_schedule:
+            flash('Student already has an active test link — use Regenerate instead', 'warning')
+            return redirect(url_for('ukvi_b2b_student_detail', student_id=student_id))
+
+        # Get new scheduled date/time from form
+        date_str = (request.form.get('new_scheduled_date') or '').strip()
+        time_str = (request.form.get('new_scheduled_time') or '').strip()
+        if not date_str or not time_str:
+            flash('New date and time are required', 'error')
+            return redirect(url_for('ukvi_b2b_student_detail', student_id=student_id))
+
+        tz_code = (request.form.get('timezone') or 'NPT').strip().upper()
+        if tz_code not in B2B_TIMEZONE_OFFSETS:
+            tz_code = 'NPT'
+
+        try:
+            new_date, new_time = _b2b_local_to_utc(date_str, time_str, tz_code)
+        except ValueError:
+            flash('Invalid date/time format', 'error')
+            return redirect(url_for('ukvi_b2b_student_detail', student_id=student_id))
+
+        new_dt = datetime.combine(new_date, new_time).replace(tzinfo=timezone.utc)
+        if new_dt < datetime.now(timezone.utc) - timedelta(minutes=5):
+            flash('Cannot schedule in past (local: ' + date_str + ' ' + time_str + ' ' + tz_code + ')', 'error')
+            return redirect(url_for('ukvi_b2b_student_detail', student_id=student_id))
+
+        # Check credits
+        if partner.credits_balance < 1:
+            flash('Insufficient credits — buy credits first', 'warning')
+            return redirect(url_for('ukvi_b2b_credits'))
+
+        # Deduct 1 credit
+        partner.credits_balance -= 1
+        partner.total_credits_used = (partner.total_credits_used or 0) + 1
+
+        # Generate fresh token + reset all test state
+        import secrets as _sec
+        student.test_token = _sec.token_urlsafe(32)
+        student.token_created_at = datetime.now(timezone.utc)
+        student.token_used = False
+        student.token_revoked = False
+        student.credit_refunded = False
+        student.is_active = True
+        student.scheduled_date = new_date
+        student.scheduled_time = new_time
+        student.test_started_at = None
+        student.test_completed_at = None
+        student.result_score = None
+        student.result_grade = None
+        # NOTE: registered_at पनि reset — student ले फेरि password verify गर्नुपर्नेछ
+        # तर same UKVIUser को password reuse हुनेछ (registered_at = None)
+        student.registered_at = None
+
+        # Log transaction
+        db.session.add(UKVIB2BTransaction(
+            partner_id=partner.id,
+            type='student_added',
+            credits_change=-1,
+            balance_after=partner.credits_balance,
+            description='New test scheduled: ' + student.full_name,
+            reference_id=student.id,
+            reference_type='student',
+        ))
+
+
+        # ── Optional profile update (reuse student, change university) ──
+
+        profile_update_flag = (request.form.get('update_profile') or '').strip() == '1'
+
+        if profile_update_flag:
+
+            _v = (request.form.get('father_name') or '').strip()
+
+            if _v:
+
+                student.father_name = _v
+
+            _v = (request.form.get('mother_name') or '').strip()
+
+            if _v:
+
+                student.mother_name = _v
+
+            _v = (request.form.get('university') or '').strip()
+
+            if _v:
+
+                student.university = _v
+
+            _v = (request.form.get('university_city') or '').strip()
+
+            if _v:
+
+                student.university_city = _v
+
+            _v = (request.form.get('course') or '').strip()
+
+            if _v:
+
+                student.course = _v
+
+            _v = (request.form.get('course_duration') or '').strip()
+
+            if _v:
+
+                student.course_duration = _v
+
+            _v = (request.form.get('ielts_score') or '').strip()
+
+            if _v:
+
+                student.ielts_score = _v
+
+            _v = (request.form.get('tuition_fee') or '').strip()
+
+            if _v:
+
+                student.tuition_fee = _v
+
+            _v = (request.form.get('living_cost') or '').strip()
+
+            if _v:
+
+                student.living_cost = _v
+
+            _v = (request.form.get('sponsor_name') or '').strip()
+
+            if _v:
+
+                student.sponsor_name = _v
+
+            _v = (request.form.get('sponsor_income') or '').strip()
+
+            if _v:
+
+                student.sponsor_income = _v
+
+            _v = (request.form.get('sponsor_savings') or '').strip()
+
+            if _v:
+
+                student.sponsor_savings = _v
+
+            _hc = (request.form.get('home_country') or '').strip()
+
+            if _hc:
+
+                student.home_country = _hc
+
+            student.profile_completed = bool(student.university and student.course)
+
+            logger.info('B2B profile updated on re-enable #%s: %s', student.id, student.university)
+
+
+
+        # Sync updated profile to linked UKVIUser
+
+
+
+        _sync_user = db.session.get(UKVIUser, student.ukvi_user_id) if student.ukvi_user_id else None
+
+
+
+
+        # ── Sync B2B profile → UKVIUser.profile_data ──
+
+
+
+        if student.profile_completed and _sync_user:
+
+
+
+            try:
+
+
+
+                _sync_prof = {
+
+
+
+                    'full_name': student.full_name,
+
+
+
+                    'father_name': student.father_name,
+
+
+
+                    'mother_name': student.mother_name,
+
+
+
+                    'university': student.university,
+
+
+
+                    'university_city': student.university_city,
+
+
+
+                    'course': student.course,
+
+
+
+                    'course_duration': student.course_duration,
+
+
+
+                    'ielts_score': student.ielts_score,
+
+
+
+                    'tuition_fee': student.tuition_fee,
+
+
+
+                    'living_cost': student.living_cost,
+
+
+
+                    'sponsor_name': student.sponsor_name,
+
+
+
+                    'sponsor_income': student.sponsor_income,
+
+
+
+                    'sponsor_savings': student.sponsor_savings,
+
+
+
+                    'home_country': student.home_country,
+
+
+
+                }
+
+
+
+                _sync_prof = {k: v for k, v in _sync_prof.items() if v}
+
+
+
+                _existing = _sync_user.get_profile() or {}
+
+
+
+                _existing.update(_sync_prof)
+
+
+
+                _sync_user.set_profile(_existing)
+
+
+
+                db.session.commit()
+
+
+
+                logger.info('B2B sync OK — user #%s, %d fields', _sync_user.id, len(_sync_prof))
+
+
+
+            except Exception as e:
+
+
+
+                logger.warning('B2B sync failed: %s', e)
+
+
+        db.session.commit()
+
+        logger.info(
+            'B2B new test scheduled: student=' + student.full_name
+            + ' (' + str(student.id) + '), date=' + date_str + ' ' + time_str
+            + ', balance=' + str(partner.credits_balance)
+        )
+
+        flash(
+            'New test scheduled — 1 credit deducted. Balance: '
+            + str(partner.credits_balance),
+            'success'
+        )
+        return redirect(url_for('ukvi_b2b_student_detail', student_id=student_id))
+
+
+    @app.route('/ukvi/b2b/students/<int:student_id>/reset-password', methods=['POST'])
+    @_b2b_partner_required
+    def ukvi_b2b_reset_student_password(student_id):
+        partner = _get_b2b_partner()
+        student = db.session.get(UKVIB2BStudent, student_id)
+        if not student or student.partner_id != partner.id:
+            abort(403)
+        
+        new_password = (request.form.get('new_password') or '').strip()
+        if len(new_password) < 6:
+            flash('Password must be at least 6 characters', 'error')
+            return redirect(url_for('ukvi_b2b_student_detail', student_id=student_id))
+        
+        ukvi_user = db.session.get(UKVIUser, student.ukvi_user_id) if student.ukvi_user_id else None
+        if not ukvi_user:
+            flash('Student account not found', 'error')
+            return redirect(url_for('ukvi_b2b_student_detail', student_id=student_id))
+        
+        ukvi_user.set_password(new_password)
+        db.session.commit()
+        flash('Password reset! New password: ' + new_password + ' — Share with student', 'success')
+        return redirect(url_for('ukvi_b2b_student_detail', student_id=student_id))
+
+
+    @app.route('/ukvi/b2b/students/<int:student_id>/regenerate', methods=['POST'])
+    @_b2b_partner_required
+    def ukvi_b2b_regenerate_link(student_id):
+        partner = _get_b2b_partner()
+        student = db.session.get(UKVIB2BStudent, student_id)
+        if not student or student.partner_id != partner.id:
+            abort(403)
+        if student.token_used:
+            flash('Cannot regenerate — completed', 'error')
+            return redirect(url_for('ukvi_b2b_student_detail', student_id=student_id))
+        if student.token_revoked:
+            flash('Cannot regenerate — cancelled', 'error')
+            return redirect(url_for('ukvi_b2b_student_detail', student_id=student_id))
+        student.test_token = _b2b_secrets.token_urlsafe(32)
+        student.token_created_at = datetime.now(timezone.utc)
+        db.session.commit()
+        flash('New link generated', 'success')
+        return redirect(url_for('ukvi_b2b_student_detail', student_id=student_id))
+
+    @app.route('/ukvi/b2b/students/<int:student_id>/cancel', methods=['POST'])
+    @_b2b_partner_required
+    def ukvi_b2b_cancel_student(student_id):
+        partner = _get_b2b_partner()
+        student = db.session.get(UKVIB2BStudent, student_id)
+        if not student or student.partner_id != partner.id:
+            abort(403)
+        if student.test_completed_at:
+            flash('Cannot cancel — completed', 'error')
+            return redirect(url_for('ukvi_b2b_student_detail', student_id=student_id))
+        if student.credit_refunded:
+            flash('Already cancelled', 'warning')
+            return redirect(url_for('ukvi_b2b_students'))
+        student.token_revoked = True
+        student.is_active = False
+        student.credit_refunded = True
+        partner.credits_balance += 1
+        partner.total_credits_used = max(0, (partner.total_credits_used or 0) - 1)
+        db.session.add(UKVIB2BTransaction(
+            partner_id=partner.id, type='refund',
+            credits_change=+1, balance_after=partner.credits_balance,
+            description=f'Cancelled: {student.full_name}',
+            reference_id=student.id, reference_type='student'))
+        db.session.commit()
+        flash(f'Cancelled — 1 credit refunded. Balance: {partner.credits_balance}', 'success')
+        return redirect(url_for('ukvi_b2b_students'))
+
+    @app.route('/ukvi/b2b/results')
+    @_b2b_partner_required
+    def ukvi_b2b_results():
+        partner = _get_b2b_partner()
+        completed = partner.students.filter(
+            UKVIB2BStudent.test_completed_at.isnot(None)
+        ).order_by(UKVIB2BStudent.test_completed_at.desc()).all()
+        return render_template('ukvi_b2b/results.html',
+            partner=partner, students=completed)
+
+    @app.route('/ukvi/b2b/test/<token>')
+    def ukvi_b2b_test_entry(token):
+        student = UKVIB2BStudent.query.filter_by(test_token=token).first()
+        if not student:
+            return render_template('ukvi_b2b/test_error.html',
+                error='Invalid link',
+                message='This test link does not exist.'), 404
+        
+        if not student.is_active:
+            return render_template('ukvi_b2b/test_error.html',
+                error='Link inactive',
+                message='This test link has been cancelled.'), 403
+        
+        if student.token_revoked:
+            return render_template('ukvi_b2b/test_error.html',
+                error='Revoked',
+                message='This link was cancelled by your institute.'), 403
+        
+        # ── Attempt limit check ──
+
+        
+        max_attempts = student.max_attempts or 5
+
+        
+        current_attempts = student.attempt_count or 0
+
+        
+        if current_attempts >= max_attempts:
+
+        
+            return render_template('ukvi_b2b/test_error.html',
+
+        
+                error='Maximum attempts reached',
+
+        
+                message=f'You have used all {max_attempts} attempts.'), 403
+
+
+        
+        if student.token_used:
+
+        
+            return render_template('ukvi_b2b/test_error.html',
+
+        
+                error='Already used',
+
+        
+                message='This test has already been completed.'), 403
+        
+        verified_key = 'b2b_verified_' + str(student.id)
+        if not session.get(verified_key):
+            return render_template('ukvi_b2b/test_password.html', student=student)
+        
+        if student.is_too_early:
+            delta = student.window_start - datetime.now(timezone.utc)
+            hours = int(delta.total_seconds() // 3600)
+            minutes = int((delta.total_seconds() % 3600) // 60)
+            sched_utc = student.scheduled_datetime
+            sched_npt = _b2b_utc_to_local(sched_utc.replace(tzinfo=None), 'NPT')
+            return render_template('ukvi_b2b/test_wait.html',
+                student=student, hours=hours, minutes=minutes,
+                scheduled_dt=sched_utc,
+                scheduled_npt=sched_npt)
+        
+        if student.is_expired:
+            return render_template('ukvi_b2b/test_error.html',
+                error='Expired',
+                message='Your 24-hour window has passed.'), 403
+        
+        # ── Increment attempt count (NEW) ──
+        if not student.test_started_at:
+            student.test_started_at = datetime.now(timezone.utc)
+            # Increment attempt count for this fresh session
+            student.attempt_count = (student.attempt_count or 0) + 1
+            logger.info(f'B2B attempt {student.attempt_count}/{student.max_attempts or 5} for student #{student.id}')
+                # If this was the last attempt, mark token used
+            if student.attempt_count >= (student.max_attempts or 5):
+                student.token_used = True
+                logger.info(f'Student #{student.id} exhausted all attempts')
+            db.session.commit()
+        
+        ukvi_user = db.session.get(UKVIUser, student.ukvi_user_id) if student.ukvi_user_id else None
+        if ukvi_user:
+            session['selected_module'] = 'ukvi'
+            session['_b2b_student_id'] = student.id
+            if student.profile_completed:
+                session['_b2b_profile'] = {
+                    'full_name': student.full_name or '',
+                    'father_name': student.father_name or '',
+                    'mother_name': student.mother_name or '',
+                    'university': student.university or '',
+                    'university_city': student.university_city or '',
+                    'course': student.course or '',
+                    'course_duration': student.course_duration or '',
+                    'ielts_score': student.ielts_score or '',
+                    'tuition_fee': student.tuition_fee or '',
+                    'living_cost': student.living_cost or '',
+                    'sponsor_name': student.sponsor_name or '',
+                    'sponsor_income': student.sponsor_income or '',
+                    'sponsor_savings': student.sponsor_savings or '',
+                    'home_country': student.home_country or 'Nepal',
+                }
+                session['_b2b_skip_profile'] = True
+            else:
+                session['_b2b_profile'] = None
+                session['_b2b_skip_profile'] = False
+            try:
+                login_user(ukvi_user, remember=False, duration=timedelta(hours=24))
+            except Exception as e:
+                logger.warning('B2B student login failed: ' + str(e))
+
+
+            # ── Sync B2B profile → UKVIUser.profile_data ──
+
+            if student.profile_completed and ukvi_user:
+
+                try:
+
+                    _sync_prof = {
+
+                        'full_name': student.full_name,
+
+                        'father_name': student.father_name,
+
+                        'mother_name': student.mother_name,
+
+                        'university': student.university,
+
+                        'university_city': student.university_city,
+
+                        'course': student.course,
+
+                        'course_duration': student.course_duration,
+
+                        'ielts_score': student.ielts_score,
+
+                        'tuition_fee': student.tuition_fee,
+
+                        'living_cost': student.living_cost,
+
+                        'sponsor_name': student.sponsor_name,
+
+                        'sponsor_income': student.sponsor_income,
+
+                        'sponsor_savings': student.sponsor_savings,
+
+                        'home_country': student.home_country,
+
+                    }
+
+                    _sync_prof = {k: v for k, v in _sync_prof.items() if v}
+
+                    _existing = ukvi_user.get_profile() or {}
+
+                    _existing.update(_sync_prof)
+
+                    ukvi_user.set_profile(_existing)
+
+                    db.session.commit()
+
+                    logger.info('B2B sync OK — user #%s, %d fields', ukvi_user.id, len(_sync_prof))
+
+                except Exception as e:
+
+                    logger.warning('B2B sync failed: %s', e)
+        return redirect(url_for('ukvi'))
+
+    @app.route('/ukvi/b2b/test/<token>/login', methods=['POST'])
+    def ukvi_b2b_test_login(token):
+        student = UKVIB2BStudent.query.filter_by(test_token=token).first()
+        if not student:
+            return redirect(url_for('ukvi_b2b_test_entry', token=token))
+        
+        password = request.form.get('password', '')
+        if not password:
+            flash('Password required', 'error')
+            return redirect(url_for('ukvi_b2b_test_entry', token=token))
+        
+        ukvi_user = db.session.get(UKVIUser, student.ukvi_user_id) if student.ukvi_user_id else None
+        if not ukvi_user:
+            flash('Student account not found — contact your institute', 'error')
+            return redirect(url_for('ukvi_b2b_test_entry', token=token))
+        
+        if ukvi_user.check_password(password):
+            session['b2b_verified_' + str(student.id)] = True
+            session.modified = True
+            logger.info('B2B student password verified: ' + student.full_name)
+            return redirect(url_for('ukvi_b2b_test_entry', token=token))
+        
+        flash('Incorrect password — contact your institute', 'error')
+        return redirect(url_for('ukvi_b2b_test_entry', token=token))
+
+
+
+
+    @app.route('/admin/ukvi/auto-refund-now', methods=['POST'])
+    @admin_required
+    @csrf_protect
+    def admin_ukvi_auto_refund_now():
+        """Manually trigger auto-refund (for testing or catch-up)"""
+
+        try:
+            result = _ukvi_auto_refund_expired(dry_run=False)
+            msg = (
+                'Auto-refund: '
+                + str(result['refunded']) + ' refunded, '
+                + str(result['skipped']) + ' skipped, '
+                + str(result['errors']) + ' errors'
+            )
+            flash(msg, 'success' if result['errors'] == 0 else 'warning')
+            logger.info('Manual auto-refund triggered: ' + msg)
+        except Exception as e:
+            flash('Auto-refund failed: ' + str(e), 'error')
+            logger.exception('Manual auto-refund failed')
+
+        return redirect(url_for('admin_ukvi_b2b'))
+
+
+    @app.route('/admin/ukvi/auto-refund-preview', methods=['GET'])
+    @admin_required
+    def admin_ukvi_auto_refund_preview():
+        """Preview which students would be refunded (dry run)"""
+        try:
+            result = _ukvi_auto_refund_expired(dry_run=True)
+            return jsonify({
+                'success': True,
+                'would_refund': result['refunded'],
+                'skipped': result['skipped'],
+                'errors': result['errors'],
+                'details': result['details'],
+            })
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)}), 500
+
+
+
+    @app.route('/admin/ukvi/b2b')
+    @admin_required
+    def admin_ukvi_b2b():
+        partners = UKVIB2BPartner.query.order_by(UKVIB2BPartner.created_at.desc()).all()
+        pending_purchases = UKVIB2BCreditPurchase.query.filter_by(
+            payment_status='submitted'
+        ).order_by(UKVIB2BCreditPurchase.created_at.desc()).all()
+        return render_template('admin_ukvi_b2b.html',
+            partners=partners, pending_purchases=pending_purchases)
+
+    @app.route('/admin/ukvi/b2b/verify-purchase/<int:purchase_id>', methods=['POST'])
+    @admin_required
+    @csrf_protect
+    def admin_ukvi_b2b_verify_purchase(purchase_id):
+        purchase = db.session.get(UKVIB2BCreditPurchase, purchase_id)
+        if not purchase or purchase.payment_status != 'submitted':
+            flash('Not found or already processed', 'danger')
+            return redirect(url_for('admin_ukvi_b2b'))
+        partner = db.session.get(UKVIB2BPartner, purchase.partner_id)
+        if not partner:
+            flash('Partner not found', 'danger')
+            return redirect(url_for('admin_ukvi_b2b'))
+        partner.credits_balance += purchase.credits
+        partner.total_credits_purchased = (partner.total_credits_purchased or 0) + purchase.credits
+        purchase.payment_status = 'completed'
+        purchase.completed_at = datetime.now(timezone.utc)
+        db.session.add(UKVIB2BTransaction(
+            partner_id=partner.id, type='purchase',
+            credits_change=+purchase.credits,
+            balance_after=partner.credits_balance,
+            description=f'Purchase #{purchase.id}',
+            reference_id=purchase.id, reference_type='purchase'))
+        db.session.commit()
+        flash(f'+{purchase.credits} credits added to {partner.name}', 'success')
+        return redirect(url_for('admin_ukvi_b2b'))
+
+    @app.route('/admin/ukvi/b2b/approve-partner/<int:partner_id>', methods=['POST'])
+    @admin_required
+    @csrf_protect
+    def admin_ukvi_b2b_approve_partner(partner_id):
+        partner = db.session.get(UKVIB2BPartner, partner_id)
+        if not partner:
+            flash('Partner not found', 'danger')
+            return redirect(url_for('admin_ukvi_b2b'))
+        partner.is_admin_approved = True
+        partner.is_active = True
+        db.session.commit()
+        flash(f'{partner.name} approved', 'success')
+        return redirect(url_for('admin_ukvi_b2b'))
+
+    @app.route('/admin/ukvi/b2b/create-partner', methods=['POST'])
+    @admin_required
+    @csrf_protect
+    def admin_ukvi_b2b_create_partner():
+        name = (request.form.get('name') or '').strip()
+        email = (request.form.get('email') or '').strip().lower()
+        password = request.form.get('password') or ''
+        phone = (request.form.get('phone') or '').strip()
+        if not name or not email or not password:
+            flash('Name, email, password required', 'danger')
+            return redirect(url_for('admin_ukvi_b2b'))
+        if UKVIB2BPartner.query.filter_by(email=email).first():
+            flash('Email already registered', 'danger')
+            return redirect(url_for('admin_ukvi_b2b'))
+        partner = UKVIB2BPartner(
+            name=name, email=email, phone=phone or None,
+            is_active=True, is_admin_approved=True,
+            credits_balance=FREE_CREDITS,
+            total_credits_purchased=FREE_CREDITS,
+        )
+        partner.set_password(password)
+        db.session.add(partner)
+        db.session.flush()  # get partner.id
+
+        # Log the free credit grant in audit trail
+        db.session.add(UKVIB2BTransaction(
+            partner_id=partner.id,
+            type='admin_adjust',
+            credits_change=+FREE_CREDITS,
+            balance_after=FREE_CREDITS,
+            description=f'Welcome bonus: {FREE_CREDITS} free credits',
+        ))
+
+        db.session.commit()
+        logger.info(f'B2B partner created: {name} ({email}) with {FREE_CREDITS} free credits')
+        flash(f'Partner created: {name} (+{FREE_CREDITS} free credits)', 'success')
+        return redirect(url_for('admin_ukvi_b2b'))
+
+    @app.route('/admin/ukvi/b2b/add-credits/<int:partner_id>', methods=['POST'])
+    @admin_required
+    @csrf_protect
+    def admin_ukvi_b2b_add_credits(partner_id):
+        partner = db.session.get(UKVIB2BPartner, partner_id)
+        if not partner:
+            flash('Partner not found', 'danger')
+            return redirect(url_for('admin_ukvi_b2b'))
+        try:
+            amount = int(request.form.get('amount', 0))
+        except (ValueError, TypeError):
+            amount = 0
+        if amount == 0:
+            flash('Invalid amount', 'danger')
+            return redirect(url_for('admin_ukvi_b2b'))
+        partner.credits_balance += amount
+        if amount > 0:
+            partner.total_credits_purchased = (partner.total_credits_purchased or 0) + amount
+        db.session.add(UKVIB2BTransaction(
+            partner_id=partner.id, type='admin_adjust',
+            credits_change=amount, balance_after=partner.credits_balance,
+            description=f'Admin: {amount:+d}'))
+        db.session.commit()
+        flash(f'{amount:+d} credits for {partner.name}', 'success')
+        return redirect(url_for('admin_ukvi_b2b'))
+
+    logger.info("B2B UKVI routes registered")
+else:
+    logger.warning("B2B UKVI routes NOT registered (models import failed)")
+
+
+
+@app.route('/ukvi/b2b/payment/esewa/success')
+def ukvi_b2b_esewa_success():
+    import base64 as _b64
+    import json as _json
+    from modules.ukvi.models import (
+        UKVIB2BCreditPurchase, UKVIB2BPartner, UKVIB2BTransaction,
+    )
+
+    encoded = request.args.get('data', '')
+    if not encoded:
+        flash('Invalid eSewa callback', 'error')
+        return redirect(url_for('ukvi_b2b_credits'))
+
+    try:
+        decoded = _json.loads(_b64.b64decode(encoded).decode('utf-8'))
+    except Exception as e:
+        logger.error('eSewa decode failed: ' + str(e))
+        flash('Invalid payment data', 'error')
+        return redirect(url_for('ukvi_b2b_credits'))
+
+    txn_uuid = decoded.get('transaction_uuid', '')
+    total_amount = decoded.get('total_amount', 0)
+
+    try:
+        parts = txn_uuid.split('-')
+        purchase_id = int(parts[1])
+        partner_id = int(parts[2])
+    except (ValueError, IndexError):
+        flash('Invalid transaction format', 'error')
+        return redirect(url_for('ukvi_b2b_credits'))
+
+    purchase = db.session.get(UKVIB2BCreditPurchase, purchase_id)
+    if not purchase:
+        flash('Purchase not found', 'error')
+        return redirect(url_for('ukvi_b2b_credits'))
+
+    try:
+        from payment_b2b import esewa_verify_payment
+        verification = esewa_verify_payment(txn_uuid, total_amount)
+    except ImportError:
+        flash('Payment verification unavailable', 'error')
+        return redirect(url_for('ukvi_b2b_purchase_detail', purchase_id=purchase_id))
+
+    if verification.get('success'):
+        partner = db.session.get(UKVIB2BPartner, purchase.partner_id)
+        if partner and purchase.payment_status != 'completed':
+            partner.credits_balance += purchase.credits
+            partner.total_credits_purchased = (partner.total_credits_purchased or 0) + purchase.credits
+            purchase.payment_status = 'completed'
+            purchase.payment_ref = txn_uuid
+            purchase.completed_at = datetime.now(timezone.utc)
+            db.session.add(UKVIB2BTransaction(
+                partner_id=partner.id, type='purchase',
+                credits_change=+purchase.credits,
+                balance_after=partner.credits_balance,
+                description='eSewa payment #' + str(purchase.id),
+                reference_id=purchase.id, reference_type='purchase'
+            ))
+            db.session.commit()
+            logger.info('eSewa verified: purchase #' + str(purchase.id) + ' +' + str(purchase.credits))
+
+        flash('Payment successful! +' + str(purchase.credits) + ' credits added.', 'success')
+        return render_template('ukvi_b2b/payment_success.html',
+            purchase=purchase, partner=partner, method='eSewa')
+
+    flash('Payment verification failed: ' + str(verification.get('status')), 'error')
+    return redirect(url_for('ukvi_b2b_purchase_detail', purchase_id=purchase_id))
+
+
+@app.route('/ukvi/b2b/payment/esewa/failure')
+def ukvi_b2b_esewa_failure():
+    flash('Payment cancelled or failed. Please try again.', 'error')
+    return redirect(url_for('ukvi_b2b_credits'))
+
+
+@app.route('/ukvi/b2b/payment/khalti/callback')
+def ukvi_b2b_khalti_callback():
+    from modules.ukvi.models import (
+        UKVIB2BCreditPurchase, UKVIB2BPartner, UKVIB2BTransaction,
+    )
+
+    pidx = request.args.get('pidx', '')
+    order_id = request.args.get('purchase_order_id', '')
+
+    if not pidx:
+        flash('Invalid Khalti callback', 'error')
+        return redirect(url_for('ukvi_b2b_credits'))
+
+    try:
+        purchase_id = int(order_id.replace('B2B-', ''))
+    except (ValueError, AttributeError):
+        flash('Invalid order ID', 'error')
+        return redirect(url_for('ukvi_b2b_credits'))
+
+    purchase = db.session.get(UKVIB2BCreditPurchase, purchase_id)
+    if not purchase:
+        flash('Purchase not found', 'error')
+        return redirect(url_for('ukvi_b2b_credits'))
+
+    try:
+        from payment_b2b import khalti_verify_payment
+        verification = khalti_verify_payment(pidx)
+    except ImportError:
+        flash('Khalti verification unavailable', 'error')
+        return redirect(url_for('ukvi_b2b_purchase_detail', purchase_id=purchase_id))
+
+    if verification.get('success'):
+        partner = db.session.get(UKVIB2BPartner, purchase.partner_id)
+        if partner and purchase.payment_status != 'completed':
+            partner.credits_balance += purchase.credits
+            partner.total_credits_purchased = (partner.total_credits_purchased or 0) + purchase.credits
+            purchase.payment_status = 'completed'
+            purchase.payment_ref = pidx
+            purchase.completed_at = datetime.now(timezone.utc)
+            db.session.add(UKVIB2BTransaction(
+                partner_id=partner.id, type='purchase',
+                credits_change=+purchase.credits,
+                balance_after=partner.credits_balance,
+                description='Khalti payment #' + str(purchase.id),
+                reference_id=purchase.id, reference_type='purchase'
+            ))
+            db.session.commit()
+            logger.info('Khalti verified: purchase #' + str(purchase.id) + ' +' + str(purchase.credits))
+
+        flash('Payment successful! +' + str(purchase.credits) + ' credits added.', 'success')
+        return render_template('ukvi_b2b/payment_success.html',
+            purchase=purchase, partner=partner, method='Khalti')
+
+    flash('Payment verification failed: ' + str(verification.get('status')), 'error')
+    return redirect(url_for('ukvi_b2b_purchase_detail', purchase_id=purchase_id))
+
+
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# UKVI — Real 7-Phase Interview API (added by update_app_ukvi.py)
+# ═══════════════════════════════════════════════════════════════════════
+
+@app.route('/api/ukvi/interview/generate', methods=['POST'])
+@login_required
+def ukvi_interview_generate():
+    """Generate real UKVI 7-phase interview"""
+    try:
+        from modules.ukvi.generators.interview_generator import UKVIInterviewGenerator
+        from modules.ukvi.models import UKVIUser
+    except ImportError as e:
+        return jsonify({'success': False, 'error': 'Module import failed: ' + str(e)}), 503
+
+    data = request.get_json(silent=True) or {}
+    difficulty = data.get('difficulty', 'medium')
+
+    # Load user profile
+    profile = {}
+    try:
+        user = db.session.get(UKVIUser, current_user.id)
+        if user:
+            profile = user.get_profile() or {}
+    except Exception as e:
+        logger.warning('Profile load failed: ' + str(e))
+
+    if not profile:
+        return jsonify({
+            'success': False,
+            'error': 'Please fill your profile first',
+            'redirect': '/ukvi',
+        }), 400
+
+    try:
+        generator = UKVIInterviewGenerator(ai_engine=ai_engine)
+        result = generator.generate_interview(
+            difficulty=difficulty,
+            visa_type='student',
+            profile=profile,
+        )
+        return jsonify(result)
+    except Exception as e:
+        logger.exception('Interview generation failed: ' + str(e))
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+
+@app.route('/api/ukvi/interview/follow-up', methods=['POST'])
+@login_required
+def ukvi_interview_follow_up():
+    """Follow-up + consistency + evaluation"""
+    try:
+        from modules.ukvi.generators.interview_generator import (
+            UKVIInterviewGenerator, ConsistencyChecker,
+        )
+        from modules.ukvi.models import UKVIUser
+    except ImportError as e:
+        return jsonify({'success': False, 'error': 'Module import failed: ' + str(e)}), 503
+
+    data = request.get_json(silent=True) or {}
+    question = data.get('question', '')
+    answer = data.get('answer', '')
+    category = data.get('category', 'general')
+    difficulty = data.get('difficulty', 'medium')
+    question_index = data.get('question_index', 0)
+    session_id = data.get('session_id', '')
+
+    profile = {}
+    try:
+        user = db.session.get(UKVIUser, current_user.id)
+        if user:
+            profile = user.get_profile() or {}
+    except Exception:
+        pass
+
+    checker_key = '_ukvi_checker_' + str(session_id or current_user.id)
+    if checker_key not in session:
+        session[checker_key] = []
+    checker_answers = session[checker_key]
+
+    try:
+        generator = UKVIInterviewGenerator(ai_engine=ai_engine)
+
+        checker = ConsistencyChecker()
+        for prev in checker_answers:
+            checker.add_answer(
+                prev['index'], prev['question'], prev['answer'], prev['category']
+            )
+        consistency = checker.check_consistency(answer, category)
+
+        checker_answers.append({
+            'index': question_index,
+            'question': question,
+            'answer': answer,
+            'category': category,
+        })
+        session[checker_key] = checker_answers
+        session.modified = True
+
+        follow_up = None
+        followup_reason = None
+
+        if not consistency['consistent']:
+            follow_up = consistency['challenge']
+            followup_reason = 'inconsistency_detected'
+        else:
+            follow_up = generator.generate_follow_up(
+                question=question,
+                answer=answer,
+                category=category,
+                profile=profile,
+                difficulty=difficulty,
+            )
+            if follow_up:
+                word_count = len(answer.split())
+                if word_count < 10:
+                    followup_reason = 'short_answer'
+                elif category == 'financial' and not any(c.isdigit() for c in answer):
+                    followup_reason = 'missing_numbers'
+                else:
+                    followup_reason = 'vague_answer'
+
+        # ── _wire_evaluator: use UKVIEvaluator (AI, profile, cross-answer) ──
+        evaluation = None
+        _wire_evaluator = None
+        try:
+            from modules.ukvi.evaluators.evaluator import UKVIEvaluator
+            _wire_evaluator = UKVIEvaluator(ai_engine=ai_engine)
+            _prev_answers = [a.get('answer', '') for a in checker_answers[:-1] if a.get('answer')]
+            _prev_qa = [a for a in checker_answers[:-1] if a.get('answer')]
+            evaluation = _wire_evaluator.evaluate(
+                question, answer, category,
+                profile=profile,
+                previous_answers=_prev_answers,
+                previous_qa=_prev_qa,
+            )
+            logger.info(
+                'UKVI eval: %.1f (cred=%d, contradictions=%d)',
+                evaluation.get('overall_score', 0),
+                int(evaluation.get('genuineness_score', 0)),
+                len(evaluation.get('contradictions', [])),
+            )
+        except Exception as e:
+            logger.warning('UKVIEvaluator failed, using fallback: %s', e)
+
+        # Fallback if AI evaluation failed
+        if evaluation is None:
+            evaluation = generator.evaluate_response(question, answer, category)
+
+        return jsonify({
+            'success': True,
+            'needs_followup': follow_up is not None,
+            'followup_question': follow_up,
+            'followup_reason': followup_reason,
+            'consistency': {
+                'consistent': consistency['consistent'],
+                'issue_count': len(consistency['issues']),
+            },
+            'evaluation': evaluation,
+        })
+    except Exception as e:
+        logger.exception('Follow-up failed: ' + str(e))
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# UKVI RECORDING — Temporary audio storage
+# ═══════════════════════════════════════════════════════════════════════
+import tempfile as _tempfile
+import uuid as _uuid
+
+UKVI_TEMP_AUDIO_DIR = os.path.join('static', 'temp_audio', 'ukvi')
+os.makedirs(UKVI_TEMP_AUDIO_DIR, exist_ok=True)
+
+
+@app.route('/api/ukvi/record-answer', methods=['POST'])
+@login_required
+def ukvi_record_answer():
+    if 'audio' not in request.files:
+        return jsonify({'success': False, 'error': 'No audio file'}), 400
+    audio_file = request.files['audio']
+    session_id = request.form.get('session_id', 'unknown')
+    question_index = request.form.get('question_index', '0')
+    if not audio_file or not audio_file.filename:
+        return jsonify({'success': False, 'error': 'Empty audio'}), 400
+    try:
+        safe_session = ''.join(c for c in str(session_id) if c.isalnum() or c in '-_')[:50]
+        safe_qidx = ''.join(c for c in str(question_index) if c.isdigit())[:10]
+        filename = 'sess_' + safe_session + '_q' + safe_qidx + '_' + _uuid.uuid4().hex[:8] + '.webm'
+        filepath = os.path.join(UKVI_TEMP_AUDIO_DIR, filename)
+        audio_file.save(filepath)
+        return jsonify({
+            'success': True,
+            'filename': filename,
+            'size_bytes': os.path.getsize(filepath),
+        })
+    except Exception as e:
+        logger.exception('Recording upload failed: ' + str(e))
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/ukvi/cleanup-recordings', methods=['POST'])
+@login_required
+def ukvi_cleanup_recordings():
+    data = request.get_json(silent=True) or {}
+    session_id = data.get('session_id', '')
+    if not session_id:
+        return jsonify({'success': False, 'error': 'session_id required'}), 400
+    try:
+        safe_session = ''.join(c for c in str(session_id) if c.isalnum() or c in '-_')[:50]
+        pattern = 'sess_' + safe_session + '_'
+        deleted = 0
+        for fname in os.listdir(UKVI_TEMP_AUDIO_DIR):
+            if fname.startswith(pattern):
+                try:
+                    os.remove(os.path.join(UKVI_TEMP_AUDIO_DIR, fname))
+                    deleted += 1
+                except Exception:
+                    pass
+        logger.info('UKVI recordings cleaned: session=' + str(session_id) + ', deleted=' + str(deleted))
+        return jsonify({'success': True, 'deleted': deleted})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+
+
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# UKVI AUTO-REFUND (Option A+)
+# Refund ALL incomplete tests after 24h window expiry
+# ═══════════════════════════════════════════════════════════════════════
+
+def _ukvi_auto_refund_expired(dry_run: bool = False):
+    """
+    Auto-refund credits for ANY incomplete test after 24h window expiry.
+
+    Rules (Option A+):
+      ✅ Test completed           → NO refund
+      ✅ Test started, incomplete → +1 credit (auto-refund)
+      ✅ Test never started       → +1 credit (auto-refund)
+
+    Returns dict with counts:
+      {'refunded': N, 'skipped': N, 'errors': N, 'details': [...]}
+    """
+    from modules.ukvi.models import (
+        UKVIB2BStudent, UKVIB2BPartner, UKVIB2BTransaction,
+    )
+    from datetime import datetime as _dt, timezone as _tz
+
+    now = _dt.now(_tz.utc)
+    result = {'refunded': 0, 'skipped': 0, 'errors': 0, 'details': []}
+
+    try:
+        # Find all candidates:
+        # - Not completed
+        # - Not refunded
+        # - Still active (not manually revoked)
+        candidates = UKVIB2BStudent.query.filter(
+            UKVIB2BStudent.test_completed_at.is_(None),
+            UKVIB2BStudent.credit_refunded == False,
+            UKVIB2BStudent.credit_deducted == True,
+        ).all()
+
+        for student in candidates:
+            try:
+                # Check if window expired
+                window_end = student.window_end
+                if window_end >= now:
+                    result['skipped'] += 1
+                    continue
+
+                # Already refunded via manual cancel?
+                if student.credit_refunded:
+                    result['skipped'] += 1
+                    continue
+
+                # NEW: Only refund if student exhausted all attempts
+                _max_att = student.max_attempts or 5
+                _curr_att = student.attempt_count or 0
+                # FINAL RULE: Refund if attempts 1-4 (incomplete + window expired)
+                # Skip ONLY if 5/5 (all attempts used)
+                if _curr_att >= _max_att:
+                    result['skipped'] += 1
+                    result.setdefault('details', []).append({
+                        'student_id': student.id,
+                        'skipped_reason': f'{_curr_att}/{_max_att} attempts — all used, no refund',
+                    })
+                    student.token_used = True  # expire link permanently
+                    continue
+
+                # Get partner
+                partner = db.session.get(UKVIB2BPartner, student.partner_id)
+                if not partner:
+                    result['errors'] += 1
+                    result['details'].append({
+                        'student_id': student.id,
+                        'error': 'partner_not_found',
+                    })
+                    continue
+
+                # Apply refund (unless dry run)
+                if not dry_run:
+                    partner.credits_balance += 1
+                    partner.total_credits_used = max(
+                        0, (partner.total_credits_used or 0) - 1
+                    )
+
+                    student.credit_refunded = True
+                    student.token_revoked = True
+                    student.is_active = False
+
+                    # Determine refund reason
+                    if student.test_started_at:
+                        reason_type = 'started_but_incomplete'
+                    else:
+                        reason_type = 'never_started'
+
+                    # Log transaction
+                    db.session.add(UKVIB2BTransaction(
+                        partner_id=partner.id,
+                        type='refund',
+                        credits_change=+1,
+                        balance_after=partner.credits_balance,
+                        description=(
+                            'Auto-refund (' + reason_type + '): '
+                            + student.full_name
+                        ),
+                        reference_id=student.id,
+                        reference_type='student',
+                    ))
+
+                result['refunded'] += 1
+                result['details'].append({
+                    'student_id': student.id,
+                    'name': student.full_name,
+                    'partner': partner.name,
+                    'reason': (
+                        'started_but_incomplete' if student.test_started_at
+                        else 'never_started'
+                    ),
+                    'dry_run': dry_run,
+                })
+
+            except Exception as inner_e:
+                db.session.rollback()
+                result['errors'] += 1
+                result['details'].append({
+                    'student_id': student.id,
+                    'error': str(inner_e),
+                })
+                logger.warning(
+                    'Auto-refund failed for student ' + str(student.id) +
+                    ': ' + str(inner_e)
+                )
+
+        if not dry_run and result['refunded'] > 0:
+            db.session.commit()
+            logger.info(
+                '✅ UKVI auto-refund: ' + str(result['refunded'])
+                + ' students refunded ('
+                + str(result['skipped']) + ' skipped, '
+                + str(result['errors']) + ' errors)'
+            )
+
+        return result
+
+    except Exception as e:
+        logger.exception('Auto-refund job failed: ' + str(e))
+        db.session.rollback()
+        result['errors'] += 1
+        result['details'].append({'error': str(e)})
+        return result
+
+
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     debug = os.environ.get('FLASK_ENV') == 'development'

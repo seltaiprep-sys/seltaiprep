@@ -1,0 +1,86 @@
+{% extends 'ukvi_b2b/base.html' %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<h2 style="margin-bottom: 20px;">Welcome, {{ partner.name }}</h2>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-value">{{ partner.credits_balance }}</div>
+        <div class="stat-label">Credits</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ total_students }}</div>
+        <div class="stat-label">Total Students</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value" style="color: #f59e0b;">{{ pending }}</div>
+        <div class="stat-label">Pending</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value" style="color: #059669;">{{ completed }}</div>
+        <div class="stat-label">Completed</div>
+    </div>
+</div>
+
+{% if partner.credits_balance < 2 %}
+<div class="alert alert-warning">
+    ⚠️ Low credits ({{ partner.credits_balance }} left). 
+    <a href="{{ url_for('ukvi_b2b_credits') }}" style="color: #92400e; text-decoration: underline;">Buy more credits</a>
+</div>
+{% endif %}
+
+<div class="card">
+    <h3 style="margin-bottom: 15px;">Quick Actions</h3>
+    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <a href="{{ url_for('ukvi_b2b_add_student') }}" class="btn btn-primary">
+            ➕ Add Student
+        </a>
+        <a href="{{ url_for('ukvi_b2b_credits') }}" class="btn btn-outline">
+            💳 Buy Credits
+        </a>
+        <a href="{{ url_for('ukvi_b2b_students') }}" class="btn btn-outline">
+            👥 View Students
+        </a>
+        <a href="{{ url_for('ukvi_b2b_results') }}" class="btn btn-outline">
+            📊 View Results
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <h3 style="margin-bottom: 15px;">Recent Students</h3>
+    {% if recent %}
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Scheduled</th>
+                <th>Status</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for s in recent %}
+            <tr>
+                <td><strong>{{ s.full_name }}</strong></td>
+                <td>{{ s.scheduled_date }} {{ s.scheduled_time.strftime('%H:%M') }}</td>
+                <td><span class="badge badge-{{ s.window_status }}">{{ s.window_status }}</span></td>
+                <td>
+                    <a href="{{ url_for('ukvi_b2b_student_detail', student_id=s.id) }}"
+                       class="btn btn-sm btn-outline">View</a>
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+        <div class="icon">👥</div>
+        <p>No students yet.</p>
+        <a href="{{ url_for('ukvi_b2b_add_student') }}" class="btn btn-primary" style="margin-top: 15px;">
+            Add your first student
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

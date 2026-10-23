@@ -1,22 +1,21 @@
 # modules/ukvi/generators/interview_generator.py
 """
-UKVI Interview Generator — Real UKVI credibility interview questions.
+UKVI Interview Generator — Real UKVI Pattern (7 Phases)
 
-v2.0 — REAL UKVI REALISM:
-  • Curated question bank (100+ real UKVI questions) — AI मा पूरै भर नपर्ने
-  • Profile-driven personalization (university, course, financial figures)
-  • Trick questions (consistency test)
-  • Financial questions that demand SPECIFIC FIGURES
-  • University questions that demand SPECIFIC DETAILS
-  • AI लाई rephrase गर्न मात्र दिने, generate गर्न होइन
-  • Follow-up logic improved
+v3.0 — REAL UKVI PATTERN:
+  • 7-phase interview structure (ID → Purpose → Course → Financial → Ties → Post-Study → Credibility)
+  • 40 questions matching real UKVI order
+  • Per-question time allocation
+  • Phase-specific drill-downs
+  • Financial questions require exact figures
+  • Trick questions for credibility check
+  • Profile-driven personalization
 """
 
 import json
 import re
 import random
 import logging
-import time
 from datetime import datetime, timezone
 from typing import Dict, List, Optional
 
@@ -31,80 +30,273 @@ except ImportError:
 
 
 # ═══════════════════════════════════════════════════════════════════════
-# REAL UKVI QUESTION BANK (manually curated from real interviews)
+# REAL UKVI INTERVIEW STRUCTURE — 7 Phases (35-40 questions)
 # ═══════════════════════════════════════════════════════════════════════
-REAL_UKVI_QUESTIONS = {
-    'purpose_of_visit': [
-        "Why did you choose the UK for your studies rather than your home country?",
-        "Why did you choose {university} specifically over other UK universities?",
-        "What do you know about {city} where your university is located?",
-        "Have you applied to any other universities in the UK or elsewhere?",
-        "What course have you applied for and why?",
-        "How did you find out about this university?",
-        "Have you visited the UK before?",
-        "Do you have any family or friends in the UK?",
-    ],
-
-    'university_knowledge': [
-        "What is the ranking of {university} in the UK?",
-        "What is the location of {university}?",
-        "What modules does your course cover in the first semester?",
-        "Who is the head of your department at {university}?",
-        "What facilities does {university} offer for international students?",
-        "How many students are enrolled in your course?",
-        "What is the name of the Vice-Chancellor of {university}?",
-        "Why did you choose this specific course?",
-        "What career support does {university} provide?",
-        "How long is your course?",
-    ],
-
-    'financial': [
-        "What is your annual tuition fee?",
-        "How much is your living cost per year in the UK?",
-        "Who is your sponsor for this course?",
-        "What is your sponsor's annual income?",
-        "How much savings does your sponsor have?",
-        "What is the source of your sponsor's income?",
-        "Where does your sponsor work?",
-        "How long has your sponsor been working there?",
-        "Do you have any scholarship?",
-        "Have you paid the tuition deposit?",
-        "How much have you paid so far?",
-        "What is the total cost of your studies including tuition and living?",
-        "How will you prove your sponsor's income?",
-    ],
-
-    'future_plans': [
-        "What will you do after completing your course?",
-        "Do you plan to work in the UK after graduation?",
-        "What salary do you expect in Nepal after returning?",
-        "Do you have any job offer in Nepal?",
-        "What career do you want to pursue?",
-        "How will this course help your career?",
-    ],
-
-    'ties_to_home': [
-        "Do you have any property in Nepal?",
-        "Do you have a job waiting for you in Nepal?",
-        "Who will you leave behind in Nepal?",
-        "Why will you return to Nepal after your studies?",
-        "Does your family own any business in Nepal?",
-        "Do you have any siblings? Where do they live?",
-        "What does your father do?",
-        "What does your mother do?",
-    ],
-
-    'credibility_checks': [
-        "You said earlier that X, but now you said Y. Can you explain?",
-        "How do you know this information?",
-        "Can you prove that?",
-        "That doesn't match what you said before. Can you clarify?",
-        "Is there anything else you want to add?",
-        "Why should I believe that?",
-        "Are you sure about that?",
-        "Can you be more specific?",
-    ],
-}
+REAL_UKVI_PHASES = [
+    # ─── Phase 1: ID & Introduction (2 questions) ───
+    {
+        'phase': 1,
+        'name': 'ID & Introduction',
+        'duration_seconds': (120, 180),
+        'questions': [
+            {
+                'q': "Can you confirm your full name and date of birth?",
+                'time_seconds': 30,
+                'mandatory': True,
+                'type': 'id_check',
+            },
+            {
+                'q': "Can you tell me why you're here today?",
+                'time_seconds': 30,
+                'mandatory': True,
+                'type': 'purpose',
+            },
+        ],
+    },
+    # ─── Phase 2: Purpose of Visit (4 questions) ───
+    {
+        'phase': 2,
+        'name': 'Purpose of Visit',
+        'duration_seconds': (180, 240),
+        'questions': [
+            {
+                'q': "Why did you choose to study in the UK rather than your home country?",
+                'time_seconds': 60,
+                'type': 'comparison',
+            },
+            {
+                'q': "Why did you choose {university} specifically over other UK universities?",
+                'time_seconds': 60,
+                'type': 'justification',
+            },
+            {
+                'q': "Have you applied to any other universities in the UK or elsewhere?",
+                'time_seconds': 45,
+                'type': 'factual',
+            },
+            {
+                'q': "Why did you reject those universities and choose {university}?",
+                'time_seconds': 60,
+                'type': 'comparison',
+            },
+        ],
+    },
+    # ─── Phase 3: Course & University (7 questions) ───
+    {
+        'phase': 3,
+        'name': 'Course & University',
+        'duration_seconds': (360, 480),
+        'questions': [
+            {
+                'q': "What is the exact name of your course?",
+                'time_seconds': 20,
+                'drill_down': True,
+                'type': 'factual_specific',
+            },
+            {
+                'q': "When does your course start, and how long is it?",
+                'time_seconds': 20,
+                'drill_down': True,
+                'type': 'factual_dates',
+            },
+            {
+                'q': "What are the specific modules in your first semester?",
+                'time_seconds': 60,
+                'drill_down': True,
+                'type': 'detailed_knowledge',
+            },
+            {
+                'q': "Who is the head of your department at {university}?",
+                'time_seconds': 30,
+                'trick': True,
+                'type': 'research_test',
+            },
+            {
+                'q': "What is the ranking of {university} in your subject area?",
+                'time_seconds': 30,
+                'trick': True,
+                'type': 'research_test',
+            },
+            {
+                'q': "How did you find out about this course?",
+                'time_seconds': 45,
+                'type': 'factual',
+            },
+            {
+                'q': "Have you researched the university's campus and facilities?",
+                'time_seconds': 45,
+                'type': 'research_depth',
+            },
+        ],
+    },
+    # ─── Phase 4: Financial (10 questions — MOST IMPORTANT) ───
+    {
+        'phase': 4,
+        'name': 'Financial',
+        'duration_seconds': (480, 600),
+        'questions': [
+            {
+                'q': "What is the exact annual tuition fee for your course?",
+                'time_seconds': 15,
+                'requires_number': True,
+                'type': 'specific_number',
+            },
+            {
+                'q': "How much is your living cost per year in the UK?",
+                'time_seconds': 15,
+                'requires_number': True,
+                'type': 'specific_number',
+            },
+            {
+                'q': "So what is the total cost per year?",
+                'time_seconds': 15,
+                'requires_number': True,
+                'type': 'math_check',
+            },
+            {
+                'q': "Who is sponsoring your studies?",
+                'time_seconds': 20,
+                'type': 'factual',
+            },
+            {
+                'q': "What does {sponsor} do for a living?",
+                'time_seconds': 30,
+                'type': 'factual',
+            },
+            {
+                'q': "What is {sponsor}'s annual income?",
+                'time_seconds': 20,
+                'requires_number': True,
+                'type': 'specific_number',
+            },
+            {
+                'q': "How long has {sponsor} been in this job?",
+                'time_seconds': 20,
+                'requires_number': True,
+                'type': 'specific_number',
+            },
+            {
+                'q': "How much savings does {sponsor} have?",
+                'time_seconds': 20,
+                'requires_number': True,
+                'type': 'specific_number',
+            },
+            {
+                'q': "How will you prove {sponsor}'s income and savings?",
+                'time_seconds': 45,
+                'requires_evidence': True,
+                'type': 'evidence',
+            },
+            {
+                'q': "Have you already paid a tuition deposit to {university}?",
+                'time_seconds': 20,
+                'requires_evidence': True,
+                'type': 'evidence',
+            },
+        ],
+    },
+    # ─── Phase 5: Ties to Home (6 questions) ───
+    {
+        'phase': 5,
+        'name': 'Ties to Home Country',
+        'duration_seconds': (180, 240),
+        'questions': [
+            {
+                'q': "Do you or your family own any property in {country}?",
+                'time_seconds': 30,
+                'sensitive': True,
+                'type': 'ties_check',
+            },
+            {
+                'q': "Do you have a job waiting for you in {country}?",
+                'time_seconds': 30,
+                'sensitive': True,
+                'type': 'ties_check',
+            },
+            {
+                'q': "What does {father} do?",
+                'time_seconds': 20,
+                'type': 'factual',
+            },
+            {
+                'q': "What does {mother} do?",
+                'time_seconds': 20,
+                'type': 'factual',
+            },
+            {
+                'q': "Do you have siblings? Where do they live?",
+                'time_seconds': 25,
+                'type': 'factual',
+            },
+            {
+                'q': "Why will you return to {country} after your studies?",
+                'time_seconds': 60,
+                'critical': True,
+                'type': 'critical_justification',
+            },
+        ],
+    },
+    # ─── Phase 6: Post-Study Plans (5 questions) ───
+    {
+        'phase': 6,
+        'name': 'Post-Study Plans',
+        'duration_seconds': (120, 180),
+        'questions': [
+            {
+                'q': "What are your plans after completing your course?",
+                'time_seconds': 45,
+                'type': 'future_plan',
+            },
+            {
+                'q': "What job do you hope to get in {country}?",
+                'time_seconds': 30,
+                'type': 'future_plan',
+            },
+            {
+                'q': "What salary do you expect in {country}?",
+                'time_seconds': 20,
+                'requires_number': True,
+                'type': 'specific_number',
+            },
+            {
+                'q': "Do you already have any job offer in {country}?",
+                'time_seconds': 30,
+                'type': 'factual',
+            },
+            {
+                'q': "How will your UK course help your career in {country}?",
+                'time_seconds': 60,
+                'type': 'justification',
+            },
+        ],
+    },
+    # ─── Phase 7: Credibility Challenges (3-4 questions) ───
+    {
+        'phase': 7,
+        'name': 'Credibility Challenges',
+        'duration_seconds': (300, 480),
+        'questions': [
+            {
+                'q': "Can you be more specific about that?",
+                'time_seconds': 45,
+                'trick': True,
+                'dynamic': True,
+                'type': 'probe',
+            },
+            {
+                'q': "How can you prove that?",
+                'time_seconds': 45,
+                'trick': True,
+                'type': 'evidence_request',
+            },
+            {
+                'q': "Is there anything else you would like to add?",
+                'time_seconds': 60,
+                'type': 'open_ended',
+            },
+        ],
+    },
+]
 
 
 # ─── Follow-up probes ─────────────────────────────────────────────
@@ -123,15 +315,14 @@ FOLLOW_UP_PROBES = [
 
 
 class UKVIInterviewGenerator:
-    """Generate real UKVI interview questions with adaptive follow-ups."""
+    """Generate real UKVI interview with 7-phase pattern."""
 
     def __init__(self, ai_engine=None):
         self.ai = ai_engine
-        self._used_questions = []
         self.voice = UKVIVoice() if TTS_AVAILABLE else None
 
     # ═══════════════════════════════════════════════════════════════
-    # PUBLIC: Generate questions (main entry)
+    # PUBLIC: Generate questions (7-phase real UKVI pattern)
     # ═══════════════════════════════════════════════════════════════
     def generate_questions(
         self,
@@ -140,7 +331,6 @@ class UKVIInterviewGenerator:
         profile: Dict = None,
         visa_type: str = "student",
     ) -> List[Dict]:
-        """Wrapper for generate_interview that returns only the list of questions."""
         result = self.generate_interview(
             difficulty=difficulty, visa_type=visa_type, profile=profile
         )
@@ -149,7 +339,7 @@ class UKVIInterviewGenerator:
         return []
 
     # ═══════════════════════════════════════════════════════════════
-    # PUBLIC: Generate full interview
+    # PUBLIC: Generate full interview (7-phase)
     # ═══════════════════════════════════════════════════════════════
     def generate_interview(
         self,
@@ -157,20 +347,13 @@ class UKVIInterviewGenerator:
         visa_type: str = "student",
         profile: Dict = None,
     ) -> Dict:
-        """
-        Generate interview questions using:
-          1. Curated question bank (100+ real UKVI questions)
-          2. Profile-based personalization
-          3. AI rephrasing (only if needed)
-        """
         if not profile:
             return {
                 'error': 'Profile required for UKVI interview generation.',
                 'success': False,
             }
 
-        # ─── 1. Build question set from bank ─────────────────────
-        questions = self._build_question_set(profile, difficulty, visa_type)
+        questions = self._build_real_ukvi_questions(profile, difficulty)
 
         if not questions:
             return {
@@ -178,115 +361,71 @@ class UKVIInterviewGenerator:
                 'success': False,
             }
 
-        # ─── 2. AI rephrase for freshness (optional) ─────────────
-        if self.ai and random.random() < 0.5:  # 50% rephrase
-            try:
-                questions = self._rephrase_questions(questions, profile)
-            except Exception as e:
-                logger.warning(f"Rephrase failed, using original: {e}")
-
-        # ─── 3. Add opening question ─────────────────────────────
-        if visa_type == 'student':
-            has_purpose = any(
-                q.get('category') == 'purpose_of_visit' for q in questions
-            )
-            if not has_purpose:
-                questions.insert(0, {
-                    'category': 'purpose_of_visit',
-                    'category_title': 'Purpose of Visit',
-                    'question': 'Why did you choose to study in the UK rather than your home country?',
-                    'difficulty': difficulty,
-                })
+        total_time = sum(q['time_seconds'] for q in questions)
+        phases_summary = self._summarize_phases(questions)
 
         return {
             'visa_type': visa_type,
             'difficulty': difficulty,
             'total_questions': len(questions),
-            'estimated_duration': f"{len(questions) * 2}-{len(questions) * 4} min",
+            'total_phases': len(phases_summary),
+            'estimated_duration_minutes': total_time // 60,
+            'estimated_duration_seconds': total_time,
             'questions': questions,
+            'phases': phases_summary,
             'generated_at': datetime.now(timezone.utc).isoformat(),
             'has_audio': self.has_audio(),
             'ai_generated': bool(self.ai),
-            'fallback_used': False,
+            'real_ukvi_pattern': True,
             'success': True,
         }
 
     # ═══════════════════════════════════════════════════════════════
-    # BUILD QUESTION SET (from curated bank)
+    # BUILD: Real UKVI questions from 7-phase structure
     # ═══════════════════════════════════════════════════════════════
-    def _build_question_set(
-        self,
-        profile: Dict,
-        difficulty: str,
-        visa_type: str,
-    ) -> List[Dict]:
-        """Build a realistic set of 10-12 UKVI questions from the bank."""
-        questions = []
-
-        # Difficulty → number of questions per category
-        if difficulty == 'easy':
-            counts = {
-                'purpose_of_visit': 2,
-                'university_knowledge': 1,
-                'financial': 1,
-                'future_plans': 1,
-                'ties_to_home': 1,
-                'credibility_checks': 1,
-            }
-        elif difficulty == 'hard':
-            counts = {
-                'purpose_of_visit': 2,
-                'university_knowledge': 3,
-                'financial': 3,
-                'future_plans': 1,
-                'ties_to_home': 2,
-                'credibility_checks': 2,
-            }
-        else:  # medium
-            counts = {
-                'purpose_of_visit': 2,
-                'university_knowledge': 2,
-                'financial': 2,
-                'future_plans': 1,
-                'ties_to_home': 1,
-                'credibility_checks': 1,
-            }
-
-        # Personalization tokens
+    def _build_real_ukvi_questions(self, profile: Dict, difficulty: str) -> List[Dict]:
+        """Build questions using 7-phase real UKVI pattern."""
         tokens = self._build_tokens(profile)
+        all_questions = []
+        q_index = 0
 
-        for category, count in counts.items():
-            bank = REAL_UKVI_QUESTIONS.get(category, [])
-            if not bank:
-                continue
+        for phase_data in REAL_UKVI_PHASES:
+            for q in phase_data['questions']:
+                # Skip trick questions on easy difficulty
+                if difficulty == 'easy' and q.get('trick'):
+                    continue
+                # Skip credibility phase questions on easy
+                if difficulty == 'easy' and phase_data['phase'] == 7:
+                    if not q.get('type') == 'open_ended':
+                        continue
 
-            # Sample from bank
-            sampled = random.sample(bank, min(count, len(bank)))
+                text = q['q']
+                # Fill tokens
+                for key, val in tokens.items():
+                    text = text.replace('{' + key + '}', str(val))
 
-            for q_text in sampled:
-                # Fill in tokens
-                filled = self._fill_tokens(q_text, tokens)
-
-                questions.append({
-                    'category': category,
-                    'category_title': category.replace('_', ' ').title(),
-                    'question': filled,
+                q_index += 1
+                all_questions.append({
+                    'index': q_index,
+                    'phase': phase_data['phase'],
+                    'phase_name': phase_data['name'],
+                    'phase_question_num': len([x for x in all_questions if x['phase'] == phase_data['phase']]) + 1,
+                    'question': text,
+                    'time_seconds': q['time_seconds'],
+                    'mandatory': q.get('mandatory', False),
+                    'drill_down': q.get('drill_down', False),
+                    'trick': q.get('trick', False),
+                    'sensitive': q.get('sensitive', False),
+                    'critical': q.get('critical', False),
+                    'requires_number': q.get('requires_number', False),
+                    'requires_evidence': q.get('requires_evidence', False),
+                    'type': q.get('type', 'general'),
                     'difficulty': difficulty,
-                    'personalized': True,
                 })
 
-        # Shuffle but keep purpose_of_visit first
-        purpose_qs = [q for q in questions if q['category'] == 'purpose_of_visit']
-        other_qs = [q for q in questions if q['category'] != 'purpose_of_visit']
-        random.shuffle(other_qs)
+        return all_questions
 
-        return purpose_qs[:2] + other_qs
-
-    # ═══════════════════════════════════════════════════════════════
-    # TOKEN FILLING (personalization)
-    # ═══════════════════════════════════════════════════════════════
     def _build_tokens(self, profile: Dict) -> Dict[str, str]:
-        """Build token map from profile."""
         return {
             'university': profile.get('university') or 'your chosen university',
             'city': profile.get('university_city') or profile.get('city') or 'the city',
@@ -297,74 +436,22 @@ class UKVIInterviewGenerator:
             'mother': profile.get('mother_name') or 'your mother',
         }
 
-    def _fill_tokens(self, text: str, tokens: Dict[str, str]) -> str:
-        """Replace {token} placeholders with profile values."""
-        for key, value in tokens.items():
-            text = text.replace(f"{{{key}}}", value)
-        return text
+    def _summarize_phases(self, questions: List[Dict]) -> List[Dict]:
+        """Summarize phases for progress display."""
+        phase_map = {}
+        for q in questions:
+            p = q['phase']
+            if p not in phase_map:
+                phase_map[p] = {
+                    'phase': p,
+                    'name': q['phase_name'],
+                    'question_count': 0,
+                    'total_time_seconds': 0,
+                }
+            phase_map[p]['question_count'] += 1
+            phase_map[p]['total_time_seconds'] += q['time_seconds']
 
-    # ═══════════════════════════════════════════════════════════════
-    # AI REPHRASE (light — to avoid repetition)
-    # ═══════════════════════════════════════════════════════════════
-    def _rephrase_questions(
-        self,
-        questions: List[Dict],
-        profile: Dict,
-    ) -> List[Dict]:
-        """
-        Lightly rephrase questions using AI to feel fresh.
-        Keeps same category and meaning.
-        Only rephrases ~50% of the questions.
-        """
-        if not self.ai or len(questions) < 3:
-            return questions
-
-        # Take a subset to rephrase
-        to_rephrase = random.sample(
-            questions, k=max(2, len(questions) // 2)
-        )
-
-        prompt = f"""You are a UKVI interview officer.
-
-Rephrase the following interview questions slightly.
-Keep the same category and meaning. Make them sound natural and fresh.
-Do NOT change the meaning. Do NOT add new questions.
-
-Questions:
-{json.dumps(to_rephrase, indent=2)}
-
-Return ONLY valid JSON list with the same structure:
-[{{"category": "...", "question": "..."}}]
-"""
-        try:
-            resp = self.ai.generate(prompt, max_tokens=800, temperature=0.6)
-            match = re.search(r'\[.*\]', resp, re.DOTALL)
-            if match:
-                new_qs = json.loads(match.group())
-                if new_qs and isinstance(new_qs, list) and len(new_qs) == len(to_rephrase):
-                    # Merge back
-                    result = []
-                    rephrase_map = {q['question']: q for q in to_rephrase}
-                    for q in questions:
-                        if q['question'] in rephrase_map:
-                            new_text = next(
-                                (nq['question'] for nq in new_qs
-                                 if nq.get('category') == q['category']),
-                                q['question']
-                            )
-                            result.append({
-                                **q,
-                                'question': new_text,
-                                'rephrased': True,
-                            })
-                        else:
-                            result.append(q)
-                    logger.info(f"Rephrased {len(to_rephrase)} questions")
-                    return result
-        except Exception as e:
-            logger.warning(f"Rephrase failed: {e}")
-
-        return questions
+        return sorted(phase_map.values(), key=lambda x: x['phase'])
 
     # ═══════════════════════════════════════════════════════════════
     # TTS helpers
@@ -384,7 +471,7 @@ Return ONLY valid JSON list with the same structure:
             return None
 
     # ═══════════════════════════════════════════════════════════════
-    # FOLLOW-UP GENERATION (adaptive)
+    # FOLLOW-UP GENERATION
     # ═══════════════════════════════════════════════════════════════
     def generate_follow_up(
         self,
@@ -394,39 +481,26 @@ Return ONLY valid JSON list with the same structure:
         profile: Dict,
         difficulty: str,
     ) -> Optional[str]:
-        """Generate a follow-up question based on the answer, if needed."""
         if not self.ai:
             return random.choice(FOLLOW_UP_PROBES)
 
-        answer_lower = answer.lower()
-        word_count = len(answer.split())
+        answer_lower = (answer or '').lower()
+        word_count = len((answer or '').split())
         trigger = False
         reason = ""
 
-        # ─── Rule-based triggers ────────────────────────────────
         if word_count < 10:
             trigger = True
             reason = "The answer was too short. Need more detail."
-
-        elif category == 'financial' and not any(c.isdigit() for c in answer):
+        elif category == 'financial' and not any(c.isdigit() for c in (answer or '')):
             trigger = True
             reason = "Financial answer lacks specific figures."
-
-        elif any(phrase in answer_lower for phrase in [
-            'i guess', 'maybe', 'not sure', 'sort of', 'probably'
-        ]):
+        elif any(phrase in answer_lower for phrase in ['i guess', 'maybe', 'not sure', 'sort of', 'probably']):
             trigger = True
             reason = "Answer appears evasive."
-
         elif category == 'ties_to_home' and 'return' not in answer_lower and 'back' not in answer_lower:
             trigger = True
             reason = "No mention of return to home country."
-
-        elif category == 'university_knowledge' and not any(
-            c.isdigit() or c.isalpha() for c in answer
-        ):
-            trigger = True
-            reason = "Answer lacks specific details."
 
         if not trigger:
             return None
@@ -435,23 +509,18 @@ Return ONLY valid JSON list with the same structure:
 
 Question asked: "{question}"
 Applicant's answer: "{answer}"
-Category: {category}
 Reason for follow-up: {reason}
 
-Generate a single follow-up question that:
-- Probes deeper into the answer
-- Asks for SPECIFIC details or figures
-- Challenges inconsistencies if any
-- Sounds firm but professional (like a real UKVI officer)
+Generate ONE single follow-up question that probes deeper and demands specific details or evidence. Sound firm but professional.
 
-Return ONLY the follow-up question as plain text. No extra commentary.
+Return ONLY the follow-up question as plain text. No quotes, no commentary.
+
 Example: "Can you give me the exact annual income of your sponsor in Nepali rupees?"
 """
         try:
             resp = self.ai.generate(prompt, max_tokens=100, temperature=0.7)
             follow_up = resp.strip().strip('"').strip("'")
             if follow_up and len(follow_up) > 10:
-                logger.info(f"Generated follow-up: {follow_up}")
                 return follow_up
         except Exception as e:
             logger.warning(f"Follow-up generation failed: {e}")
@@ -459,10 +528,10 @@ Example: "Can you give me the exact annual income of your sponsor in Nepali rupe
         return random.choice(FOLLOW_UP_PROBES)
 
     # ═══════════════════════════════════════════════════════════════
-    # Evaluation helpers (rule-based fallback)
+    # Rule-based evaluation
     # ═══════════════════════════════════════════════════════════════
     def evaluate_response(self, question: str, answer: str, category: str) -> Dict:
-        word_count = len(answer.split())
+        word_count = len((answer or '').split())
         clarity = self._score_clarity(answer)
         credibility = self._score_credibility(answer, category)
         english = self._score_english(answer)
@@ -480,6 +549,7 @@ Example: "Can you give me the exact annual income of your sponsor in Nepali rupe
         }
 
     def _score_clarity(self, answer: str) -> float:
+        answer = answer or ''
         words = answer.split()
         if len(words) < 5:
             return 3.0
@@ -495,23 +565,19 @@ Example: "Can you give me the exact annual income of your sponsor in Nepali rupe
         return min(9.0, score)
 
     def _score_credibility(self, answer: str, category: str) -> float:
+        answer = answer or ''
         al = answer.lower()
-        weak = sum(1 for p in [
-            'maybe', 'i guess', 'sort of', 'not sure', 'probably'
-        ] if p in al)
-        strong = sum(1 for p in [
-            'definitely', 'certainly', 'i can confirm'
-        ] if p in al)
+        weak = sum(1 for p in ['maybe', 'i guess', 'sort of', 'not sure', 'probably'] if p in al)
+        strong = sum(1 for p in ['definitely', 'certainly', 'i can confirm'] if p in al)
         score = 5.0 - weak * 1.0 + strong * 0.5
-        if category == 'financial' and not any(
-            w.isdigit() for w in answer.split()
-        ):
+        if category == 'financial' and not any(w.isdigit() for w in answer.split()):
             score -= 1.0
         if category == 'ties_to_home' and 'return' not in al:
             score -= 1.5
         return max(3.0, min(9.0, score))
 
     def _score_english(self, answer: str) -> float:
+        answer = answer or ''
         words = answer.split()
         if len(words) < 5:
             return 3.0
@@ -521,40 +587,25 @@ Example: "Can you give me the exact annual income of your sponsor in Nepali rupe
                 score -= 0.5
         if len(words) > 15:
             score += 0.5
-        if any(w in answer.lower() for w in [
-            'however', 'although', 'therefore'
-        ]):
+        if any(w in answer.lower() for w in ['however', 'although', 'therefore']):
             score += 1.0
         return max(3.0, min(9.0, score))
 
     def _detect_red_flags(self, answer: str, category: str) -> List[str]:
         flags = []
+        answer = answer or ''
         al = answer.lower()
-        if any(m in al for m in [
-            'actually', 'wait', 'i mean', 'what i meant'
-        ]):
+        if any(m in al for m in ['actually', 'wait', 'i mean', 'what i meant']):
             flags.append("Possible inconsistency")
-        if any(m in al for m in [
-            "i don't remember", 'i forgot', 'not sure exactly'
-        ]):
+        if any(m in al for m in ["i don't remember", 'i forgot', 'not sure exactly']):
             flags.append("Evasive response")
-        if category == 'financial' and 'enough' in al and not any(
-            w.isdigit() for w in answer.split()
-        ):
+        if category == 'financial' and 'enough' in al and not any(w.isdigit() for w in answer.split()):
             flags.append("Financial answer lacks specific figures")
-        if category == 'ties_to_home' and (
-            'nothing' in al or 'not really' in al
-        ):
+        if category == 'ties_to_home' and ('nothing' in al or 'not really' in al):
             flags.append("Weak ties to home country - MAJOR red flag")
         return flags
 
-    def _feedback(
-        self,
-        clarity: float,
-        credibility: float,
-        english: float,
-        red_flags: List[str],
-    ) -> str:
+    def _feedback(self, clarity, credibility, english, red_flags) -> str:
         parts = []
         if clarity < 5:
             parts.append("Be more direct and specific")
@@ -565,3 +616,102 @@ Example: "Can you give me the exact annual income of your sponsor in Nepali rupe
         if red_flags:
             parts.append(f"Red flag: {red_flags[0]}")
         return ". ".join(parts) if parts else "Good response"
+
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# CONSISTENCY CHECKER — Detect contradictions between answers
+# ═══════════════════════════════════════════════════════════════════════
+
+class ConsistencyChecker:
+    """Detect inconsistencies in student answers across questions"""
+
+    KEY_PATTERNS = {
+        'tuition_fee': r'(?:tuition|fee|course fee)[^\d]{0,30}([£$]?\s*\d[\d,\.]*)',
+        'living_cost': r'(?:living|accommodation|rent)[^\d]{0,30}([£$]?\s*\d[\d,\.]*)',
+        'sponsor_income': r'(?:income|salary|earn)[^\d]{0,30}([£$]?\s*\d[\d,\.]*)',
+        'savings': r'(?:savings|save|saved)[^\d]{0,30}([£$]?\s*\d[\d,\.]*)',
+        'ielts_score': r'(?:ielts|band)[^\d]{0,20}(\d\.?\d?)',
+        'university': r'(?:study at|chosen|attend|university of)\s+([A-Z][a-zA-Z\s]+(?:University|College))',
+        'course': r'(?:study|doing|pursue|studying)\s+(?:a|an|the)?\s*(?:MSc|MA|BA|BSc|PhD|MBA)?\s*([A-Z][a-zA-Z\s]+)',
+    }
+
+    def __init__(self):
+        self.answers = []
+
+    def add_answer(self, q_index, question, answer, category='general'):
+        self.answers.append({
+            'index': q_index,
+            'question': question,
+            'answer': answer,
+            'category': category,
+            'entities': self._extract_entities(answer),
+        })
+
+    def _extract_entities(self, text):
+        entities = {}
+        text_lower = (text or '').lower()
+        for key, pattern in self.KEY_PATTERNS.items():
+            matches = re.findall(pattern, text_lower, re.IGNORECASE)
+            if matches:
+                entities[key] = str(matches[-1]).strip()
+        return entities
+
+    def check_consistency(self, new_answer, new_category='general'):
+        new_entities = self._extract_entities(new_answer)
+        issues = []
+        for prev in self.answers:
+            for key in new_entities:
+                if key in prev['entities']:
+                    old_val = prev['entities'][key]
+                    new_val = new_entities[key]
+                    if self._values_differ(old_val, new_val):
+                        issues.append({
+                            'key': key,
+                            'old_value': old_val,
+                            'new_value': new_val,
+                            'old_question_index': prev['index'],
+                            'old_question': prev['question'][:100],
+                        })
+
+        challenge = None
+        if issues:
+            issue = issues[0]
+            key_human = issue['key'].replace('_', ' ')
+            challenge = (
+                "Earlier when I asked about your " + key_human + ", "
+                "you said " + str(issue['old_value']) + ". "
+                "Now you're saying " + str(issue['new_value']) + ". "
+                "Can you explain that discrepancy?"
+            )
+
+        return {
+            'consistent': len(issues) == 0,
+            'issues': issues,
+            'challenge': challenge,
+        }
+
+    def _values_differ(self, old_val, new_val):
+        def normalize(v):
+            v = str(v).lower().strip()
+            v = v.replace(',', '').replace('£', '').replace('$', '').replace('npr', '').replace('rs', '').strip()
+            if v.endswith('k'):
+                try:
+                    return float(v[:-1]) * 1000
+                except ValueError:
+                    pass
+            try:
+                return float(v)
+            except ValueError:
+                return v
+
+        old_norm = normalize(old_val)
+        new_norm = normalize(new_val)
+
+        if isinstance(old_norm, float) and isinstance(new_norm, float):
+            if old_norm == 0 and new_norm == 0:
+                return False
+            diff_pct = abs(old_norm - new_norm) / max(old_norm, new_norm) * 100
+            return diff_pct > 5
+
+        return str(old_norm).lower() != str(new_norm).lower()

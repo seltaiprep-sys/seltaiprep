@@ -229,7 +229,7 @@ def get_blueprint():
         ]):
             return jsonify({'error': 'Missing required fields'}), 400
         result = test_manager.submit_answer_adaptive(
-            int(user_id), int(session_id), int(question_index),
+            int(user_id), _safe_session_id(session_id, int(user_id))[0], int(question_index),
             question_text, answer_text,
         )
         return jsonify(result)
@@ -253,7 +253,7 @@ def get_blueprint():
         ]):
             return jsonify({'error': 'Missing fields'}), 400
         result = test_manager.submit_audio_answer(
-            int(user_id), int(session_id), int(question_index),
+            int(user_id), _safe_session_id(session_id, int(user_id))[0], int(question_index),
             question_text, audio_data, audio_file.filename,
         )
         return jsonify(result)
@@ -271,38 +271,58 @@ def get_blueprint():
         if not all([user_id, session_id, question_index is not None]):
             return jsonify({'error': 'Missing fields'}), 400
         result = test_manager.get_question_audio(
-            int(user_id), int(session_id), int(question_index)
+            int(user_id), _safe_session_id(session_id, int(user_id))[0], int(question_index)
         )
         return jsonify(result)
 
     @bp.route('/tts', methods=['POST'])
     def tts():
-        """Generate TTS audio using Deepgram."""
+        """Generate TTS audio — IELTS service primary, listening fallback."""
         data = request.json or {}
         text = data.get('text', '')
         if not text:
             return jsonify({'error': 'No text provided'}), 400
 
-        try:
-            from app import audio_service, AUDIO_SERVICE_AVAILABLE
-        except ImportError:
-            return jsonify({'error': 'Audio service not available'}), 503
-
-        if not audio_service or not AUDIO_SERVICE_AVAILABLE:
-            return jsonify({'error': 'Audio service not available'}), 503
-
         filename = f"ukvi_tts_{uuid.uuid4().hex[:8]}.mp3"
-        audio_url = audio_service.generate_speaking_audio(
-            text=text, part=0, question_num=0,
-            custom_filename=filename,
-        )
+        audio_url = None
+
+        # 1. Try IELTS UnifiedAudioService (has speaking method)
+        try:
+            from modules.ielts.audio.unified_service import (
+                UnifiedAudioService as _IA,
+            )
+            _ia = None
+            for _kw in ({}, {'ai_engine': None}, {'tts_provider': None}):
+                try:
+                    _ia = _IA(**_kw)
+                    break
+                except TypeError:
+                    continue
+                except Exception:
+                    continue
+            if _ia and hasattr(_ia, 'generate_speaking_audio'):
+                audio_url = _ia.generate_speaking_audio(
+                    text=text, part=0, question_num=0,
+                    custom_filename=filename,
+                )
+        except Exception as _e:
+            logger.warning('IELTS TTS failed: %s', _e)
+
+        # 2. Fallback: app audio_service listening method
+        if not audio_url:
+            try:
+                from app import audio_service as _app_audio
+                if _app_audio and hasattr(_app_audio, 'generate_listening_section_audio'):
+                    audio_url = _app_audio.generate_listening_section_audio(
+                        text=text, custom_filename=filename,
+                    )
+            except Exception as _e:
+                logger.warning('Listening TTS fallback failed: %s', _e)
+
         if audio_url:
             return jsonify({'audio_url': audio_url})
+        logger.error('All TTS methods failed for text: %s', text[:60])
         return jsonify({'error': 'TTS generation failed'}), 500
-
-    # ═══════════════════════════════════════════════════════════
-    # COMPLETE / HISTORY / PROGRESS
-    # ═══════════════════════════════════════════════════════════
     @bp.route('/finish', methods=['POST'])
     def finish():
         """Complete the interview and get evaluation."""
@@ -312,7 +332,7 @@ def get_blueprint():
         if not all([user_id, session_id]):
             return jsonify({'error': 'Missing fields'}), 400
         result = test_manager.complete_interview(
-            int(user_id), int(session_id)
+            int(user_id), _safe_session_id(session_id, int(user_id))[0]
         )
         return jsonify(result)
 
@@ -372,3 +392,52 @@ def _create_ukvi_session(user_id: int, difficulty: str, questions: list) -> dict
         db.session.rollback()
         logger.exception(f"_create_ukvi_session failed: {e}")
         return {'error': str(e)}
+
+# ═══════════════════════════════════════════════════════════════════
+# UKVI TTS HELPER — robust fallback
+# ═══════════════════════════════════════════════════════════════════
+
+
+# ═══════════════════════════════════════════════════════════════════
+# SESSION ID SAFETY HELPER
+# ═══════════════════════════════════════════════════════════════════
+
+def _safe_session_id(raw_session_id, user_id):
+    """
+    Convert session_id safely.
+    If invalid (e.g. 'phase_xxx' from frontend), find latest active session.
+    """
+    import logging as _lg
+    _log = _lg.getLogger(__name__)
+
+    # Try to parse as int first
+    if raw_session_id is not None:
+        try:
+            return int(raw_session_id), None
+        except (ValueError, TypeError):
+            _log.warning(
+                'Invalid session_id received: %r — falling back to latest session',
+                raw_session_id
+            )
+
+    # Fallback: find latest active session for this user
+    try:
+        from .models import UKVITestSession
+        from app import db
+        sess = UKVITestSession.query.filter_by(
+            user_id=user_id,
+            status='in_progress'
+        ).order_by(UKVITestSession.id.desc()).first()
+        if not sess:
+            # Try any recent session
+            sess = UKVITestSession.query.filter_by(
+                user_id=user_id
+            ).order_by(UKVITestSession.id.desc()).first()
+        if sess:
+            _log.info('Using fallback session #%s for user %s', sess.id, user_id)
+            return sess.id, None
+    except Exception as e:
+        _log.exception('Fallback session lookup failed: %s', e)
+
+    return None, 'Session not found'
+

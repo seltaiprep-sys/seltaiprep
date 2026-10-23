@@ -1,0 +1,607 @@
+{% extends 'ukvi_b2b/base.html' %}
+{% block title %}Add Student — UKVI B2B{% endblock %}
+
+
+
+{% block content %}
+<style>
+<style>
+:root {
+    --primary: #4f46e5;
+    --primary-hover: #4338ca;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --gray-50: #f9fafb;
+    --gray-100: #f3f4f6;
+    --gray-200: #e5e7eb;
+    --gray-300: #d1d5db;
+    --gray-500: #6b7280;
+    --gray-700: #374151;
+    --gray-900: #111827;
+    --radius: 12px;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1);
+    --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1);
+}
+* { box-sizing: border-box; }
+
+.page-wrapper {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 24px 16px 100px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: var(--gray-900);
+}
+
+/* ── Header ── */
+.page-header {
+    background: linear-gradient(135deg, var(--primary) 0%, #7c3aed 100%);
+    color: white;
+    padding: 28px 24px;
+    border-radius: var(--radius);
+    margin-bottom: 24px;
+    box-shadow: var(--shadow-lg);
+    position: relative;
+    overflow: hidden;
+}
+.page-header::after {
+    content: '';
+    position: absolute;
+    top: -50%; right: -20%;
+    width: 300px; height: 300px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 50%;
+}
+.page-header h1 {
+    margin: 0 0 8px;
+    font-size: 24px;
+    font-weight: 700;
+    position: relative;
+}
+.page-header p {
+    margin: 0;
+    font-size: 14px;
+    opacity: 0.9;
+    position: relative;
+}
+.credit-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255,255,255,0.2);
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    margin-top: 12px;
+    position: relative;
+    backdrop-filter: blur(10px);
+}
+
+/* ── Cards ── */
+.form-card {
+    background: white;
+    border-radius: var(--radius);
+    padding: 24px;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow-md);
+    border: 1px solid var(--gray-200);
+}
+.card-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 2px solid var(--gray-100);
+}
+.card-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+}
+.icon-blue   { background: #dbeafe; }
+.icon-amber  { background: #fef3c7; }
+.icon-green  { background: #d1fae5; }
+.icon-purple { background: #ede9fe; }
+.card-title {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--gray-900);
+    margin: 0;
+}
+.card-subtitle {
+    font-size: 13px;
+    color: var(--gray-500);
+    margin: 2px 0 0;
+}
+
+/* ── Form Grid ── */
+.form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+.form-grid.one-col { grid-template-columns: 1fr; }
+@media (max-width: 640px) {
+    .form-grid { grid-template-columns: 1fr; }
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.form-group.full-width {
+    grid-column: 1 / -1;
+}
+.form-group label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--gray-700);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.form-group label .required {
+    color: var(--danger);
+    font-size: 15px;
+    line-height: 1;
+}
+.form-group label .hint {
+    color: var(--gray-500);
+    font-weight: 400;
+    font-size: 11px;
+    margin-left: auto;
+}
+.form-control {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1.5px solid var(--gray-200);
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+    color: var(--gray-900);
+    background: white;
+    transition: all 0.15s;
+}
+.form-control::placeholder { color: var(--gray-300); }
+.form-control:hover { border-color: var(--gray-300); }
+.form-control:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(79,70,229,0.1);
+}
+textarea.form-control {
+    resize: vertical;
+    min-height: 70px;
+    font-family: inherit;
+}
+.form-hint {
+    font-size: 11.5px;
+    color: var(--gray-500);
+    margin-top: 2px;
+    line-height: 1.5;
+}
+
+/* ── Password row ── */
+.password-row {
+    display: flex;
+    gap: 8px;
+}
+.password-row .form-control { flex: 1; }
+.btn-auto {
+    padding: 0 14px;
+    border: 1.5px solid var(--gray-200);
+    background: white;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--gray-700);
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+.btn-auto:hover {
+    background: var(--gray-50);
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+/* ── Info banner ── */
+.info-banner {
+    background: #eff6ff;
+    border-left: 4px solid #3b82f6;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    color: #1e40af;
+    margin-bottom: 16px;
+    line-height: 1.6;
+}
+.info-banner strong { color: #1e3a8a; }
+
+/* ── Profile section (highlighted) ── */
+.profile-card {
+    border: 2px solid #c4b5fd;
+    background: linear-gradient(180deg, #faf5ff 0%, #ffffff 100%);
+    position: relative;
+}
+.profile-card::before {
+    content: 'RECOMMENDED';
+    position: absolute;
+    top: -10px;
+    right: 20px;
+    background: var(--primary);
+    color: white;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    box-shadow: var(--shadow-sm);
+}
+.profile-badge {
+    display: inline-block;
+    background: var(--warning);
+    color: white;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    margin-left: 8px;
+}
+
+/* ── Sticky footer ── */
+.sticky-footer {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: white;
+    border-top: 1px solid var(--gray-200);
+    box-shadow: 0 -4px 12px rgba(0,0,0,0.06);
+    padding: 12px 24px;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+.footer-info {
+    font-size: 13px;
+    color: var(--gray-500);
+}
+.footer-info strong { color: var(--gray-900); }
+.footer-actions {
+    display: flex;
+    gap: 10px;
+}
+.btn {
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    border: none;
+    font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+.btn-cancel {
+    background: white;
+    color: var(--gray-700);
+    border: 1.5px solid var(--gray-200);
+}
+.btn-cancel:hover { background: var(--gray-50); }
+.btn-primary {
+    background: var(--primary);
+    color: white;
+    box-shadow: var(--shadow-sm);
+}
+.btn-primary:hover {
+    background: var(--primary-hover);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+.btn-primary:active { transform: translateY(0); }
+
+/* ── Timezone selector ── */
+.timezone-wrapper { position: relative; }
+.timezone-wrapper select { appearance: none; padding-right: 40px; }
+.timezone-wrapper::after {
+    content: '▼';
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    color: var(--gray-500);
+    font-size: 10px;
+}
+
+/* ── Window info ── */
+.window-info {
+    background: #f0fdf4;
+    border-left: 4px solid var(--success);
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    color: #065f46;
+    margin-top: 12px;
+    line-height: 1.6;
+}
+
+/* ── Flash messages ── */
+.flash {
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    font-size: 13.5px;
+    font-weight: 500;
+}
+.flash.error { background: #fee2e2; color: #991b1b; border-left: 4px solid var(--danger); }
+.flash.success { background: #d1fae5; color: #065f46; border-left: 4px solid var(--success); }
+</style>
+</style>
+
+<div class="page-wrapper">
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for cat, msg in messages %}
+            <div class="flash {{ cat }}">{{ msg }}</div>
+        {% endfor %}
+    {% endwith %}
+
+    <!-- Header -->
+    <div class="page-header">
+        <h1>➕ Add New Student</h1>
+        <p>Create a student, schedule their test, and generate a unique test link</p>
+        <div class="credit-badge">
+            💰 <strong>{{ partner.credits_balance }}</strong> credits available
+            <span style="opacity: 0.7;">·</span>
+            <span style="opacity: 0.9;">1 credit will be deducted</span>
+        </div>
+    </div>
+
+    <form method="POST" action="{{ url_for('ukvi_b2b_add_student') }}" id="add-student-form">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+
+        <!-- ═══ BASIC INFO ═══ -->
+        <div class="form-card">
+            <div class="card-header">
+                <div class="card-icon icon-blue">👤</div>
+                <div>
+                    <h2 class="card-title">Student Information</h2>
+                    <p class="card-subtitle">Basic contact details for this student</p>
+                </div>
+            </div>
+
+            <div class="form-grid">
+                <div class="form-group full-width">
+                    <label>Full Name <span class="required">*</span></label>
+                    <input type="text" name="full_name" class="form-control" required
+                           placeholder="e.g., Ram Bahadur Thapa" autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label>Email <span class="hint">optional</span></label>
+                    <input type="email" name="email" class="form-control"
+                           placeholder="student@example.com">
+                </div>
+                <div class="form-group">
+                    <label>Phone <span class="hint">optional</span></label>
+                    <input type="tel" name="phone" class="form-control"
+                           placeholder="+977-98XXXXXXXX">
+                </div>
+                <div class="form-group">
+                    <label>Passport Number <span class="hint">optional</span></label>
+                    <input type="text" name="passport_number" class="form-control"
+                           placeholder="e.g., PA1234567">
+                </div>
+                <div class="form-group">
+                    <label>Notes <span class="hint">internal only</span></label>
+                    <input type="text" name="notes" class="form-control"
+                           placeholder="Any internal notes...">
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ CREDENTIALS ═══ -->
+        <div class="form-card">
+            <div class="card-header">
+                <div class="card-icon icon-amber">🔑</div>
+                <div>
+                    <h2 class="card-title">Login Credentials</h2>
+                    <p class="card-subtitle">Student will use these to log in and take the test</p>
+                </div>
+            </div>
+
+            <div class="info-banner">
+                ⚠️ <strong>Important:</strong> Password is encrypted and cannot be retrieved later.
+                Share it with the student immediately after creating.
+            </div>
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Username <span class="required">*</span></label>
+                    <input type="text" name="username" class="form-control" required
+                           placeholder="e.g., ram_thapa" pattern="[a-zA-Z0-9._\-]+"
+                           autocomplete="off">
+                    <div class="form-hint">Letters, numbers, dot, underscore, hyphen only</div>
+                </div>
+                <div class="form-group">
+                    <label>Password <span class="required">*</span></label>
+                    <div class="password-row">
+                        <input type="text" name="password" id="password-field" class="form-control" required
+                               minlength="6" placeholder="Min 6 characters" autocomplete="new-password">
+                        <button type="button" class="btn-auto" onclick="autoGenPassword()">🎲 Auto</button>
+                    </div>
+                    <div class="form-hint">Min 6 characters — share with student</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ SCHEDULE ═══ -->
+        <div class="form-card">
+            <div class="card-header">
+                <div class="card-icon icon-green">📅</div>
+                <div>
+                    <h2 class="card-title">Schedule Test</h2>
+                    <p class="card-subtitle">Test link becomes active at this scheduled time</p>
+                </div>
+            </div>
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Scheduled Date <span class="required">*</span></label>
+                    <input type="date" name="scheduled_date" class="form-control" required
+                           min="{{ today }}">
+                </div>
+                <div class="form-group">
+                    <label>Scheduled Time <span class="required">*</span></label>
+                    <input type="time" name="scheduled_time" class="form-control" required>
+                </div>
+                <div class="form-group full-width">
+                    <label>🌍 Timezone <span class="required">*</span></label>
+                    <div class="timezone-wrapper">
+                        <select name="timezone" class="form-control" required>
+                            <option value="NPT" selected>🇳🇵 Nepal Time (NPT, UTC+5:45) — Default</option>
+                            <option value="IST">🇮🇳 India (IST, UTC+5:30)</option>
+                            <option value="GST">🇦🇪 Dubai (GST, UTC+4)</option>
+                            <option value="BST">🇬🇧 UK Summer (BST, UTC+1)</option>
+                            <option value="GMT">🇬🇧 UK Winter (GMT, UTC+0)</option>
+                            <option value="UTC">🌐 UTC (UTC+0)</option>
+                            <option value="EST">🇺🇸 US East (EST, UTC-5)</option>
+                            <option value="PST">🇺🇸 US West (PST, UTC-8)</option>
+                        </select>
+                    </div>
+                    <div class="form-hint">We'll automatically convert to UTC</div>
+                </div>
+            </div>
+
+            <div class="window-info">
+                ⏱️ <strong>Test Window:</strong> Student can start the test at the scheduled time
+                and has <strong>24 hours</strong> to complete it. Link is auto-generated.
+            </div>
+        </div>
+
+        <!-- ═══ PROFILE (highlighted) ═══ -->
+        <div class="form-card profile-card">
+            <div class="card-header">
+                <div class="card-icon icon-purple">🎓</div>
+                <div style="flex: 1;">
+                    <h2 class="card-title">
+                        Interview Profile
+                        <span class="profile-badge">Saves Time</span>
+                    </h2>
+                    <p class="card-subtitle">
+                        Fill now → student skips profile form → goes straight to interview
+                    </p>
+                </div>
+            </div>
+
+            <div class="info-banner">
+                💡 <strong>Recommended:</strong> Fill this out now to save student time.
+                Leave blank → student fills it themselves before starting.
+                You can change university/course on re-enable later.
+            </div>
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Father's Name</label>
+                    <input type="text" name="father_name" class="form-control" placeholder="Hari Bahadur">
+                </div>
+                <div class="form-group">
+                    <label>Mother's Name</label>
+                    <input type="text" name="mother_name" class="form-control" placeholder="Sita Devi">
+                </div>
+                <div class="form-group">
+                    <label>University</label>
+                    <input type="text" name="university" class="form-control" placeholder="University of East London">
+                </div>
+                <div class="form-group">
+                    <label>City</label>
+                    <input type="text" name="university_city" class="form-control" placeholder="London">
+                </div>
+                <div class="form-group">
+                    <label>Course</label>
+                    <input type="text" name="course" class="form-control" placeholder="MSc Computer Science">
+                </div>
+                <div class="form-group">
+                    <label>Course Duration</label>
+                    <input type="text" name="course_duration" class="form-control" placeholder="1 year">
+                </div>
+                <div class="form-group">
+                    <label>IELTS Score</label>
+                    <input type="text" name="ielts_score" class="form-control" placeholder="6.5">
+                </div>
+                <div class="form-group">
+                    <label>Home Country</label>
+                    <input type="text" name="home_country" class="form-control" value="Nepal">
+                </div>
+                <div class="form-group">
+                    <label>Tuition Fee</label>
+                    <input type="text" name="tuition_fee" class="form-control" placeholder="£15,000">
+                </div>
+                <div class="form-group">
+                    <label>Living Cost</label>
+                    <input type="text" name="living_cost" class="form-control" placeholder="£12,000/year">
+                </div>
+                <div class="form-group">
+                    <label>Sponsor Name</label>
+                    <input type="text" name="sponsor_name" class="form-control" placeholder="Father">
+                </div>
+                <div class="form-group">
+                    <label>Sponsor Income</label>
+                    <input type="text" name="sponsor_income" class="form-control" placeholder="NPR 15,00,000/yr">
+                </div>
+                <div class="form-group full-width">
+                    <label>Sponsor Savings</label>
+                    <input type="text" name="sponsor_savings" class="form-control" placeholder="NPR 50,00,000">
+                </div>
+            </div>
+        </div>
+
+        <!-- Sticky footer -->
+        <div class="sticky-footer">
+            <div class="footer-info">
+                Balance: <strong>{{ partner.credits_balance }}</strong> → <strong>{{ partner.credits_balance - 1 }}</strong> after creation
+            </div>
+            <div class="footer-actions">
+                <a href="{{ url_for('ukvi_b2b_students') }}" class="btn btn-cancel">Cancel</a>
+                <button type="submit" class="btn btn-primary">
+                    ✅ Add Student &amp; Generate Link
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+function autoGenPassword() {
+    const chars = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let pw = '';
+    for (let i = 0; i < 10; i++) {
+        pw += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    document.getElementById('password-field').value = pw;
+    document.getElementById('password-field').type = 'text';
+}
+
+// Warn on unsaved changes
+let formDirty = false;
+document.getElementById('add-student-form').addEventListener('input', () => { formDirty = true; });
+window.addEventListener('beforeunload', (e) => {
+    if (formDirty) {
+        e.preventDefault();
+        e.returnValue = '';
+    }
+});
+</script>
+{% endblock %}

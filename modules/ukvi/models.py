@@ -2,6 +2,13 @@
 """
 UKVI SQLAlchemy models – using the global db instance from root models.py
 
+v4.0 — B2B MODELS ADDED:
+  • UKVIB2BPartner          — Institute accounts with credits
+  • UKVIB2BCreditPackage    — Available credit packages
+  • UKVIB2BCreditPurchase   — Purchase records
+  • UKVIB2BStudent          — Students with scheduled tests
+  • UKVIB2BTransaction      — Credit audit trail
+
 v3.1 — Profile fields:
   • UKVIUser.full_name   — display name (optional)
   • UKVIUser.target_band — target band score (optional)
@@ -20,7 +27,8 @@ v1.0 — Initial models.
 """
 
 import json
-from datetime import datetime, timezone
+import secrets
+from datetime import datetime, timezone, timedelta, date, time
 from models import db  # Import the global db from root
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -117,7 +125,6 @@ class UKVISubscription(db.Model):
 
     def is_active(self):
         """Check if subscription is active (timezone-aware)."""
-        from datetime import datetime, timezone
         if self.status != 'active':
             return False
         if not self.subscription_end:
@@ -299,3 +306,293 @@ class UKVIGenerationJob(db.Model):
             return data.get('questions', [])
         except Exception:
             return []
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# B2B MODELS — Institute + Credits + Students (UKVI only)
+# ═══════════════════════════════════════════════════════════════════════
+
+class UKVIB2BPartner(db.Model):
+    """B2B Institute account with credit-based billing"""
+    __tablename__ = 'ukvi_b2b_partners'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(200), nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False, index=True)
+    password_hash = db.Column(db.String(255), nullable=False)
+    phone = db.Column(db.String(20))
+    address = db.Column(db.Text)
+
+    # Credit system (1 credit = 1 test = Rs 100)
+    credits_balance = db.Column(db.Integer, default=0, nullable=False)
+    total_credits_purchased = db.Column(db.Integer, default=0, nullable=False)
+    total_credits_used = db.Column(db.Integer, default=0, nullable=False)
+
+    # Status
+    is_active = db.Column(db.Boolean, default=True, nullable=False)
+    is_admin_approved = db.Column(db.Boolean, default=False, nullable=False)
+
+    created_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(timezone.utc)
+    )
+    last_login = db.Column(db.DateTime, nullable=True)
+
+    # Relationships
+    students = db.relationship(
+        'UKVIB2BStudent',
+        backref='partner',
+        lazy='dynamic',
+        cascade='all, delete-orphan',
+    )
+    purchases = db.relationship(
+        'UKVIB2BCreditPurchase',
+        backref='partner',
+        lazy='dynamic',
+    )
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(
+            password, method='pbkdf2:sha256'
+        )
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+
+    def has_credit(self):
+        return self.credits_balance > 0
+
+    def __repr__(self):
+        return f'<UKVIB2BPartner {self.email} credits={self.credits_balance}>'
+
+
+class UKVIB2BCreditPackage(db.Model):
+    """Available credit packages (admin-configured)"""
+    __tablename__ = 'ukvi_b2b_credit_packages'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    credits = db.Column(db.Integer, nullable=False)
+    price_npr = db.Column(db.Float, nullable=False)
+    discount_percent = db.Column(db.Float, default=0)
+    description = db.Column(db.String(300))
+    is_active = db.Column(db.Boolean, default=True)
+    is_featured = db.Column(db.Boolean, default=False)
+    display_order = db.Column(db.Integer, default=0)
+
+    @property
+    def price_per_credit(self):
+        return round(self.price_npr / self.credits, 2) if self.credits else 0
+
+    def __repr__(self):
+        return f'<CreditPackage {self.name} {self.credits}cr>'
+
+
+class UKVIB2BCreditPurchase(db.Model):
+    """Credit purchase records (eSewa/Khalti/Manual)"""
+    __tablename__ = 'ukvi_b2b_purchases'
+
+    id = db.Column(db.Integer, primary_key=True)
+    partner_id = db.Column(
+        db.Integer,
+        db.ForeignKey('ukvi_b2b_partners.id'),
+        nullable=False,
+        index=True,
+    )
+    package_id = db.Column(
+        db.Integer,
+        db.ForeignKey('ukvi_b2b_credit_packages.id'),
+        nullable=True,
+    )
+
+    credits = db.Column(db.Integer, nullable=False)
+    amount_npr = db.Column(db.Float, nullable=False)
+
+    # Payment
+    payment_method = db.Column(db.String(20), nullable=False)  # esewa/khalti/manual
+    payment_status = db.Column(db.String(20), default='pending')  # pending/completed/failed/rejected
+    payment_ref = db.Column(db.String(100))  # Transaction ID
+    payment_screenshot = db.Column(db.String(300))  # Manual upload path
+    admin_notes = db.Column(db.Text)
+
+    created_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(timezone.utc)
+    )
+    completed_at = db.Column(db.DateTime, nullable=True)
+
+    package = db.relationship('UKVIB2BCreditPackage')
+
+    def __repr__(self):
+        return f'<Purchase {self.id} {self.credits}cr {self.payment_status}>'
+
+
+class UKVIB2BStudent(db.Model):
+    """B2B student with scheduled test — links to UKVIUser"""
+    __tablename__ = 'ukvi_b2b_students'
+
+    id = db.Column(db.Integer, primary_key=True)
+    partner_id = db.Column(
+        db.Integer,
+        db.ForeignKey('ukvi_b2b_partners.id'),
+        nullable=False,
+        index=True,
+    )
+    ukvi_user_id = db.Column(
+        db.Integer,
+        db.ForeignKey('ukvi_users.id'),
+        nullable=True,
+        index=True,
+    )
+
+    # Student info (institute fills)
+    full_name = db.Column(db.String(200), nullable=False)
+    email = db.Column(db.String(120), index=True)
+    phone = db.Column(db.String(20))
+    passport_number = db.Column(db.String(50))
+    notes = db.Column(db.Text)
+
+    # Scheduled test (institute selects)
+    scheduled_date = db.Column(db.Date, nullable=False)
+    scheduled_time = db.Column(db.Time, nullable=False)
+
+    # Token (link)
+    test_token = db.Column(
+        db.String(64), unique=True, nullable=False, index=True
+    )
+    token_created_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(timezone.utc)
+    )
+    token_used = db.Column(db.Boolean, default=False, nullable=False)
+    token_revoked = db.Column(db.Boolean, default=False, nullable=False)
+
+    # Registration (student fills)
+    registered_at = db.Column(db.DateTime, nullable=True)
+
+    # Test status
+    test_started_at = db.Column(db.DateTime, nullable=True)
+    test_completed_at = db.Column(db.DateTime, nullable=True)
+
+    # Result summary
+    result_score = db.Column(db.Float, nullable=True)
+    result_grade = db.Column(db.String(20), nullable=True)
+
+    # Credit tracking
+    credit_deducted = db.Column(db.Boolean, default=False, nullable=False)
+    credit_refunded = db.Column(db.Boolean, default=False, nullable=False)
+
+    is_active = db.Column(db.Boolean, default=True, nullable=False)
+    created_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(timezone.utc)
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not self.test_token:
+            self.test_token = secrets.token_urlsafe(32)
+
+    # ═══════════════════════════════════════════════════════════════
+    # WINDOW LOGIC
+    # ═══════════════════════════════════════════════════════════════
+
+    @property
+    def scheduled_datetime(self):
+        """Combined scheduled date + time (UTC)"""
+        return datetime.combine(
+            self.scheduled_date, self.scheduled_time
+        ).replace(tzinfo=timezone.utc)
+
+    @property
+    def window_start(self):
+        """Test window begins at scheduled time"""
+        return self.scheduled_datetime
+
+    @property
+    def window_end(self):
+        """Test window ends 24 hours after start"""
+        return self.scheduled_datetime + timedelta(hours=24)
+
+    @property
+    def is_in_window(self):
+        """Current time is within test window"""
+        now = datetime.now(timezone.utc)
+        return self.window_start <= now <= self.window_end
+
+    @property
+    def is_too_early(self):
+        """Before scheduled time"""
+        return datetime.now(timezone.utc) < self.window_start
+
+    @property
+    def is_expired(self):
+        """Past 24-hour window"""
+        return datetime.now(timezone.utc) > self.window_end
+
+    @property
+    def window_status(self):
+        """Human-readable status"""
+        if self.token_used:
+            return 'used'
+        if self.token_revoked:
+            return 'revoked'
+        if self.is_expired:
+            return 'expired'
+        if self.is_too_early:
+            return 'scheduled'
+        if self.is_in_window:
+            return 'active'
+        return 'unknown'
+
+    @property
+    def test_url(self):
+        return f'/ukvi/b2b/test/{self.test_token}'
+
+    def __repr__(self):
+        return f'<UKVIB2BStudent {self.full_name} [{self.window_status}]>'
+
+    # ── Interview Profile (institute fills upfront) ──
+    father_name = db.Column(db.String(200))
+    mother_name = db.Column(db.String(200))
+    university = db.Column(db.String(300))
+    university_city = db.Column(db.String(100))
+    course = db.Column(db.String(300))
+    course_duration = db.Column(db.String(50))
+    ielts_score = db.Column(db.String(20))
+    tuition_fee = db.Column(db.String(50))
+    living_cost = db.Column(db.String(50))
+    sponsor_name = db.Column(db.String(200))
+    sponsor_income = db.Column(db.String(50))
+    sponsor_savings = db.Column(db.String(50))
+    home_country = db.Column(db.String(100), default="Nepal")
+    profile_completed = db.Column(db.Boolean, default=False, nullable=False)
+
+    # ── Attempt tracking (max 5 attempts per credit) ──
+    attempt_count = db.Column(db.Integer, default=0, nullable=False)
+    max_attempts = db.Column(db.Integer, default=5, nullable=False)
+
+
+class UKVIB2BTransaction(db.Model):
+    """Credit transaction log (audit trail)"""
+    __tablename__ = 'ukvi_b2b_transactions'
+
+    id = db.Column(db.Integer, primary_key=True)
+    partner_id = db.Column(
+        db.Integer,
+        db.ForeignKey('ukvi_b2b_partners.id'),
+        nullable=False,
+        index=True,
+    )
+
+    # Types: purchase / student_added / refund / admin_adjust
+    type = db.Column(db.String(30), nullable=False)
+    credits_change = db.Column(db.Integer, nullable=False)  # +/- 
+    balance_after = db.Column(db.Integer, nullable=False)
+
+    description = db.Column(db.String(300))
+    reference_id = db.Column(db.Integer)
+    reference_type = db.Column(db.String(20))
+
+    created_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(timezone.utc)
+    )
+
+    def __repr__(self):
+        return f'<Txn {self.type} {self.credits_change:+d} → {self.balance_after}>'

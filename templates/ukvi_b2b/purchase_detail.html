@@ -1,0 +1,110 @@
+{% extends 'ukvi_b2b/base.html' %}
+{% block title %}Purchase #{{ purchase.id }}{% endblock %}
+{% block content %}
+<div class="card" style="max-width: 600px; margin: 0 auto;">
+    <div style="text-align: center; margin-bottom: 20px;">
+        <div style="font-size: 48px;">
+            {% if purchase.payment_status == 'completed' %}✅
+            {% elif purchase.payment_status == 'submitted' %}⏳
+            {% elif purchase.payment_status == 'rejected' %}❌
+            {% else %}💳{% endif %}
+        </div>
+        <h2 style="margin: 10px 0;">Purchase #{{ purchase.id }}</h2>
+        <span class="badge badge-{{ purchase.payment_status }}" style="font-size: 13px; padding: 5px 15px;">
+            {{ purchase.payment_status|upper }}
+        </span>
+    </div>
+
+    <table style="margin-bottom: 20px;">
+        <tr><td><strong>Credits</strong></td><td>+{{ purchase.credits }}</td></tr>
+        <tr><td><strong>Amount</strong></td><td>Rs {{ '{:,.0f}'.format(purchase.amount_npr) }}</td></tr>
+        <tr><td><strong>Method</strong></td><td>{{ purchase.payment_method|capitalize }}</td></tr>
+        <tr><td><strong>Date</strong></td><td>{{ purchase.created_at.strftime('%Y-%m-%d %H:%M') }}</td></tr>
+        {% if purchase.payment_ref %}
+        <tr><td><strong>Ref ID</strong></td><td><code>{{ purchase.payment_ref }}</code></td></tr>
+        {% endif %}
+    </table>
+
+    {% if purchase.payment_method == 'manual' and purchase.payment_status == 'pending' %}
+    
+<!-- ─── eSewa QR (added) ─── -->
+<div style="background: linear-gradient(135deg, #60bb46 0%, #4a9a35 100%); padding: 20px; border-radius: 12px; margin-bottom: 20px; color: white;">
+    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 14px;">
+        <div style="background: white; padding: 8px; border-radius: 8px; font-size: 22px; line-height: 1;">💚</div>
+        <div>
+            <div style="font-size: 16px; font-weight: 700;">Pay via eSewa (Recommended)</div>
+            <div style="font-size: 12px; opacity: 0.9;">Scan QR or use eSewa ID below</div>
+        </div>
+    </div>
+
+    <div style="background: white; padding: 16px; border-radius: 10px; text-align: center;">
+        <img src="{{ url_for('static', filename='images/qr_code.png') }}"
+             alt="eSewa QR Code"
+             style="max-width: 220px; width: 100%; height: auto; display: block; margin: 0 auto 10px;">
+        <div style="font-size: 12px; color: #6b7280;">
+            Open eSewa app → Scan QR → Pay <strong>Rs {{ purchase.amount_npr or purchase.amount or '' }}</strong>
+        </div>
+    </div>
+
+    <div style="margin-top: 14px; padding: 10px 12px; background: rgba(255,255,255,0.15); border-radius: 8px;">
+        <div style="font-size: 11px; opacity: 0.9;">Reference to include:</div>
+        <div style="font-size: 17px; font-weight: 700; letter-spacing: 1px;">B2B-{{ purchase.id }}</div>
+    </div>
+</div>
+
+<div class="alert alert-info">
+        <strong>💰 Payment Instructions</strong><br>
+        Transfer <strong>Rs {{ '{:,.0f}'.format(purchase.amount_npr) }}</strong> to:
+        <ul style="margin: 10px 0 0 20px; line-height: 1.8;">
+            <li><strong>Bank:</strong> NIC Asia Bank</li>
+            <li><strong>Account Name:</strong> SeltaPrep Pvt Ltd</li>
+            <li><strong>Account Number:</strong> 1234567890123456</li>
+            <li><strong>Branch:</strong> Kathmandu</li>
+        </ul>
+        <p style="margin-top: 12px;"><strong>Reference:</strong> B2B-{{ purchase.id }}</p>
+    </div>
+
+    <form method="POST" action="{{ url_for('ukvi_b2b_submit_proof', purchase_id=purchase.id) }}" enctype="multipart/form-data">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+        <div class="form-group">
+            <label>Transaction ID / Reference Number *</label>
+            <input type="text" name="transaction_id" class="form-control" required
+                   placeholder="e.g., 1234567890">
+        <div class="form-group" style="margin-top: 15px;">
+            <label>Payment Screenshot (optional)</label>
+            <input type="file" name="payment_screenshot" 
+                   accept="image/png,image/jpeg,image/jpg,image/webp"
+                   class="form-control">
+            <small style="color: #6b7280; font-size: 11px;">
+                Upload screenshot for faster verification (max 5MB)
+            </small>
+        </div>
+
+        </div>
+        <button type="submit" class="btn btn-success btn-block">
+            ✅ Submit Payment Proof
+        </button>
+    </form>
+
+    {% elif purchase.payment_status == 'submitted' %}
+    <div class="alert alert-info">
+        ⏳ Payment proof submitted. Admin will verify within 24 hours.<br>
+        Credits will be added automatically after verification.
+    </div>
+
+    {% elif purchase.payment_status == 'completed' %}
+    <div class="alert alert-success">
+        ✅ Payment verified! {{ purchase.credits }} credits added to your account.
+    </div>
+
+    {% elif purchase.payment_status == 'rejected' %}
+    <div class="alert alert-error">
+        ❌ Payment rejected. {{ purchase.admin_notes or 'Contact admin for details.' }}
+    </div>
+    {% endif %}
+
+    <a href="{{ url_for('ukvi_b2b_credits') }}" class="btn btn-outline btn-block" style="margin-top: 15px;">
+        ← Back to Credits
+    </a>
+</div>
+{% endblock %}

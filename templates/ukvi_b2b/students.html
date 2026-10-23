@@ -1,0 +1,79 @@
+{% extends 'ukvi_b2b/base.html' %}
+{% block title %}Students{% endblock %}
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+    <h2>Students ({{ students|length }})</h2>
+    <a href="{{ url_for('ukvi_b2b_add_student') }}" class="btn btn-primary">
+        ➕ Add Student
+    </a>
+</div>
+
+<form method="GET" style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
+    <input type="text" name="q" value="{{ search }}" 
+           placeholder="Search by name, email, phone..." 
+           class="form-control" style="flex: 1; min-width: 200px;">
+    <select name="status" class="form-control" style="max-width: 150px;">
+        <option value="all" {{ 'selected' if status=='all' }}>All Status</option>
+        <option value="scheduled" {{ 'selected' if status=='scheduled' }}>Scheduled</option>
+        <option value="active" {{ 'selected' if status=='active' }}>Active (In Window)</option>
+        <option value="completed" {{ 'selected' if status=='completed' }}>Completed</option>
+        <option value="expired" {{ 'selected' if status=='expired' }}>Expired</option>
+        <option value="used" {{ 'selected' if status=='used' }}>Used</option>
+        <option value="revoked" {{ 'selected' if status=='revoked' }}>Cancelled</option>
+    </select>
+    <button type="submit" class="btn btn-outline">Filter</button>
+</form>
+
+<div class="card">
+    {% if students %}
+    <div style="overflow-x: auto;">
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Contact</th>
+                <th>Scheduled</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for s in students %}
+            <tr>
+                <td>
+                    <strong>{{ s.full_name }}</strong>
+                    {% if s.passport_number %}
+                    <br><small style="color: #6b7280;">Passport: {{ s.passport_number }}</small>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if s.phone %}<div>{{ s.phone }}</div>{% endif %}
+                    {% if s.email %}<small style="color: #6b7280;">{{ s.email }}</small>{% endif %}
+                </td>
+                <td>
+                    {{ s.scheduled_date }}<br>
+                    <small style="color: #6b7280;">{{ s.scheduled_time.strftime('%H:%M') }} UTC</small>
+                </td>
+                <td><span class="badge badge-{{ s.window_status }}">{{ s.window_status }}</span></td>
+                <td>
+                    <a href="{{ url_for('ukvi_b2b_student_detail', student_id=s.id) }}"
+                       class="btn btn-sm btn-outline">View</a>
+<form method="POST" action="{{ url_for('ukvi_b2b_student_delete', student_id=s.id) }}" onsubmit="return confirm('Delete &quot;{{ s.full_name|e }}&quot;? This cannot be undone.\nCredit will be refunded if test not completed.');" style="display:inline; margin-left: 4px;"><input type="hidden" name="_csrf_token" value="{{ csrf_token }}"><button type="submit" style="background:#dc2626;color:white;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;">🗑️ Delete</button></form>
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="icon">👥</div>
+        <h3>No students found</h3>
+        <p>Add your first student to get started.</p>
+        <a href="{{ url_for('ukvi_b2b_add_student') }}" class="btn btn-primary" style="margin-top: 15px;">
+            ➕ Add Student
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
