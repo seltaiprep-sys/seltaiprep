@@ -573,6 +573,40 @@ async function previewRefundAdmin() {
                                             💰
                                         </button>
                                     </form>
+                    <div style="margin-top: 6px; text-align: left;">
+                        <button type="button"
+                                onclick="var el=document.getElementById('reset-pw-{{ p.id }}'); el.style.display=el.style.display==='block'?'none':'block';"
+                                style="background:#f59e0b; color:white; padding:4px 10px; border-radius:4px; font-size:11px; border:none; cursor:pointer; font-weight:600; margin-right:4px;">
+                            🔑 Reset Password
+                        </button>
+                        <button type="button"
+                                onclick="if(confirm('⚠️ Delete partner {{ p.name }}? Cannot be undone!')) document.getElementById('delete-form-{{ p.id }}').submit();"
+                                style="background:#dc2626; color:white; padding:4px 10px; border-radius:4px; font-size:11px; border:none; cursor:pointer; font-weight:600;">
+                            🗑️ Delete Partner
+                        </button>
+                        <form id="delete-form-{{ p.id }}" method="POST"
+                              action="{{ url_for('admin_ukvi_b2b_delete_partner', partner_id=p.id) }}"
+                              style="display:none;">
+                            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                        </form>
+                    </div>
+
+                    <div id="reset-pw-{{ p.id }}" style="display:none; margin-top:8px; padding:10px; background:#fef3c7; border-radius:6px; border:1px solid #fbbf24;">
+                        <form method="POST"
+                              action="{{ url_for('admin_ukvi_b2b_reset_partner_password', partner_id=p.id) }}"
+                              style="display:flex; gap:6px; flex-wrap:wrap;">
+                            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                            <label style="font-size:11px; color:#92400e; font-weight:600;">New Password:</label>
+                            <input type="text" name="new_password" placeholder="min 6 characters" minlength="6" required
+                                   style="font-size:12px; padding:5px 10px; flex:1; min-width:150px; border:1px solid #d1d5db; border-radius:4px;">
+                            <button type="submit"
+                                    style="background:#10b981; color:white; padding:5px 12px; border-radius:4px; font-size:11px; border:none; cursor:pointer; font-weight:600;">
+                                ✅ Set Password
+                            </button>
+                        </form>
+                        <p style="font-size:10px; color:#92400e; margin:6px 0 0 0;">⚠️ Share new password with partner.</p>
+                    </div>
+
                                 </div>
                             </td>
                         </tr>

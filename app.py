@@ -8908,6 +8908,75 @@ if _B2B_AVAILABLE:
         flash(f'{amount:+d} credits for {partner.name}', 'success')
         return redirect(url_for('admin_ukvi_b2b'))
 
+    @app.route('/admin/ukvi/b2b/reset-partner-password/<int:partner_id>', methods=['POST'])
+    @admin_required
+    @csrf_protect
+    def admin_ukvi_b2b_reset_partner_password(partner_id):
+        partner = db.session.get(UKVIB2BPartner, partner_id)
+        if not partner:
+            flash('Partner not found', 'danger')
+            return redirect(url_for('admin_ukvi_b2b'))
+
+        new_password = (request.form.get('new_password') or '').strip()
+        if len(new_password) < 6:
+            flash('Password must be at least 6 characters', 'danger')
+            return redirect(url_for('admin_ukvi_b2b'))
+
+        try:
+            partner.set_password(new_password)
+            db.session.commit()
+            logger.info('Partner #%s password reset by admin', partner_id)
+            flash('Password reset for "' + partner.name + '" — New password: ' + new_password, 'success')
+        except Exception as e:
+            db.session.rollback()
+            logger.exception('Password reset failed: %s', e)
+            flash('Password reset failed: ' + str(e), 'danger')
+
+        return redirect(url_for('admin_ukvi_b2b'))
+
+
+    @app.route('/admin/ukvi/b2b/delete-partner/<int:partner_id>', methods=['POST'])
+    @admin_required
+    @csrf_protect
+    def admin_ukvi_b2b_delete_partner(partner_id):
+        partner = db.session.get(UKVIB2BPartner, partner_id)
+        if not partner:
+            flash('Partner not found', 'danger')
+            return redirect(url_for('admin_ukvi_b2b'))
+
+        from modules.ukvi.models import (
+            UKVIB2BStudent, UKVIB2BCreditPurchase, UKVIB2BTransaction,
+        )
+
+        student_count = UKVIB2BStudent.query.filter_by(partner_id=partner_id).count()
+        pending_count = UKVIB2BCreditPurchase.query.filter_by(
+            partner_id=partner_id, payment_status='submitted'
+        ).count()
+
+        if pending_count > 0:
+            flash('Cannot delete: ' + str(pending_count) + ' pending purchase(s).', 'danger')
+            return redirect(url_for('admin_ukvi_b2b'))
+
+        if student_count > 0:
+            flash('Cannot delete: ' + str(student_count) + ' student(s) exist.', 'danger')
+            return redirect(url_for('admin_ukvi_b2b'))
+
+        name = partner.name
+        try:
+            UKVIB2BCreditPurchase.query.filter_by(partner_id=partner_id).delete(synchronize_session=False)
+            UKVIB2BTransaction.query.filter_by(partner_id=partner_id).delete(synchronize_session=False)
+            db.session.delete(partner)
+            db.session.commit()
+            logger.info('Partner #%s deleted', partner_id)
+            flash('Partner "' + name + '" deleted', 'success')
+        except Exception as e:
+            db.session.rollback()
+            logger.exception('Partner delete failed: %s', e)
+            flash('Delete failed: ' + str(e), 'danger')
+
+        return redirect(url_for('admin_ukvi_b2b'))
+
+
     logger.info("B2B UKVI routes registered")
 else:
     logger.warning("B2B UKVI routes NOT registered (models import failed)")
