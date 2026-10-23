@@ -4709,8 +4709,6 @@ def ukvi():
             ).order_by(UKVITestSession.id.desc()).first()
 
             if not recent:
-                from modules.ukvi.managers.test_manager import UKVITestManager
-                from modules.ukvi.services.ukvi_service import UKVIService
                 _mgr = UKVITestManager(db, UKVIService(ai_engine, db))
                 _res = _mgr.start_interview(user_id, 'medium', True)
                 if 'error' in _res:
