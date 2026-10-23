@@ -7932,6 +7932,7 @@ if _B2B_AVAILABLE:
     @_b2b_partner_required
     def ukvi_b2b_add_student():
         partner = _get_b2b_partner()
+        student = None  # defensive init
         if partner.credits_balance < 1:
             flash('Insufficient credits — buy credits first', 'warning')
             return redirect(url_for('ukvi_b2b_credits'))
@@ -8169,18 +8170,18 @@ if _B2B_AVAILABLE:
     @app.route('/ukvi/b2b/students/<int:student_id>/new-test', methods=['POST'])
     @_b2b_partner_required
     def ukvi_b2b_new_test_attempt(student_id):
+        """Schedule a NEW test for same student (revoked OR completed)"""
+        partner = _get_b2b_partner()
+        student = db.session.get(UKVIB2BStudent, student_id)
+        if not student or student.partner_id != partner.id:
+            abort(403)
+
         # ── Check attempt limit ──
         _max = student.max_attempts or 5
         _curr = student.attempt_count or 0
         if _curr >= _max:
             flash(f'Maximum attempts ({_max}) reached — cannot re-enable. Student must contact support.', 'error')
             return redirect(url_for('ukvi_b2b_student_detail', student_id=student.id))
-
-        """Schedule a NEW test for same student (revoked OR completed)"""
-        partner = _get_b2b_partner()
-        student = db.session.get(UKVIB2BStudent, student_id)
-        if not student or student.partner_id != partner.id:
-            abort(403)
 
         # Must be either revoked or completed (test already used)
         can_schedule = (
