@@ -4695,6 +4695,33 @@ def pte_speaking_writing_redirect_underscore():
 @login_required
 def ukvi():
     session['selected_module'] = 'ukvi'
+
+    # ── B2B AUTO-SESSION (fix: session not found on submit) ──
+    if session.get('_b2b_student_id'):
+        try:
+            from modules.ukvi.models import UKVITestSession
+            from datetime import timedelta
+            user_id = current_user.id
+            recent = UKVITestSession.query.filter(
+                UKVITestSession.user_id == user_id,
+                UKVITestSession.status == 'in_progress',
+                UKVITestSession.start_time > datetime.now(timezone.utc) - timedelta(minutes=30)
+            ).order_by(UKVITestSession.id.desc()).first()
+
+            if not recent:
+                from modules.ukvi.managers.test_manager import UKVITestManager
+                from modules.ukvi.services.ukvi_service import UKVIService
+                _mgr = UKVITestManager(db, UKVIService(ai_engine, db))
+                _res = _mgr.start_interview(user_id, 'medium', True)
+                if 'error' in _res:
+                    logger.warning(f'B2B auto-session failed: {_res}')
+                else:
+                    logger.info(f'B2B auto-session #{_res.get("session_id")} created for user {user_id}')
+            else:
+                logger.info(f'B2B reusing session #{recent.id} for user {user_id}')
+        except Exception as e:
+            logger.exception(f'B2B auto-session error: {e}')
+
     return render_template('ukvi_test.html',
         b2b_profile=session.get('_b2b_profile'),
         b2b_skip_profile=session.get('_b2b_skip_profile', False))
@@ -4715,9 +4742,23 @@ def ukvi_submit_audio():
         return jsonify({'error': 'Empty audio file'}), 400
     safe_filename = re.sub(r'[^a-zA-Z0-9_.-]', '_', audio_file.filename or 'answer.wav')
     user_id = current_user.id
+
+    # Safe session_id (handle 'phase_xxx' fallback from frontend)
+    try:
+        session_id_int = int(session_id)
+    except (ValueError, TypeError):
+        from modules.ukvi.models import UKVITestSession
+        latest = UKVITestSession.query.filter_by(
+            user_id=user_id, status='in_progress'
+        ).order_by(UKVITestSession.id.desc()).first()
+        if not latest:
+            return jsonify({'success': False, 'error': 'No active session — please reload the test page'}), 400
+        session_id_int = latest.id
+        logger.info(f'B2B submit: fallback session {session_id_int} for user {user_id}')
+
     ukvi_test_manager = UKVITestManager(db, UKVIService(ai_engine, db))
     result = ukvi_test_manager.submit_audio_answer(
-        user_id, int(session_id), question_index, audio_data, safe_filename
+        user_id, session_id_int, question_index, audio_data, safe_filename
     )
     if 'error' in result:
         return jsonify({'success': False, 'error': result['error']}), 400
