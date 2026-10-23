@@ -369,7 +369,7 @@
             background: linear-gradient(135deg, #dc2626, #991b1b) !important;
             animation: pressure-pulse 1.5s infinite;
         }
-    
+
     /* B2B 3D LAYOUT FIX — preserve 2-column grid */
     body.b2b-test-mode #app {
         display: grid !important;
@@ -1032,6 +1032,44 @@ let audioRecorder = null;
 let audioChunks = [];
 let recordingStream = null;
 
+// ═══ HOOKS for ukvi-assist.js ═══
+window.getRecordingStream = function () { return recordingStream; };
+window.isRecording = function () {
+    return !!(audioRecorder && audioRecorder.state === 'recording');
+};
+window.skipSilentQuestion = function () {
+    console.log('[UKVI] skipSilentQuestion called');
+    if (typeof isSubmitting !== 'undefined' && isSubmitting) return;
+
+    // If user typed an answer → SUBMIT it (don't discard)
+    var typed = (answerInput && answerInput.value) ? answerInput.value.trim() : '';
+    if (typed) {
+        console.log('[UKVI] skipSilentQuestion: answer exists → submitting');
+        if (timerInterval) clearInterval(timerInterval);
+        if (prepTimerInterval) clearInterval(prepTimerInterval);
+        if (isListening && recognition) { recognition.abort(); isListening = false; }
+        if (audioRecorder && audioRecorder.state === 'recording') {
+            try { audioRecorder.stop(); } catch (e) {}
+        }
+        if (typeof submitManualText === 'function') {
+            submitManualText();
+            return;
+        }
+    }
+
+    // No answer → advance to next question
+    console.log('[UKVI] skipSilentQuestion: no answer → advancing');
+    if (timerInterval) clearInterval(timerInterval);
+    if (prepTimerInterval) clearInterval(prepTimerInterval);
+    if (isListening && recognition) { recognition.abort(); isListening = false; }
+    if (audioRecorder && audioRecorder.state === 'recording') {
+        try { audioRecorder.stop(); } catch (e) {}
+    }
+    if (answerInput) answerInput.value = '';
+    currentQ++;
+    showPhaseQuestion();
+};
+
 const $ = (id) => document.getElementById(id);
 const subStatusBar    = $('sub-status-bar');
 const stepProfile     = $('step-profile');
@@ -1317,6 +1355,8 @@ function beginInterviewWithPhases(interviewData) {
     });
 
     sessionId = interviewData.session_id || 'phase_' + Date.now();
+    window.ukviSessionId = sessionId;  // ← expose to assist
+    console.log('[UKVI] Session ID exposed:', sessionId);
     questions = interviewData.questions;
     totalQ = interviewData.total_questions;
     currentQ = 0;
@@ -1825,6 +1865,28 @@ if (window.speechSynthesis) window.speechSynthesis.getVoices();
 setChipStatus('Ready', false);
 console.log('✅ UKVI Real 7-Phase Interview ready — Follow-ups + Consistency + Pressure + Recording');
 </script>
+
+<!-- ═══ UKVI Test Assistant — silence detection + auto-submit ═══ -->
+<script src="/static/js/ukvi-assist.js"></script>
+<script>
+(function(){
+    var tries = 0;
+    var wait = setInterval(function(){
+        tries++;
+        var sid = window.ukviSessionId;
+        if (sid) {
+            clearInterval(wait);
+            window.UKVIAssist.init({ sessionId: sid });
+            console.log('[UKVI] Assistant initialized for session:', sid);
+        }
+        if (tries > 240) {  // 60s timeout
+            clearInterval(wait);
+            console.warn('[UKVI] No sessionId after 60s — assistant inactive');
+        }
+    }, 250);
+})();
+</script>
+
 <script src="/static/js/sw-register.js"></script>
 <script src="/static/js/push-notifications.js"></script>
 
@@ -1927,7 +1989,7 @@ if(document.readyState === 'loading'){
         display: none !important;
     }
     </style>
-    
+
     <script>
     // B2B_MODE_HIDE_NAV: detect B2B session and hide nav
     (function() {
@@ -1944,7 +2006,7 @@ if(document.readyState === 'loading'){
         }
     })();
     </script>
-    
+
 
 <!-- B2B_HIDE_HEADER_V3: hide header/nav for B2B students -->
 <style>

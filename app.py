@@ -4763,6 +4763,123 @@ def ukvi_submit_audio():
     return jsonify({'success': True, 'answer': result.get('answer', ''), 'evaluation': result.get('evaluation', {}), 'completed': False, 'transcript': result.get('transcript', '')})
 
 
+
+# ═══════════════════════════════════════════════════════════════════════
+# UKVI AUTO-ASSIST ENDPOINTS (silence / idle / timeout)
+# ═══════════════════════════════════════════════════════════════════════
+
+@app.route('/api/ukvi/auto-submit', methods=['POST'])
+@login_required
+def ukvi_auto_submit():
+    """Auto-submit session on timeout/idle/silence."""
+    from modules.ukvi.models import UKVITestSession
+    data = request.json or {}
+    raw_sid = data.get('session_id')
+    reason = data.get('reason', 'auto')
+    user_id = current_user.id
+
+    # Safe session ID (fallback if 'phase_xxx')
+    try:
+        sid = int(raw_sid)
+    except (ValueError, TypeError):
+        latest = UKVITestSession.query.filter_by(
+            user_id=user_id, status='in_progress'
+        ).order_by(UKVITestSession.id.desc()).first()
+        if not latest:
+            return jsonify({'success': False, 'error': 'No active session'}), 404
+        sid = latest.id
+
+    try:
+        session_obj = UKVITestSession.query.filter_by(
+            id=sid, user_id=user_id, status='in_progress'
+        ).first()
+        if not session_obj:
+            return jsonify({'success': False, 'error': 'Session not in_progress'}), 404
+
+        session_obj.status = 'completed'
+        session_obj.completed_at = datetime.now(timezone.utc)
+        try:
+            td = session_obj.get_test_data() or {}
+            td['auto_submit_reason'] = reason
+            td['auto_submit_at'] = datetime.now(timezone.utc).isoformat()
+            session_obj.set_test_data(td)
+        except Exception:
+            pass
+
+        b2b_sid = session.get('_b2b_student_id')
+        if b2b_sid:
+            from modules.ukvi.models import UKVIB2BStudent
+            stu = db.session.get(UKVIB2BStudent, b2b_sid)
+            if stu:
+                stu.test_completed_at = datetime.now(timezone.utc)
+
+        db.session.commit()
+        logger.info(f'UKVI auto-submit: session={sid} user={user_id} reason={reason}')
+        return jsonify({
+            'success': True,
+            'reason': reason,
+            'redirect_url': '/ukvi/b2b/results' if b2b_sid else '/ukvi/results',
+        })
+    except Exception as e:
+        db.session.rollback()
+        logger.exception(f'Auto-submit failed: {e}')
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/ukvi/progress-save', methods=['POST'])
+@login_required
+def ukvi_progress_save():
+    """Autosave partial answers."""
+    from modules.ukvi.models import UKVITestSession
+    data = request.json or {}
+    raw_sid = data.get('session_id')
+    snap = data.get('snapshot', {})
+    try:
+        sid = int(raw_sid)
+    except (ValueError, TypeError):
+        return jsonify({'success': False, 'error': 'Invalid session_id'}), 400
+
+    user_id = current_user.id
+    try:
+        s = UKVITestSession.query.filter_by(
+            id=sid, user_id=user_id, status='in_progress'
+        ).first()
+        if not s:
+            return jsonify({'success': False}), 404
+        s.answers_so_far = json.dumps(snap.get('answers', {}))
+        s.current_question_index = int(snap.get('current_q', 0) or 0)
+        s.last_updated = datetime.now(timezone.utc)
+        db.session.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/ukvi/heartbeat', methods=['POST'])
+@login_required
+def ukvi_heartbeat():
+    """Client heartbeat — detect abandoned sessions."""
+    from modules.ukvi.models import UKVITestSession
+    data = request.json or {}
+    try:
+        sid = int(data.get('session_id'))
+    except (ValueError, TypeError):
+        return jsonify({'success': False}), 200
+
+    user_id = current_user.id
+    try:
+        s = UKVITestSession.query.filter_by(
+            id=sid, user_id=user_id, status='in_progress'
+        ).first()
+        if s:
+            s.last_updated = datetime.now(timezone.utc)
+            db.session.commit()
+        return jsonify({'success': True})
+    except Exception:
+        return jsonify({'success': False}), 200
+
+
 @app.route('/api/ukvi/tts', methods=['POST'])
 @login_required
 def ukvi_tts():
