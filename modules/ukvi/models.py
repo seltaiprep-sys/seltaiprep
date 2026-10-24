@@ -102,6 +102,14 @@ class UKVIUser(db.Model):
 
 
 # ═══════════════════════════════════════════════════════════════════════
+
+    @is_active.setter
+    def is_active(self, value):
+        """Set is_active → maps to deleted_at (no DB column write)"""
+        if value:
+            self.deleted_at = None
+        else:
+            self.deleted_at = datetime.now(timezone.utc)
 # SUBSCRIPTION
 # ═══════════════════════════════════════════════════════════════════════
 class UKVISubscription(db.Model):

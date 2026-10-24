@@ -8439,18 +8439,21 @@ if _B2B_AVAILABLE:
         db.session.delete(student)
         
         if _ukvi_uid_cleanup:
-            try:
-                from modules.ukvi.models import UKVIUser
-                _u = db.session.get(UKVIUser, _ukvi_uid_cleanup)
-                if _u:
-                    _u.is_active = False
-                    _u.deleted_at = datetime.now(timezone.utc)
-                    _u.phone = None  # ← Free unique constraint
-                    if _u.email and not _u.email.startswith('deleted_'):
-                        _u.email = f"deleted_{_u.id}_{_u.email}"
-                    logger.info(f'[SDEL] Freed UKVIUser #{_ukvi_uid_cleanup} on student delete')
-            except Exception as _e:
-                logger.warning(f'[SDEL] UKVIUser cleanup failed: {_e}')
+                    try:
+                        from modules.ukvi.models import UKVIUser
+                        _u = db.session.get(UKVIUser, _ukvi_uid_cleanup)
+                        if _u:
+                            # Free phone + email (setter now handles is_active)
+                            _u.phone = None
+                            if _u.email and not _u.email.startswith('deleted_'):
+                                _u.email = f"deleted_{_u.id}_{_u.email}"
+                            _u.is_active = False  # setter → sets deleted_at
+                            _u.deleted_at = datetime.now(timezone.utc)
+                            logger.info(f'[SDEL] Freed UKVIUser #{_ukvi_uid_cleanup}')
+
+                            logger.info(f'[SDEL] Freed phone for UKVIUser #{_ukvi_uid_cleanup}')
+                    except Exception as _e:
+                        logger.warning(f'[SDEL] UKVIUser cleanup failed: {_e}')
         try:
             db.session.commit()
         except Exception as _commit_err:
