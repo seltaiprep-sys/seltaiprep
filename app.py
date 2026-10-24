@@ -4885,6 +4885,43 @@ def ukvi_heartbeat():
         return jsonify({'success': False}), 200
 
 
+
+
+# ═══════════════════════════════════════════════════════
+# AUDIO BOOST HELPER — amplify TTS output with ffmpeg
+# ═══════════════════════════════════════════════════════
+def _boost_mp3_volume(filepath, gain=2.0):
+    """Amplify mp3 file in-place. Safe — falls back on failure."""
+    import subprocess, os
+    if not filepath or not os.path.exists(filepath):
+        return False
+    if not filepath.lower().endswith('.mp3'):
+        return False
+    tmp = filepath + '.boost.tmp.mp3'
+    try:
+        subprocess.run(
+            [
+                'ffmpeg', '-y', '-loglevel', 'error',
+                '-i', filepath,
+                '-af', f'volume={gain},alimiter=limit=0.95',
+                '-codec:a', 'libmp3lame', '-b:a', '128k',
+                tmp,
+            ],
+            check=True, capture_output=True, timeout=15,
+        )
+        os.replace(tmp, filepath)
+        logger.debug(f'[AUDIO-BOOST] Amplified x{gain}: {os.path.basename(filepath)}')
+        return True
+    except Exception as e:
+        logger.warning(f'[AUDIO-BOOST] Failed for {filepath}: {e}')
+        try:
+            if os.path.exists(tmp):
+                os.remove(tmp)
+        except Exception:
+            pass
+        return False
+
+
 @app.route('/api/ukvi/tts', methods=['POST'])
 @login_required
 def ukvi_tts():
@@ -4899,6 +4936,18 @@ def ukvi_tts():
         text=text, part=0, question_num=0, custom_filename=filename
     )
     if result:
+        # ═══ Amplify audio 2x (loud & clear) ═══
+        try:
+            import os as _os
+            _static = _os.path.join(
+                _os.path.dirname(__file__), 'static'
+            )
+            _abs = _os.path.join(_static, result.lstrip('/').replace('static/', '', 1))
+            if not _os.path.exists(_abs):
+                _abs = _os.path.join(_os.path.dirname(__file__), result.lstrip('/'))
+            _boost_mp3_volume(_abs, gain=2.0)
+        except Exception as _e:
+            logger.warning(f'[AUDIO-BOOST] wrapper error: {_e}')
         return jsonify({'audio_url': result})
     else:
         return jsonify({'error': 'TTS generation failed'}), 500
