@@ -97,7 +97,7 @@ class UKVIUser(db.Model):
 
     @property
     def is_active(self):
-        return True
+        return self.deleted_at is None
 
     @property
     def is_anonymous(self):
