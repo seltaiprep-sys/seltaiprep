@@ -1391,6 +1391,10 @@ function beginInterviewWithPhases(interviewData) {
 
     sessionId = interviewData.session_id || 'phase_' + Date.now();
     window.ukviSessionId = sessionId;
+    window.currentQ = 0;
+    window.currentQuestionIndex = 0;
+    window.responses = {};
+    window.answers = {};
     console.log('[UKVI] Session ID exposed:', sessionId);
     questions = interviewData.questions;
     totalQ = interviewData.total_questions;
@@ -1419,6 +1423,13 @@ function showPhaseQuestion() {
     currentCategory = q.category || q.phase_name || '';
     questionAttempts[currentQ] = 0;
 
+    // ═══ SYNC to window (all aliases — autosave/assist.js reads these) ═══
+    window.currentQ = currentQ;
+    window.currentQuestionIndex = currentQ;  // alias for assist.js
+    window.totalQ = totalQ;
+    window.questions = questions;
+    window.responses = responses;
+    window.answers = responses;              // alias for assist.js
     updatePhaseBanner(q);
     progressText.textContent = `Q ${currentQ + 1}/${totalQ}`;
     setChipProgress(`Q ${currentQ + 1}/${totalQ} · Phase ${q.phase}`);
@@ -1602,12 +1613,24 @@ function startListeningForPhase(attempt) {
         recognition.interimResults = true;
         recognition.continuous = true;
 
+        // ═══ Auto-fallback: if no result in 5s → use server STT ═══
+        let gotAnyResult = false;
+        const fallbackTimer = setTimeout(() => {
+            if (!gotAnyResult && !answerInput.value.trim()) {
+                console.warn('[Live] ⚠️ No Web Speech result in 5s → server STT');
+                try { recognition.abort(); } catch (e) {}
+                startServerChunkRecorder();
+            }
+        }, 5000);
+
         recognition.onstart = () => {
             isListening = true;
             statusText.textContent = '🎙️ Listening... speak now';
             console.log('[Live] 🎙️ Started');
         };
         recognition.onresult = (event) => {
+            gotAnyResult = true;
+            clearTimeout(fallbackTimer);
             let interim = '', final = '';
             for (let i = event.resultIndex; i < event.results.length; i++) {
                 const t = event.results[i][0].transcript;
@@ -1797,6 +1820,19 @@ function handleNoAnswer(attempt) {
     questionAttempts[currentQ] = attempts;
 
     stopAndUploadRecording().catch(() => {});
+
+    if (attempts >= 2) {
+        // After 2 attempts with NO answer → move on (was 3)
+        // Prevents infinite Q0 loop on Android where STT fails
+        console.warn('[UKVI] No answer after 2 attempts → advancing');
+        try { stopLiveTranscription(); } catch (e) {}
+        if (timerInterval) clearInterval(timerInterval);
+        if (answerInput) answerInput.value = '';
+        currentQ++;
+        window.currentQ = currentQ;
+        showPhaseQuestion();
+        return;
+    }
 
     if (attempts >= 3) {
         statusText.textContent = '❌ INTERVIEW TERMINATED';

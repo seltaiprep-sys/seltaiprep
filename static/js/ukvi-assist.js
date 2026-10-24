@@ -233,8 +233,8 @@
                 body: JSON.stringify({
                     session_id: S.sessionId,
                     snapshot: {
-                        current_q: window.currentQuestionIndex || 0,
-                        answers: window.answers || {},
+                        current_q: (typeof window.currentQ !== 'undefined' ? window.currentQ : 0),
+                        answers: (typeof window.responses !== 'undefined' ? window.responses : (window.answers || {})),
                     },
                 }),
             });
