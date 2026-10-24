@@ -4919,9 +4919,18 @@ DEEPGRAM_WS_URL = "wss://api.deepgram.com/v1/listen"
 
 
 @sock.route('/ws/transcribe')
-@login_required
 def ws_transcribe(ws):
     """Proxy browser PCM stream to Deepgram; return JSON transcripts."""
+    # ═══ Manual auth (login_required doesn't work on WebSocket) ═══
+    if not current_user.is_authenticated:
+        logger.warning('[WS-STT] Unauthenticated attempt')
+        try:
+            ws.send(json.dumps({'type': 'Error', 'error': 'login_required'}))
+            ws.close()
+        except Exception:
+            pass
+        return
+
     # UKVI-optimized streaming params (linear16 PCM)
     params = {
         "model": "nova-2",
