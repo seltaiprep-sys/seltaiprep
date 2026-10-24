@@ -33,6 +33,9 @@ from apscheduler.schedulers.background import BackgroundScheduler
 import requests, hmac, hashlib, urllib.parse, qrcode
 from PIL import Image
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, flash, abort, send_file, send_from_directory, Response, stream_with_context
+from flask_sock import Sock
+import websocket as _ws_client
+import threading as _threading
 from flask_session import Session
 from flask_mail import Mail, Message
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
@@ -187,6 +190,8 @@ except ImportError as e:
 # APP CONFIGURATION
 # ============================================================
 app = Flask(__name__)
+
+sock = Sock(app)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
 SECRET_KEY = os.environ.get('SECRET_KEY')
@@ -4906,6 +4911,97 @@ DEEPGRAM_API_KEY = os.environ.get('DEEPGRAM_API_KEY', '')
 DEEPGRAM_STT_URL = "https://api.deepgram.com/v1/listen"
 
 
+
+# ═══════════════════════════════════════════════════════════════
+# WEBSOCKET STREAMING STT — instant iOS transcription
+# ═══════════════════════════════════════════════════════════════
+DEEPGRAM_WS_URL = "wss://api.deepgram.com/v1/listen"
+
+
+@sock.route('/ws/transcribe')
+@login_required
+def ws_transcribe(ws):
+    """Proxy browser PCM stream to Deepgram; return JSON transcripts."""
+    # UKVI-optimized streaming params (linear16 PCM)
+    params = {
+        "model": "nova-2",
+        "language": "en-GB",
+        "encoding": "linear16",
+        "sample_rate": "16000",
+        "channels": "1",
+        "smart_format": "true",
+        "punctuate": "true",
+        "interim_results": "true",
+        "utterance_end_ms": "1000",
+        "vad_events": "true",
+        "endpointing": "300",
+        "filler_words": "true",
+    }
+    # Client may override model/language
+    for _k in ('model', 'language'):
+        _v = request.args.get(_k)
+        if _v:
+            params[_k] = _v
+
+    query = '&'.join(f'{k}={v}' for k, v in params.items())
+    url = f'{DEEPGRAM_WS_URL}?{query}'
+    headers = {'Authorization': f'Token {DEEPGRAM_API_KEY}'}
+
+    try:
+        dg = _ws_client.create_connection(url, header=headers, timeout=30)
+    except Exception as e:
+        logger.exception(f'[WS-STT] Deepgram connect failed: {e}')
+        try:
+            ws.send(json.dumps({'type': 'Error', 'error': str(e)}))
+        except Exception:
+            pass
+        return
+
+    logger.info('[WS-STT] Deepgram connected')
+
+    # Thread: Deepgram → browser
+    stop_flag = {'stop': False}
+
+    def _dg_to_client():
+        try:
+            while not stop_flag['stop']:
+                msg = dg.recv()
+                if not msg:
+                    break
+                ws.send(msg)
+        except Exception:
+            pass
+
+    t = _threading.Thread(target=_dg_to_client, daemon=True)
+    t.start()
+
+    # Main loop: browser → Deepgram
+    try:
+        while True:
+            data = ws.receive()
+            if data is None:
+                break
+            if isinstance(data, str):
+                try:
+                    ctl = json.loads(data)
+                    if ctl.get('type') == 'CloseStream':
+                        dg.send(json.dumps({'type': 'CloseStream'}))
+                        break
+                except Exception:
+                    pass
+            elif isinstance(data, bytes):
+                dg.send(data, opcode=_ws_client.ABNF.OPCODE_BINARY)
+    except Exception as e:
+        logger.warning(f'[WS-STT] client loop ended: {e}')
+    finally:
+        stop_flag['stop'] = True
+        try:
+            dg.close()
+        except Exception:
+            pass
+        logger.info('[WS-STT] Deepgram closed')
+
+
 @app.route('/api/transcribe', methods=['POST'])
 @login_required
 def transcribe_audio():
@@ -4924,14 +5020,27 @@ def transcribe_audio():
         "Authorization": f"Token {DEEPGRAM_API_KEY}",
         "Content-Type": audio_file.mimetype or "audio/webm",
     }
+    # ═══ UKVI-OPTIMIZED Deepgram params ═══
     params = {
-        "model": "nova-2",
-        "language": "en-US",
-        "smart_format": "true",
-        "punctuate": "true",
-        "diarize": "false",
-        "utterances": "true",
+        "model": "nova-2",              # Best accuracy
+        "language": "en-GB",            # British accent (UKVI)
+        "smart_format": "true",         # Numbers, dates formatted
+        "punctuate": "true",            # Sentence punctuation
+        "diarize": "false",             # Single speaker
+        "utterances": "true",           # Segment boundaries
+        "filler_words": "true",         # Preserve um/uh (UKVI realism)
+        "endpointing": "300",           # 300ms silence = end
+        # UKVI domain term boost
+        "keywords": (
+            "university:2,course:2,sponsor:2,"
+            "tuition:2,IELTS:2,visa:2,UKVI:2,"
+            "bachelor:2,master:2,Bank:2"
+        ),
     }
+    # Client may override model/language via query string
+    for _k in ('model', 'language'):
+        if _k in request.args:
+            params[_k] = request.args.get(_k)
     try:
         response = requests.post(
             DEEPGRAM_STT_URL, headers=headers, params=params,
@@ -4953,9 +5062,19 @@ def transcribe_audio():
         confidence = alt.get('confidence') or 0.0
         utterances = results_obj.get('utterances') or []
         duration = (result.get('metadata') or {}).get('duration') or 0.0
+        # Debug log (verify transcription quality)
+        if transcript:
+            app.logger.info(
+                f"[STT] {len(transcript)} chars, conf={confidence:.2f}: "
+                f"{transcript[:100]}"
+            )
+        else:
+            app.logger.warning("[STT] Empty transcript (silent or too short)")
+
         return jsonify({
             'success': True,
             'transcript': transcript,
+            'text': transcript,  # alias for frontend
             'words': words,
             'utterances': utterances,
             'confidence': confidence,

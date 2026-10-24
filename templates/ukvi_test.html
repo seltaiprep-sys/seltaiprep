@@ -1592,8 +1592,8 @@ function updatePhaseTimerDisplay(remaining) {
 
 function startListeningForPhase(attempt) {
     if (useServerSTT()) {
-        console.log('[Live] iOS/no-WebSpeech → server chunk STT');
-        startServerChunkRecorder();
+        console.log('[Live] iOS/no-WebSpeech → WS streaming STT');
+        startIOSStreamingSTT();
         return;
     }
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -1619,7 +1619,7 @@ function startListeningForPhase(attempt) {
             if (!gotAnyResult && !answerInput.value.trim()) {
                 console.warn('[Live] ⚠️ No Web Speech result in 5s → server STT');
                 try { recognition.abort(); } catch (e) {}
-                startServerChunkRecorder();
+                startIOSStreamingSTT();
             }
         }, 5000);
 
@@ -1682,83 +1682,123 @@ function startListeningForPhase(attempt) {
     createRecognition();
 }
 
-// ═══ SERVER CHUNK STT (iOS Safari + iOS Chrome fallback) ═══
-let serverChunkActive = false;
-let serverChunkStream = null;
+// ═══ iOS STREAMING STT (WebSocket + linear16 PCM) ═══
+let iosSTT = null;
 
-async function startServerChunkRecorder() {
-    if (serverChunkActive) return;
-    serverChunkActive = true;
-    liveFinalText = liveFinalText || '';
-    statusText.textContent = '🎙️ Recording (server STT)...';
+async function startIOSStreamingSTT() {
+    if (iosSTT) return;
+    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const ws = new WebSocket(proto + '//' + location.host + '/ws/transcribe');
+    ws.binaryType = 'arraybuffer';
 
-    async function doChunk() {
-        if (!serverChunkActive) return;
+    const ctx = {
+        ws: ws,
+        audioCtx: null,
+        source: null,
+        processor: null,
+        stream: null,
+        interim: '',
+        final: liveFinalText || '',
+    };
+    iosSTT = ctx;
+    statusText.textContent = '🎙️ Connecting live STT...';
+
+    ws.onopen = async () => {
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
-            });
-            serverChunkStream = stream;
-
-            let mimeType = 'audio/webm';
-            if (MediaRecorder.isTypeSupported('audio/mp4')) mimeType = 'audio/mp4';
-            else if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) mimeType = 'audio/webm;codecs=opus';
-
-            const rec = new MediaRecorder(stream, { mimeType });
-            const chunks = [];
-            rec.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
-            const stopped = new Promise(r => { rec.onstop = r; });
-            rec.start();
-
-            await new Promise(r => setTimeout(r, 4500));
-            if (rec.state === 'recording') rec.stop();
-            await stopped;
-            stream.getTracks().forEach(t => t.stop());
-
-            if (chunks.length && serverChunkActive) {
-                const blob = new Blob(chunks, { type: mimeType });
-                if (blob.size > 1000) {
-                    const ext = mimeType.includes('mp4') ? 'mp4' : 'webm';
-                    const fd = new FormData();
-                    fd.append('audio', blob, 'chunk.' + ext);
-                    try {
-                        const resp = await fetch('/api/transcribe', { method: 'POST', body: fd });
-                        const data = await resp.json();
-                        const txt = data.text || data.transcript ||
-                                    (data.result && data.result.transcript) || '';
-                        if (txt && txt.trim()) {
-                            liveFinalText += txt.trim() + ' ';
-                            answerInput.value = liveFinalText.trim();
-                            statusText.textContent = '📝 ' + answerInput.value.slice(-80);
-                            questionAttempts[currentQ] = 0;
-                            console.log('[Server STT] +', txt.trim().slice(0, 50));
-                        }
-                    } catch (e) {
-                        console.warn('[Server STT] chunk fail:', e);
-                    }
+            ctx.stream = await navigator.mediaDevices.getUserMedia({
+                audio: {
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    autoGainControl: true,
+                    channelCount: 1,
+                    sampleRate: 16000
                 }
-            }
+            });
+            ctx.audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+            if (ctx.audioCtx.state === 'suspended') await ctx.audioCtx.resume();
+            ctx.source = ctx.audioCtx.createMediaStreamSource(ctx.stream);
+            // iOS Safari: AudioWorklet unavailable → ScriptProcessorNode fallback
+            ctx.processor = ctx.audioCtx.createScriptProcessor(4096, 1, 1);
+            ctx.processor.onaudioprocess = (e) => {
+                if (!iosSTT || ws.readyState !== WebSocket.OPEN) return;
+                const f32 = e.inputBuffer.getChannelData(0);
+                const i16 = new Int16Array(f32.length);
+                for (let i = 0; i < f32.length; i++) {
+                    const s = Math.max(-1, Math.min(1, f32[i]));
+                    i16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+                }
+                ws.send(i16.buffer);
+            };
+            ctx.source.connect(ctx.processor);
+            ctx.processor.connect(ctx.audioCtx.destination);
+            statusText.textContent = '🎙️ Live streaming... speak now';
+            console.log('[iOS STT] ✅ Streaming started');
         } catch (e) {
-            console.warn('[Server STT] chunk error:', e);
+            console.error('[iOS STT] Mic error:', e);
+            statusText.textContent = '⛔ Mic error: ' + e.message;
+            manualSubmit.style.display = 'block';
         }
-        if (serverChunkActive) doChunk();
-    }
-    doChunk();
+    };
+
+    ws.onmessage = (event) => {
+        if (!iosSTT) return;
+        try {
+            const data = JSON.parse(event.data);
+            if (data.type !== 'Results') return;
+            const alt = data.channel && data.channel.alternatives && data.channel.alternatives[0];
+            if (!alt) return;
+            const txt = alt.transcript || '';
+            if (data.is_final) {
+                ctx.final += txt + ' ';
+                ctx.interim = '';
+                liveFinalText = ctx.final;
+                console.log('[iOS STT] Final:', txt);
+            } else {
+                ctx.interim = txt;
+            }
+            answerInput.value = (ctx.final + ctx.interim).trim();
+            if (answerInput.value) {
+                statusText.textContent = '📝 ' + answerInput.value.slice(-80);
+                questionAttempts[currentQ] = 0;
+            }
+        } catch (e) {}
+    };
+
+    ws.onclose = () => {
+        console.log('[iOS STT] WS closed');
+        if (iosSTT) stopIOSStreamingSTT(true);
+    };
+    ws.onerror = (e) => {
+        console.error('[iOS STT] WS error', e);
+        statusText.textContent = '⚠️ STT connection error — typing mode';
+        manualSubmit.style.display = 'block';
+    };
 }
 
-function stopServerChunkRecorder() {
-    serverChunkActive = false;
-    if (serverChunkStream) {
-        try { serverChunkStream.getTracks().forEach(t => t.stop()); } catch (e) {}
-        serverChunkStream = null;
+function stopIOSStreamingSTT(skipClose) {
+    const s = iosSTT;
+    if (!s) return;
+    iosSTT = null;
+    try { s.processor && s.processor.disconnect(); } catch (e) {}
+    try { s.source && s.source.disconnect(); } catch (e) {}
+    try { s.audioCtx && s.audioCtx.close(); } catch (e) {}
+    try { s.stream && s.stream.getTracks().forEach(t => t.stop()); } catch (e) {}
+    if (!skipClose) {
+        try {
+            if (s.ws && s.ws.readyState === WebSocket.OPEN) {
+                s.ws.send(JSON.stringify({ type: 'CloseStream' }));
+                s.ws.close();
+            }
+        } catch (e) {}
     }
+    console.log('[iOS STT] Stopped');
 }
 
 function stopLiveTranscription() {
     if (liveRestartTimer) { clearTimeout(liveRestartTimer); liveRestartTimer = null; }
     liveRestartCount = MAX_LIVE_RESTARTS;
     if (recognition) { try { recognition.abort(); } catch (e) {} isListening = false; }
-    try { stopServerChunkRecorder(); } catch (e) {}
+    stopIOSStreamingSTT();
 }
 
 function finishPhaseInterview() {
