@@ -870,7 +870,6 @@ function buildAvatar(gender = 'female') {
     jawMesh.scale.set(1.4, 0.5, 0.6);
     headGroup.add(jawMesh);
 
-    // ═══ REALISM: Micro-expressions + head nods ═══
     headGroup.userData.microInterval = setInterval(() => {
         if (!headGroup || !browRig.length) return;
         browRig.forEach(brow => {
@@ -978,7 +977,6 @@ function animate() {
     requestAnimationFrame(animate);
     clock.getDelta();
 
-    // ═══ Eye tracking — pupils follow camera subtly ═══
     if (eyesGroup) {
         const camX = camera.position.x;
         const camY = camera.position.y;
@@ -1025,6 +1023,22 @@ let currentQuestionText = '';
 let currentCategory = '';
 let recognition = null;
 let isListening = false;
+let liveRestartTimer = null;
+let liveFinalText = '';
+let liveRestartCount = 0;
+const MAX_LIVE_RESTARTS = 30;
+
+// ═══ PLATFORM DETECTION ═══
+function isIOS() {
+    return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+           (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+function hasWebSpeechAPI() {
+    return 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
+}
+function useServerSTT() {
+    return isIOS() || !hasWebSpeechAPI();
+}
 let questionAttempts = {};
 
 // ═══ RECORDING STATE ═══
@@ -1047,7 +1061,7 @@ window.skipSilentQuestion = function () {
         console.log('[UKVI] skipSilentQuestion: answer exists → submitting');
         if (timerInterval) clearInterval(timerInterval);
         if (prepTimerInterval) clearInterval(prepTimerInterval);
-        if (isListening && recognition) { recognition.abort(); isListening = false; }
+        try { stopLiveTranscription(); } catch (e) {}
         if (audioRecorder && audioRecorder.state === 'recording') {
             try { audioRecorder.stop(); } catch (e) {}
         }
@@ -1222,25 +1236,39 @@ function fetchSubscriptionStatus() {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// RECORDING
+// RECORDING — MOBILE-OPTIMIZED (iOS + Android support)
 // ═══════════════════════════════════════════════════════════════════
 async function startRecording() {
-    if (!navigator.mediaDevices || !window.MediaRecorder) return;
+    if (!navigator.mediaDevices || !window.MediaRecorder) {
+        console.error('❌ MediaRecorder not supported');
+        return;
+    }
     try {
-        recordingStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        audioChunks = [];
-        audioRecorder = new MediaRecorder(recordingStream, {
-            mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-                ? 'audio/webm;codecs=opus' : 'audio/webm'
+        recordingStream = await navigator.mediaDevices.getUserMedia({
+            audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
         });
+        audioChunks = [];
+        let mimeType = '';
+        if (MediaRecorder.isTypeSupported('audio/mp4')) mimeType = 'audio/mp4';
+        else if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) mimeType = 'audio/webm;codecs=opus';
+        else if (MediaRecorder.isTypeSupported('audio/webm')) mimeType = 'audio/webm';
+        else { console.error('❌ No MIME'); return; }
+
+        console.log('🎙️ MIME:', mimeType);
+        audioRecorder = new MediaRecorder(recordingStream, { mimeType });
         audioRecorder.ondataavailable = (e) => {
-            if (e.data.size > 0) audioChunks.push(e.data);
+            if (e.data && e.data.size > 0) {
+                audioChunks.push(e.data);
+                console.log('✅ Chunk:', e.data.size, 'bytes');
+            }
         };
-        audioRecorder.start();
+        audioRecorder.onerror = (e) => console.error('❌ MR error:', e.error);
+        audioRecorder.start(1000);
         const ind = document.getElementById('recording-indicator');
         if (ind) ind.classList.add('show');
     } catch (e) {
-        console.warn('Recording failed:', e);
+        console.error('❌ Recording failed:', e);
+        alert('Microphone error: ' + e.message);
     }
 }
 
@@ -1251,15 +1279,22 @@ async function stopAndUploadRecording() {
             const ind = document.getElementById('recording-indicator');
             if (ind) ind.classList.remove('show');
             if (audioChunks.length === 0) { resolve(null); return; }
-            const blob = new Blob(audioChunks, { type: 'audio/webm' });
+            const blob = new Blob(audioChunks, { type: audioRecorder.mimeType || 'audio/webm' });
+            console.log('📦 Blob:', blob.size, 'bytes');
+            if (blob.size < 1000) {
+                console.warn('⚠️ Blob too small — silent');
+                resolve(null);
+                audioChunks = [];
+                if (recordingStream) { recordingStream.getTracks().forEach(t => t.stop()); recordingStream = null; }
+                return;
+            }
+            const ext = blob.type.includes('mp4') ? 'mp4' : 'webm';
             const formData = new FormData();
-            formData.append('audio', blob, 'answer.webm');
+            formData.append('audio', blob, 'answer.' + ext);
             formData.append('session_id', sessionId || 'unknown');
             formData.append('question_index', currentQ);
             try {
-                const resp = await fetch('/api/ukvi/record-answer', {
-                    method: 'POST', body: formData,
-                });
+                const resp = await fetch('/api/ukvi/record-answer', { method: 'POST', body: formData });
                 resolve(await resp.json());
             } catch (e) {
                 console.warn('Upload failed:', e);
@@ -1271,7 +1306,7 @@ async function stopAndUploadRecording() {
                 recordingStream = null;
             }
         };
-        audioRecorder.stop();
+        try { audioRecorder.stop(); } catch (e) { resolve(null); }
     });
 }
 
@@ -1355,7 +1390,7 @@ function beginInterviewWithPhases(interviewData) {
     });
 
     sessionId = interviewData.session_id || 'phase_' + Date.now();
-    window.ukviSessionId = sessionId;  // ← expose to assist
+    window.ukviSessionId = sessionId;
     console.log('[UKVI] Session ID exposed:', sessionId);
     questions = interviewData.questions;
     totalQ = interviewData.total_questions;
@@ -1487,9 +1522,18 @@ function fallbackSpeakPhase(question, attempt) {
 }
 
 function startPhaseQuestionTimer(question, attempt) {
+    // Cleanup any prior STT
+    try { stopLiveTranscription(); } catch (e) {}
     const answerTimeSec = question.time_seconds || 20;
     statusText.textContent = '🎙️ Listening... speak now';
     setChipStatus('Listening…', true);
+
+    // ✅ Mobile preflight — mic support check
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        statusText.textContent = '⛔ Mic not supported — type answer';
+        manualSubmit.style.display = 'block';
+        return;
+    }
 
     startRecording();
     startListeningForPhase(attempt);
@@ -1512,7 +1556,7 @@ function startPhaseQuestionTimer(question, attempt) {
         if (remaining <= 0) {
             clearInterval(timerInterval);
             if (warning) warning.classList.remove('show');
-            if (isListening && recognition) { recognition.abort(); isListening = false; }
+            try { stopLiveTranscription(); } catch (e) {}
             if (!answerInput.value.trim()) handleNoAnswer(attempt);
             else submitManualText();
         }
@@ -1536,47 +1580,162 @@ function updatePhaseTimerDisplay(remaining) {
 }
 
 function startListeningForPhase(attempt) {
-    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    if (useServerSTT()) {
+        console.log('[Live] iOS/no-WebSpeech → server chunk STT');
+        startServerChunkRecorder();
+        return;
+    }
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) {
         statusText.textContent = '🎙️ Please type your answer.';
         manualSubmit.style.display = 'block';
         return;
     }
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    recognition = new SR();
-    recognition.lang = 'en-GB';
-    recognition.interimResults = false;
-    recognition.continuous = false;
+    liveFinalText = '';
+    liveRestartCount = 0;
+    if (recognition) { try { recognition.abort(); } catch (e) {} }
+    if (liveRestartTimer) { clearTimeout(liveRestartTimer); liveRestartTimer = null; }
 
-    recognition.onstart = () => {
-        isListening = true;
-        statusText.textContent = '🎙️ Listening... speak now';
-    };
+    function createRecognition() {
+        recognition = new SR();
+        recognition.lang = 'en-GB';
+        recognition.interimResults = true;
+        recognition.continuous = true;
 
-    recognition.onresult = (event) => {
-        const transcript = event.results[0][0].transcript;
-        answerInput.value = transcript;
-        statusText.textContent = `📝 You said: "${transcript}"`;
-        questionAttempts[currentQ] = 0;
-        setTimeout(() => submitManualText(), 1400);
-    };
-
-    recognition.onerror = (event) => {
-        console.warn('Speech error:', event.error);
-        if (event.error === 'not-allowed') {
-            alert('Microphone access denied.');
+        recognition.onstart = () => {
+            isListening = true;
+            statusText.textContent = '🎙️ Listening... speak now';
+            console.log('[Live] 🎙️ Started');
+        };
+        recognition.onresult = (event) => {
+            let interim = '', final = '';
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+                const t = event.results[i][0].transcript;
+                if (event.results[i].isFinal) final += t + ' ';
+                else interim += t;
+            }
+            if (final) {
+                liveFinalText += final;
+                console.log('[Live] Final:', final.trim());
+            }
+            answerInput.value = (liveFinalText + interim).trim();
+            statusText.textContent = '📝 ' + answerInput.value.slice(-80);
+            questionAttempts[currentQ] = 0;
+        };
+        recognition.onerror = (event) => {
+            console.warn('[Live] Error:', event.error);
+            if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+                alert('Microphone access denied.');
+                manualSubmit.style.display = 'block';
+                statusText.textContent = '⛔ Mic denied — type answer';
+                isListening = false;
+                return;
+            }
+            if (event.error === 'network') {
+                manualSubmit.style.display = 'block';
+                statusText.textContent = '⚠️ Network issue — typing mode';
+            }
+        };
+        recognition.onend = () => {
+            isListening = false;
+            if (!isSubmitting && liveRestartCount < MAX_LIVE_RESTARTS) {
+                liveRestartCount++;
+                liveRestartTimer = setTimeout(() => {
+                    try {
+                        recognition.start();
+                        console.log('[Live] ♻️ Restart #' + liveRestartCount);
+                    } catch (e) {
+                        console.warn('[Live] Restart failed:', e);
+                    }
+                }, 300);
+            }
+        };
+        try { recognition.start(); }
+        catch (e) {
             manualSubmit.style.display = 'block';
-            statusText.textContent = '⛔ Mic denied — type answer';
+            statusText.textContent = '⛔ Speech error — type answer';
         }
-        isListening = false;
-    };
-
-    recognition.onend = () => { isListening = false; };
-
-    try { recognition.start(); }
-    catch (e) {
-        manualSubmit.style.display = 'block';
-        statusText.textContent = '⛔ Speech error — type answer';
     }
+    createRecognition();
+}
+
+// ═══ SERVER CHUNK STT (iOS Safari + iOS Chrome fallback) ═══
+let serverChunkActive = false;
+let serverChunkStream = null;
+
+async function startServerChunkRecorder() {
+    if (serverChunkActive) return;
+    serverChunkActive = true;
+    liveFinalText = liveFinalText || '';
+    statusText.textContent = '🎙️ Recording (server STT)...';
+
+    async function doChunk() {
+        if (!serverChunkActive) return;
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+            });
+            serverChunkStream = stream;
+
+            let mimeType = 'audio/webm';
+            if (MediaRecorder.isTypeSupported('audio/mp4')) mimeType = 'audio/mp4';
+            else if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) mimeType = 'audio/webm;codecs=opus';
+
+            const rec = new MediaRecorder(stream, { mimeType });
+            const chunks = [];
+            rec.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+            const stopped = new Promise(r => { rec.onstop = r; });
+            rec.start();
+
+            await new Promise(r => setTimeout(r, 4500));
+            if (rec.state === 'recording') rec.stop();
+            await stopped;
+            stream.getTracks().forEach(t => t.stop());
+
+            if (chunks.length && serverChunkActive) {
+                const blob = new Blob(chunks, { type: mimeType });
+                if (blob.size > 1000) {
+                    const ext = mimeType.includes('mp4') ? 'mp4' : 'webm';
+                    const fd = new FormData();
+                    fd.append('audio', blob, 'chunk.' + ext);
+                    try {
+                        const resp = await fetch('/api/transcribe', { method: 'POST', body: fd });
+                        const data = await resp.json();
+                        const txt = data.text || data.transcript ||
+                                    (data.result && data.result.transcript) || '';
+                        if (txt && txt.trim()) {
+                            liveFinalText += txt.trim() + ' ';
+                            answerInput.value = liveFinalText.trim();
+                            statusText.textContent = '📝 ' + answerInput.value.slice(-80);
+                            questionAttempts[currentQ] = 0;
+                            console.log('[Server STT] +', txt.trim().slice(0, 50));
+                        }
+                    } catch (e) {
+                        console.warn('[Server STT] chunk fail:', e);
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn('[Server STT] chunk error:', e);
+        }
+        if (serverChunkActive) doChunk();
+    }
+    doChunk();
+}
+
+function stopServerChunkRecorder() {
+    serverChunkActive = false;
+    if (serverChunkStream) {
+        try { serverChunkStream.getTracks().forEach(t => t.stop()); } catch (e) {}
+        serverChunkStream = null;
+    }
+}
+
+function stopLiveTranscription() {
+    if (liveRestartTimer) { clearTimeout(liveRestartTimer); liveRestartTimer = null; }
+    liveRestartCount = MAX_LIVE_RESTARTS;
+    if (recognition) { try { recognition.abort(); } catch (e) {} isListening = false; }
+    try { stopServerChunkRecorder(); } catch (e) {}
 }
 
 function finishPhaseInterview() {
@@ -1716,6 +1875,8 @@ async function submitManualText() {
     isSubmitting = true;
     questionAttempts[currentQ] = 0;
 
+    try { stopLiveTranscription(); } catch (e) {}
+
     stopAndUploadRecording().catch(() => {});
 
     statusText.textContent = '🤔 Thinking...';
@@ -1726,7 +1887,6 @@ async function submitManualText() {
     const thisQIdx = currentQ;
 
     try {
-        // Check follow-up + consistency
         const followupResp = await fetch('/api/ukvi/interview/follow-up', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1741,7 +1901,6 @@ async function submitManualText() {
         });
         const followupData = await followupResp.json();
 
-        // Submit to backend
         const answerResp = await fetch('/api/ukvi/answer', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1767,7 +1926,6 @@ async function submitManualText() {
         responses[thisQIdx] = { response: txt, evaluation: evalData };
         showFeedback(evalData);
 
-        // Handle follow-up
         if (followupData.success && followupData.needs_followup && followupData.followup_question) {
             const reason = followupData.followup_reason || 'followup';
             const isInconsistency = reason === 'inconsistency_detected';
@@ -1863,7 +2021,7 @@ fetchSubscriptionStatus();
 loadSavedProfile();
 if (window.speechSynthesis) window.speechSynthesis.getVoices();
 setChipStatus('Ready', false);
-console.log('✅ UKVI Real 7-Phase Interview ready — Follow-ups + Consistency + Pressure + Recording');
+console.log('✅ UKVI Real 7-Phase Interview ready — Follow-ups + Consistency + Pressure + Recording (mobile-optimized)');
 </script>
 
 <!-- ═══ UKVI Test Assistant — silence detection + auto-submit ═══ -->
@@ -1879,7 +2037,7 @@ console.log('✅ UKVI Real 7-Phase Interview ready — Follow-ups + Consistency 
             window.UKVIAssist.init({ sessionId: sid });
             console.log('[UKVI] Assistant initialized for session:', sid);
         }
-        if (tries > 240) {  // 60s timeout
+        if (tries > 240) {
             clearInterval(wait);
             console.warn('[UKVI] No sessionId after 60s — assistant inactive');
         }
@@ -1898,7 +2056,6 @@ window._B2B_SKIP = {{ 'true' if b2b_skip_profile else 'false' }};
 console.log('[B2B] profile:', window._B2B_PROFILE);
 console.log('[B2B] skip:', window._B2B_SKIP);
 
-// ── Auto-fill every profile value into matching input ──
 function _b2bFill(){
     const p = window._B2B_PROFILE;
     if(!p) return 0;
@@ -1906,7 +2063,6 @@ function _b2bFill(){
     Object.keys(p).forEach(function(key){
         const val = p[key];
         if(!val) return;
-        // Try IDs/names with key, key-without-underscore, key-with-hyphen
         const cands = [key, key.replace(/_/g,''), key.replace(/_/g,'-')];
         for(const c of cands){
             const el = document.getElementById(c)
@@ -1924,12 +2080,9 @@ function _b2bFill(){
     return n;
 }
 
-// ── Auto-advance past profile step ──
 function _b2bAdvance(){
-    // Strategy 1: find button inside #step-profile
     const profileStep = document.getElementById('step-profile');
     if(profileStep && profileStep.offsetParent !== null){
-        // It's still visible — look for buttons inside it
         const btns = profileStep.querySelectorAll('button, a.btn, [role=button], input[type=submit]');
         for(const b of btns){
             const txt = (b.textContent || b.value || '').trim();
@@ -1940,7 +2093,6 @@ function _b2bAdvance(){
             }
         }
     }
-    // Strategy 2: any visible button matching
     const all = document.querySelectorAll('button, a.btn, a.button, [role=button], input[type=submit]');
     for(const b of all){
         const txt = (b.textContent || b.value || '').trim();
@@ -1953,14 +2105,11 @@ function _b2bAdvance(){
     return false;
 }
 
-// ── Kick off on DOM ready ──
 function _b2bKick(){
     const n = _b2bFill();
     if(window._B2B_SKIP && n >= 5){
-        // Wait a bit for any validation handlers, then advance
         setTimeout(function(){
             if(!_b2bAdvance()){
-                // Retry up to 5x
                 let i = 0;
                 const iv = setInterval(function(){
                     if(_b2bAdvance() || ++i > 5) clearInterval(iv);
@@ -1980,7 +2129,6 @@ if(document.readyState === 'loading'){
 {% endif %}
 
     <style>
-    /* B2B_MODE_HIDE_NAV: hide dashboard/nav links for B2B students */
     body.b2b-mode .sidebar,
     body.b2b-mode .nav-dashboard,
     body.b2b-mode a[href="/dashboard"],
@@ -1991,13 +2139,10 @@ if(document.readyState === 'loading'){
     </style>
 
     <script>
-    // B2B_MODE_HIDE_NAV: detect B2B session and hide nav
     (function() {
-        // If _B2B_PROFILE exists, this is a B2B student
         if (window._B2B_PROFILE || window._B2B_SKIP) {
             document.addEventListener('DOMContentLoaded', function() {
                 document.body.classList.add('b2b-mode');
-                // Hide all dashboard links
                 document.querySelectorAll('a[href*="/dashboard"], a[href*="/saved-tests"]').forEach(function(el) {
                     el.style.display = 'none';
                 });
@@ -2008,42 +2153,31 @@ if(document.readyState === 'loading'){
     </script>
 
 
-<!-- B2B_HIDE_HEADER_V3: hide header/nav for B2B students -->
+<!-- B2B_HIDE_HEADER_V3 -->
 <style>
-    /* B2B test mode — hide panel header entirely */
     body.b2b-test-mode .panel-header {
         display: none !important;
     }
-
-    /* Hide subscription/free badges */
     body.b2b-test-mode .badge-free,
     body.b2b-test-mode .sub-bar,
     body.b2b-test-mode #sub-status-bar {
         display: none !important;
     }
-
-    /* Hide dashboard exit button in test panel */
     body.b2b-test-mode a[href="/dashboard"],
     body.b2b-test-mode a[href*="/dashboard"],
     body.b2b-test-mode a[href="/logout"],
     body.b2b-test-mode a[href*="/logout"] {
         display: none !important;
     }
-
-    /* Free interview count text — hide adjacent elements */
     body.b2b-test-mode .free-count,
     body.b2b-test-mode .subscription-info {
         display: none !important;
     }
-
-
 </style>
 
 <script>
 (function(){
-    // B2B_HIDE_HEADER_V3
     function detectB2B() {
-        // Check session markers on window + DOM
         if (window._B2B_PROFILE || window._B2B_SKIP) return true;
         if (document.body.innerHTML.indexOf('"b2b_profile"') >= 0) return true;
         if (document.cookie.indexOf('b2b_verified') >= 0) return true;
@@ -2052,7 +2186,6 @@ if(document.readyState === 'loading'){
 
     function applyB2B() {
         if (!detectB2B()) {
-            // Retry up to ~5 seconds (async profile load)
             if (!window.__b2bRetries) window.__b2bRetries = 0;
             if (window.__b2bRetries++ < 20) {
                 setTimeout(applyB2B, 250);
@@ -2063,7 +2196,6 @@ if(document.readyState === 'loading'){
         document.body.classList.add('b2b-test-mode');
         console.log('[B2B] Test mode active — header hidden');
 
-        // Force-hide specific known elements by class/content
         var selectors = [
             '.panel-header',
             '.badge-free',
@@ -2082,7 +2214,6 @@ if(document.readyState === 'loading'){
             });
         });
 
-        // Fallback: content-based hide for text nodes
         document.querySelectorAll('div, span, a, p, button, h1, h2, h3').forEach(function(el){
             var txt = (el.textContent || '').trim();
             if (!txt || txt.length > 80) return;
@@ -2111,9 +2242,8 @@ if(document.readyState === 'loading'){
 })();
 </script>
 
-<!-- ANSWER_INPUT_FIX_V1: ensure answer input is typeable -->
+<!-- ANSWER_INPUT_FIX_V1 -->
 <style>
-    /* Force answer input to be interactive */
     #answer-input,
     textarea[id*="answer"],
     input[id*="answer"],
@@ -2125,8 +2255,6 @@ if(document.readyState === 'loading'){
         -webkit-user-select: text !important;
         cursor: text !important;
     }
-
-    /* Ensure no overlay blocks the input */
     .answer-overlay,
     .input-overlay,
     .disabled-overlay {
@@ -2145,9 +2273,8 @@ if(document.readyState === 'loading'){
         );
 
         candidates.forEach(function(el){
-            if (el.offsetWidth < 30) return;  // skip hidden
+            if (el.offsetWidth < 30) return;
             var txt = (el.placeholder || el.textContent || '').toLowerCase();
-            // Only fix answer-related inputs
             if (txt.indexOf('answer') >= 0 || txt.indexOf('response') >= 0 ||
                 (el.tagName === 'TEXTAREA') ||
                 (el.id && el.id.indexOf('answer') >= 0) ||
@@ -2173,17 +2300,14 @@ if(document.readyState === 'loading'){
         }
     }
 
-    // Run on load
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', fixAnswerInput);
     } else {
         fixAnswerInput();
     }
 
-    // Re-run every 2 sec (in case element appears later)
     setInterval(fixAnswerInput, 2000);
 
-    // Run when mic denied indicator appears
     var observer = new MutationObserver(function(mutations){
         mutations.forEach(function(m){
             if (m.addedNodes.length) fixAnswerInput();
