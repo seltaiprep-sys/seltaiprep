@@ -45,7 +45,7 @@ class UKVIUser(db.Model):
     password_hash = db.Column(db.String(200))
     google_id = db.Column(db.String(80), unique=True, nullable=True)
     facebook_id = db.Column(db.String(100), unique=True, nullable=True)
-    phone = db.Column(db.String(20), unique=True, nullable=True, index=True)
+    phone = db.Column(db.String(20), nullable=True, index=True)
     full_name = db.Column(db.String(120), nullable=True)      # 🆕
     target_band = db.Column(db.Float, nullable=True)          # 🆕
     is_admin = db.Column(db.Boolean, default=False)
@@ -72,6 +72,9 @@ class UKVIUser(db.Model):
     #   "ielts_score":    "6.5"
     # }
     profile_data = db.Column(db.Text, default='{}')
+
+    # ═══ Soft delete (single source of truth for is_active) ═══
+    deleted_at = db.Column(db.DateTime(timezone=True), nullable=True)
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
