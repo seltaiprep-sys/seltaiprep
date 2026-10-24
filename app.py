@@ -8323,7 +8323,8 @@ if _B2B_AVAILABLE:
         partner = _get_b2b_partner()
         student = db.session.get(UKVIB2BStudent, student_id)
         if not student or student.partner_id != partner.id:
-            abort(403)
+            flash('Student not found — it may have been deleted.', 'warning')
+        return redirect(url_for('ukvi_b2b_students'))
         
         ukvi_user = db.session.get(UKVIUser, student.ukvi_user_id) if student.ukvi_user_id else None
         
