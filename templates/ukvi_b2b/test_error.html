@@ -3,38 +3,184 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Error — UKVI Test</title>
+    <title>{{ error }} — UKVI Test</title>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
-            min-height: 100vh; display: flex; align-items: center;
-            justify-content: center; padding: 20px; text-align: center;
+            font-family: -apple-system, 'Segoe UI', Arial, sans-serif;
+            background: #0a0e17;
+            color: #e6edf3;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+            -webkit-font-smoothing: antialiased;
         }
-        .card {
-            background: white; border-radius: 16px; padding: 40px 30px;
-            max-width: 420px; width: 100%;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        .box {
+            max-width: 500px;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 16px;
+            padding: 36px 32px;
+            text-align: center;
+            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.4);
         }
-        .icon { font-size: 64px; margin-bottom: 15px; }
-        h1 { color: #991b1b; font-size: 22px; margin-bottom: 15px; }
-        p { color: #6b7280; line-height: 1.6; font-size: 15px; }
-        .info {
-            background: #f3f4f6; padding: 15px; border-radius: 10px;
-            margin-top: 20px; font-size: 13px; color: #6b7280;
+        .icon {
+            font-size: 56px;
+            margin-bottom: 20px;
+            line-height: 1;
+        }
+        h1 {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 14px;
+            color: #f87171;
+            letter-spacing: -0.3px;
+        }
+        .message {
+            font-size: 15px;
+            line-height: 1.6;
+            color: #cbd5e1;
+            margin-bottom: 24px;
+        }
+        .hint {
+            background: rgba(108, 99, 255, 0.1);
+            border-left: 3px solid #6c63ff;
+            padding: 16px 18px;
+            border-radius: 8px;
+            font-size: 14px;
+            line-height: 1.6;
+            text-align: left;
+            margin-bottom: 24px;
+            color: #e6edf3;
+        }
+        .hint strong { color: #a5b4fc; }
+        .hint code {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            display: inline-block;
+            margin-top: 4px;
+            word-break: break-all;
+        }
+        .actions {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 14px 24px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+            transition: 0.15s;
+            border: none;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .btn-primary {
+            background: #6c63ff;
+            color: #fff;
+        }
+        .btn-primary:hover {
+            background: #8b7dff;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(108, 99, 255, 0.4);
+        }
+        .btn-ghost {
+            background: rgba(255, 255, 255, 0.06);
+            color: #cbd5e1;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .btn-ghost:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        .btn-wa {
+            background: #25D366;
+            color: #fff;
+        }
+        .btn-wa:hover {
+            background: #1ea952;
+        }
+        .footer-note {
+            margin-top: 20px;
+            font-size: 12px;
+            color: #64748b;
+        }
+        @media (max-width: 480px) {
+            .box { padding: 24px 20px; }
+            h1 { font-size: 19px; }
+            .icon { font-size: 44px; }
         }
     </style>
 </head>
 <body>
-    <div class="card">
-        <div class="icon">⚠️</div>
-        <h1>{{ error }}</h1>
-        <p>{{ message }}</p>
-        <div class="info">
-            Need help?<br>
-            Contact your institute for assistance.
-        </div>
+<div class="box">
+    <div class="icon">
+        {% if error == 'Expired' %}⏰
+        {% elif error == 'Revoked' %}🚫
+        {% elif error == 'Invalid link' %}❓
+        {% elif error == 'Maximum attempts reached' %}🔄
+        {% elif error == 'Already used' %}✅
+        {% elif error == 'Link inactive' %}⏸️
+        {% else %}⚠️
+        {% endif %}
     </div>
+
+    <h1>{{ error }}</h1>
+    <p class="message">{{ message }}</p>
+
+    <div class="hint">
+        {% if error == 'Expired' %}
+            Your 24-hour test window has ended. Please contact your institute
+            to schedule a new test.
+        {% elif error == 'Revoked' %}
+            This test link has been cancelled by your institute.
+            If this was unexpected, please contact them.
+        {% elif error == 'Invalid link' %}
+            Make sure you copied the <strong>complete URL</strong> from your
+            institute's message. It should look like:
+            <br><code>.../ukvi/b2b/test/abc123xyz...</code>
+        {% elif error == 'Maximum attempts reached' %}
+            You have used all available attempts on this test.
+            Contact your institute to request a new test.
+        {% elif error == 'Already used' %}
+            This test has already been completed. Your institute has
+            access to your results.
+        {% elif error == 'Link inactive' %}
+            Your institute has deactivated this test.
+            Please contact them for help.
+        {% else %}
+            Something went wrong. Please contact your institute
+            for assistance.
+        {% endif %}
+    </div>
+
+    <div class="actions">
+        <a href="javascript:history.back()" class="btn btn-ghost">
+            ← Go Back
+        </a>
+        <a href="https://wa.me/?text={{ ('I need help with my UKVI test - Error: ' + error) | urlencode }}"
+           class="btn btn-wa"
+           target="_blank" rel="noopener">
+            💬 Contact Institute on WhatsApp
+        </a>
+        <a href="/" class="btn btn-primary">
+            🏠 Home
+        </a>
+    </div>
+
+    <div class="footer-note">
+        Error code: <strong>{{ error }}</strong>
+    </div>
+</div>
 </body>
 </html>

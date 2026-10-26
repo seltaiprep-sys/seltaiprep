@@ -11,8 +11,8 @@
 
     const DEFAULTS = {
         silenceThreshold: 0.02,
-        silenceWarnAfter: 15,
-        silenceAutoAdvanceAfter: 30,
+        silenceWarnAfter: 5,
+        silenceAutoAdvanceAfter: 8,
         testMaxMinutes: 30,
         warnBeforeMax: 2,
         idleMaxMinutes: 10,
@@ -141,6 +141,15 @@
 
         if (sec >= S.cfg.silenceAutoAdvanceAfter && Date.now() > S.autoAdvanceCooldown) {
             console.log('[UKVI Assist] Silence → auto-advance');
+
+            // FIX: trigger auto-advance via template hook
+            if (typeof window.skipSilentQuestion === "function") {
+                try {
+                    window.skipSilentQuestion();
+                } catch (e) {
+                    console.error("[UKVI Assist] skipSilentQuestion failed:", e);
+                }
+            }
             S.autoAdvanceCooldown = Date.now() + 3000;
             S.silenceStart = null;
             S.silenceWarned = false;

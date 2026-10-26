@@ -2276,7 +2276,7 @@ def dashboard():
     # ── B2B student redirect — skip master dashboard ──
     if session.get('_b2b_student_id'):
         flash('Please complete your UKVI interview.', 'info')
-        return redirect(url_for('ukvi'))
+        return redirect(url_for('ukvi_test_page'))
 
     q_module = request.args.get('module')
     if q_module in ('ielts', 'pte', 'ukvi'):
@@ -4694,15 +4694,77 @@ def pte_speaking_writing_redirect_underscore():
 
 
 # ============================================================
-# UKVI ROUTES
+# UKVI ROUTES — separated dashboard / test page
 # ============================================================
 @app.route('/ukvi')
 @login_required
 def ukvi():
+    """UKVI entry — dashboard for regular users, test page for B2B students."""
+    session['selected_module'] = 'ukvi'
+    if session.get('_b2b_student_id'):
+        return redirect(url_for('ukvi_test_page'))
+    return redirect(url_for('ukvi_dashboard'))
+
+
+@app.route('/ukvi/dashboard')
+@login_required
+def ukvi_dashboard():
+    """UKVI dashboard — regular users only. B2B students go straight to test."""
     session['selected_module'] = 'ukvi'
 
-    # ── B2B AUTO-SESSION (fix: session not found on submit) ──
     if session.get('_b2b_student_id'):
+        return redirect(url_for('ukvi_test_page'))
+
+    user_id = current_user.id
+
+    # Subscription status
+    try:
+        ukvi_sub_manager = UKVISubscriptionManager(db)
+        subscription_status = ukvi_sub_manager.get_status(user_id)
+    except Exception as e:
+        logger.warning(f'UKVI dashboard subscription status failed: {e}')
+        subscription_status = {
+            'has_subscription': False,
+            'free_used': 0,
+            'free_limit': 2,
+            'plan': None,
+            'tests_remaining': 0,
+        }
+
+    # Past test sessions
+    try:
+        from modules.ukvi.models import UKVITestSession
+        past_sessions = (
+            UKVITestSession.query
+            .filter_by(user_id=user_id)
+            .order_by(UKVITestSession.id.desc())
+            .limit(10)
+            .all()
+        )
+    except Exception as e:
+        logger.warning(f'UKVI dashboard past sessions failed: {e}')
+        past_sessions = []
+
+    return render_template(
+        'ukvi_dashboard.html',
+        subscription_status=subscription_status,
+        past_sessions=past_sessions,
+    )
+
+
+@app.route('/ukvi/test')
+@login_required
+def ukvi_test_page():
+    """
+    UKVI test page.
+      Regular user  → blank form, nav visible, subscription-gated.
+      B2B student   → pre-filled form, nav hidden, subscription bypassed.
+    """
+    session['selected_module'] = 'ukvi'
+    is_b2b = bool(session.get('_b2b_student_id'))
+
+    if is_b2b:
+        # ── B2B AUTO-SESSION ──
         try:
             from modules.ukvi.models import UKVITestSession
             from datetime import timedelta
@@ -4724,10 +4786,26 @@ def ukvi():
                 logger.info(f'B2B reusing session #{recent.id} for user {user_id}')
         except Exception as e:
             logger.exception(f'B2B auto-session error: {e}')
+    else:
+        # ── REGULAR USER: subscription gate ──
+        try:
+            ukvi_sub_manager = UKVISubscriptionManager(db)
+            status = ukvi_sub_manager.get_status(current_user.id)
+            has_sub = status.get('has_subscription', False)
+            free_used = status.get('free_used', 0)
+            free_limit = status.get('free_limit', 2)
+            if not has_sub and free_used >= free_limit:
+                flash('Free interview limit reached. Please subscribe to continue.', 'warning')
+                return redirect(url_for('ukvi_subscription_redirect'))
+        except Exception as e:
+            logger.warning(f'UKVI test subscription gate failed: {e}')
 
-    return render_template('ukvi_test.html',
-        b2b_profile=session.get('_b2b_profile'),
-        b2b_skip_profile=session.get('_b2b_skip_profile', False))
+    return render_template(
+        'ukvi_test.html',
+        b2b_mode=is_b2b,
+        b2b_profile=session.get('_b2b_profile') if is_b2b else None,
+        b2b_skip_profile=session.get('_b2b_skip_profile', False) if is_b2b else False,
+    )
 
 
 @app.route('/ukvi/audio/submit', methods=['POST'])
@@ -4791,6 +4869,36 @@ def ukvi_auto_submit():
             user_id=user_id, status='in_progress'
         ).order_by(UKVITestSession.id.desc()).first()
         if not latest:
+
+            # Partner completion notification
+            try:
+                _b2b_sid = session.get("_b2b_student_id")
+                if _b2b_sid:
+                    from modules.ukvi.models import UKVIB2BStudent as _BS, UKVIB2BPartner as _BP
+                    _stu = db.session.get(_BS, _b2b_sid)
+                    if _stu and not _stu.test_completed_at:
+                        _stu.test_completed_at = datetime.now(timezone.utc)
+                        _p = db.session.get(_BP, _stu.partner_id)
+                        if _p and _p.email:
+                            try:
+                                _m = Message(
+                                    subject=f"✅ {_stu.full_name} completed UKVI test",
+                                    recipients=[_p.email],
+                                    body=(
+                                        f"Student: {_stu.full_name}\n"
+                                        f"Completed: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')} UTC\n\n"
+                                        f"View results: {request.host_url}ukvi/b2b/results\n"
+                                    ),
+                                )
+                                mail.send(_m)
+                                logger.info("Completion email sent to %s", _p.email)
+                            except Exception as _me:
+                                logger.warning("Completion email failed: %s", _me)
+                        db.session.commit()
+            except Exception as _ne:
+                logger.warning("B2B completion hook failed: %s", _ne)
+                db.session.rollback()
+
             return jsonify({'success': False, 'error': 'No active session'}), 404
         sid = latest.id
 
@@ -4990,9 +5098,9 @@ def ws_transcribe(ws):
         "smart_format": "true",
         "punctuate": "true",
         "interim_results": "true",
-        "utterance_end_ms": "1000",
+        "utterance_end_ms": "500",
         "vad_events": "true",
-        "endpointing": "300",
+        "endpointing": "200",
         "filler_words": "true",
     }
     # Client may override model/language
@@ -5087,7 +5195,7 @@ def transcribe_audio():
         "diarize": "false",             # Single speaker
         "utterances": "true",           # Segment boundaries
         "filler_words": "true",         # Preserve um/uh (UKVI realism)
-        "endpointing": "300",           # 300ms silence = end
+        "endpointing": "200",           # 300ms silence = end
         # UKVI domain term boost
         "keywords": (
             "university:2,course:2,sponsor:2,"
@@ -8062,6 +8170,27 @@ if _B2B_AVAILABLE:
         pid = session.get('ukvi_b2b_partner_id')
         return db.session.get(UKVIB2BPartner, pid) if pid else None
 
+    @app.route("/ukvi/b2b/api/check-username")
+    @_b2b_partner_required
+    def ukvi_b2b_check_username():
+        """Live username availability check."""
+        username = (request.args.get("u") or "").strip()
+        if not username or len(username) < 3:
+            return jsonify({"success": False, "error": "Min 3 characters"})
+        if not re.match(r"^[a-zA-Z0-9._-]+$", username):
+            return jsonify({"success": False, "error": "Invalid characters"})
+        taken = UKVIUser.query.filter_by(username=username).first() is not None
+        if not taken:
+            return jsonify({"success": True, "available": True, "username": username, "suggestions": []})
+        suggestions = []
+        for _i in range(2, 20):
+            _cand = username + "_" + str(_i)
+            if not UKVIUser.query.filter_by(username=_cand).first():
+                suggestions.append(_cand)
+                if len(suggestions) >= 3:
+                    break
+        return jsonify({"success": True, "available": False, "username": username, "suggestions": suggestions})
+    
     @app.route('/ukvi/b2b/login', methods=['GET', 'POST'])
     def ukvi_b2b_login():
         if session.get('ukvi_b2b_partner_id'):
@@ -8246,6 +8375,31 @@ if _B2B_AVAILABLE:
     @_b2b_partner_required
     def ukvi_b2b_students():
         partner = _get_b2b_partner()
+
+        # Auto-sync test_completed_at from session history
+        # Fixes auto-refund bug when blueprint fails to set it
+        try:
+                from modules.ukvi.models import UKVITestSession as _VTS
+                _pending = partner.students.filter(
+                    UKVIB2BStudent.test_completed_at.is_(None),
+                    UKVIB2BStudent.ukvi_user_id.isnot(None),
+                ).all()
+                _synced = 0
+                for _s in _pending:
+                    _done = _VTS.query.filter_by(
+                        user_id=_s.ukvi_user_id, status="completed"
+                    ).first()
+                    if _done:
+                        _s.test_completed_at = (
+                            _done.completed_at or datetime.now(timezone.utc)
+                        )
+                        _synced += 1
+                if _synced:
+                    db.session.commit()
+                    logger.info("Auto-synced test_completed_at for %d students", _synced)
+        except Exception as _e:
+                logger.warning("Auto-sync failed: %s", _e)
+                db.session.rollback()
         search = (request.args.get('q') or '').strip()
         status = (request.args.get('status') or 'all').lower()
         q = partner.students
@@ -8265,6 +8419,14 @@ if _B2B_AVAILABLE:
     @_b2b_partner_required
     def ukvi_b2b_add_student():
         partner = _get_b2b_partner()
+
+        # Atomic credit lock — prevent race on simultaneous submits
+        if partner and getattr(partner, "id", None):
+                _lock = db.session.query(UKVIB2BPartner).filter_by(
+                    id=partner.id
+                ).with_for_update().first()
+                if _lock:
+                    partner = _lock
         student = None  # defensive init
         if partner.credits_balance < 1:
             flash('Insufficient credits — buy credits first', 'warning')
@@ -8294,9 +8456,17 @@ if _B2B_AVAILABLE:
                 flash('Username: letters, numbers, dot, underscore, hyphen only', 'error')
                 return render_template('ukvi_b2b/student_add.html', partner=partner)
             
-            if UKVIUser.query.filter_by(username=username).first():
-                flash('Username "' + username + '" already taken', 'error')
-                return render_template('ukvi_b2b/student_add.html', partner=partner)
+            # Auto-suffix on global conflict
+            _original_username = username
+            _suffix = 1
+            while UKVIUser.query.filter_by(username=username).first():
+                _suffix += 1
+                if _suffix > 100:
+                    flash("Too many similar usernames. Please choose another.", "error")
+                    return render_template("ukvi_b2b/student_add.html", partner=partner)
+                username = _original_username + "_" + str(_suffix)
+            if _suffix > 1:
+                logger.info("B2B auto-suffix: %s -> %s", _original_username, username)
             
             tz_code = (request.form.get('timezone') or 'NPT').strip().upper()
             if tz_code not in B2B_TIMEZONE_OFFSETS:
@@ -8361,8 +8531,45 @@ if _B2B_AVAILABLE:
                 reference_id=student.id, reference_type='student'))
             db.session.commit()
             
-            flash('Student added — 1 credit deducted. Balance: ' + str(partner.credits_balance), 'success')
+            if _suffix > 1:
+                flash(
+                    "Student added with username \"" + username + "\" "
+                    "(auto-adjusted from \"" + _original_username + "\"). "
+                    "1 credit deducted. Balance: " + str(partner.credits_balance),
+                    "success"
+                )
+            else:
+                flash('Student added — 1 credit deducted. Balance: ' + str(partner.credits_balance), 'success')
             flash('Username: ' + username + ' | Password: ' + password + ' — Share with student', 'info')
+
+            # UKVI test link email (auto-send to student if email provided)
+            if student.email:
+                try:
+                    _h = request.host_url.rstrip("/")
+                    if (os.environ.get("FLASK_ENV") == "production"
+                            or os.environ.get("SESSION_COOKIE_SECURE", "").lower() == "true"):
+                        _h = _h.replace("http://", "https://", 1)
+                    _link = _h + student.test_url
+                    _msg = Message(
+                        subject="Your UKVI Mock Test Link",
+                        recipients=[student.email],
+                        body=(
+                            f"Hello {student.full_name},\n\n"
+                            f"Your UKVI interview test is scheduled for:\n"
+                            f"  {sched_date} at {sched_time} ({tz_code})\n\n"
+                            f"Test link:\n{_link}\n\n"
+                            f"Username: {username}\n"
+                            f"Password: {password}\n\n"
+                            f"Please complete the test within 24 hours of the scheduled time.\n\n"
+                            f"— {partner.name}"
+                        ),
+                    )
+                    mail.send(_msg)
+                    flash("Test link emailed to student ✅", "success")
+                    logger.info("Test link emailed to %s", student.email)
+                except Exception as _e:
+                    logger.warning("Email send failed: %s", _e)
+                    flash("Student added — email failed, share link manually", "warning")
             return redirect(url_for('ukvi_b2b_student_detail', student_id=student.id))
         return render_template('ukvi_b2b/student_add.html', partner=partner)
 
@@ -8372,8 +8579,8 @@ if _B2B_AVAILABLE:
         partner = _get_b2b_partner()
         student = db.session.get(UKVIB2BStudent, student_id)
         if not student or student.partner_id != partner.id:
-            flash('Student not found — it may have been deleted.', 'warning')
-        return redirect(url_for('ukvi_b2b_students'))
+            flash('Student not found', 'warning')
+            return redirect(url_for('ukvi_b2b_students'))
         
         ukvi_user = db.session.get(UKVIUser, student.ukvi_user_id) if student.ukvi_user_id else None
         
@@ -8383,7 +8590,11 @@ if _B2B_AVAILABLE:
                 user_id=student.ukvi_user_id
             ).order_by(UKVITestSession.id.desc()).all()
         
-        full_link = request.host_url.rstrip('/') + student.test_url
+        _host = request.host_url.rstrip("/")
+        if (os.environ.get("FLASK_ENV") == "production"
+                or os.environ.get("SESSION_COOKIE_SECURE", "").lower() == "true"):
+            _host = _host.replace("http://", "https://", 1)
+        full_link = _host + student.test_url
 
         # Compute local (NPT) scheduled time for display
         try:
@@ -8396,6 +8607,31 @@ if _B2B_AVAILABLE:
             window_start_local = None
             window_end_local = None
 
+
+        # Compute expiry seconds for countdown UI
+        student.expiry_seconds_remaining = None
+        student.expiry_window_state = "no_schedule"
+        try:
+            if student.scheduled_date and student.scheduled_time:
+                _sched = datetime.combine(
+                    student.scheduled_date,
+                    student.scheduled_time
+                ).replace(tzinfo=timezone.utc)
+                _window_end = _sched + timedelta(hours=24)
+                _now = datetime.now(timezone.utc)
+                _secs = int((_window_end - _now).total_seconds())
+                student.expiry_seconds_remaining = _secs
+                if _secs <= 0:
+                    student.expiry_window_state = "expired"
+                elif student.test_completed_at:
+                    student.expiry_window_state = "completed"
+                elif _secs < 3600 * 6:
+                    student.expiry_window_state = "expiring_soon"
+                else:
+                    student.expiry_window_state = "active"
+        except Exception as _e:
+            logger.warning("Expiry compute failed: %s", _e)
+
         return render_template('ukvi_b2b/student_detail.html',
             partner=partner, student=student,
             ukvi_user=ukvi_user,
@@ -8407,6 +8643,74 @@ if _B2B_AVAILABLE:
 
 
 
+    @app.route("/ukvi/b2b/students/<int:student_id>/result")
+    @_b2b_partner_required
+    def ukvi_b2b_student_result(student_id):
+        """Result detail view for a completed student."""
+        partner = _get_b2b_partner()
+        student = db.session.get(UKVIB2BStudent, student_id)
+        if not student or student.partner_id != partner.id:
+            flash("Student not found", "warning")
+            return redirect(url_for("ukvi_b2b_results"))
+        
+        if not student.test_completed_at:
+            flash("Result not available — test not completed yet", "info")
+            return redirect(url_for("ukvi_b2b_student_detail", student_id=student_id))
+        
+        from modules.ukvi.models import UKVITestSession as _VTS_R
+        
+        sessions_list = []
+        if student.ukvi_user_id:
+            try:
+                sessions_list = _VTS_R.query.filter_by(
+                    user_id=student.ukvi_user_id
+            ).order_by(_VTS_R.id.desc()).all()
+            except Exception as _e:
+                logger.warning("Result sessions load failed: %s", _e)
+        
+        completed_session = None
+        for _s in sessions_list:
+            if _s.status == "completed":
+                completed_session = _s
+                break
+        
+        evaluation = {}
+        answers = {}
+        if completed_session:
+            try:
+                _td = completed_session.get_test_data() if hasattr(completed_session, "get_test_data") else {}
+                if isinstance(_td, dict):
+                    evaluation = _td.get("evaluation") or {}
+                _ans = completed_session.answers_so_far or {}
+                if isinstance(_ans, str):
+                    import json as _j
+                    try:
+                        _ans = _j.loads(_ans)
+                    except Exception:
+                        _ans = {}
+                answers = _ans if isinstance(_ans, dict) else {}
+            except Exception as _e:
+                logger.warning("Result parse failed: %s", _e)
+        
+        duration_secs = None
+        if student.test_started_at and student.test_completed_at:
+            try:
+                duration_secs = int((student.test_completed_at - student.test_started_at).total_seconds())
+            except Exception:
+                pass
+        
+        return render_template(
+            "ukvi_b2b/result_detail.html",
+            partner=partner,
+            student=student,
+            completed_session=completed_session,
+            evaluation=evaluation,
+            answers=answers,
+            all_sessions=sessions_list,
+            duration_secs=duration_secs,
+        )
+    
+    
     @app.route('/ukvi/b2b/students/<int:student_id>/delete', methods=['POST'])
     @_b2b_partner_required
     def ukvi_b2b_student_delete(student_id):
@@ -8850,6 +9154,7 @@ if _B2B_AVAILABLE:
         
         ukvi_user.set_password(new_password)
         db.session.commit()
+        session.pop('b2b_verified_' + str(student.id), None)
         flash('Password reset! New password: ' + new_password + ' — Share with student', 'success')
         return redirect(url_for('ukvi_b2b_student_detail', student_id=student_id))
 
@@ -9077,9 +9382,10 @@ if _B2B_AVAILABLE:
                 except Exception as e:
 
                     logger.warning('B2B sync failed: %s', e)
-        return redirect(url_for('ukvi'))
+        return redirect(url_for('ukvi_test_page'))
 
     @app.route('/ukvi/b2b/test/<token>/login', methods=['POST'])
+    @limiter.limit("5 per minute;20 per hour")
     def ukvi_b2b_test_login(token):
         student = UKVIB2BStudent.query.filter_by(test_token=token).first()
         if not student:

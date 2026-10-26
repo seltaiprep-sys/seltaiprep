@@ -1,0 +1,156 @@
+{% extends 'ukvi_b2b/base.html' %}
+{% block title %}Result — {{ student.full_name }}{% endblock %}
+{% block content %}
+
+<div class="card" style="padding:24px; margin-bottom:16px;">
+    <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:12px; align-items:center;">
+        <div>
+            <h2 style="margin:0 0 6px;">🎯 {{ student.full_name }}</h2>
+            <div style="opacity:0.65; font-size:13px;">
+                Completed: {{ student.test_completed_at.strftime('%Y-%m-%d %H:%M') if student.test_completed_at else '—' }}
+                {% if duration_secs %}
+                    &middot; Duration: {{ (duration_secs // 60) }}m {{ (duration_secs % 60) }}s
+                {% endif %}
+            </div>
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <a href="{{ url_for('ukvi_b2b_student_detail', student_id=student.id) }}"
+               style="padding:8px 16px; background:rgba(255,255,255,0.06); color:#cbd5e1; border-radius:8px; text-decoration:none; font-size:13px; font-weight:600;">
+                👤 Student Detail
+            </a>
+            <a href="{{ url_for('ukvi_b2b_results') }}"
+               style="padding:8px 16px; background:rgba(255,255,255,0.06); color:#cbd5e1; border-radius:8px; text-decoration:none; font-size:13px; font-weight:600;">
+                ← All Results
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Score Cards -->
+{% set score = student.result_score or evaluation.get('overall_score') %}
+{% set grade = student.result_grade or evaluation.get('prediction') %}
+{% set cred = evaluation.get('credibility_avg') %}
+
+<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:12px; margin-bottom:16px;">
+    <div class="card" style="padding:20px; text-align:center;">
+        <div style="font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:#6c63ff; font-weight:700; margin-bottom:8px;">Overall Score</div>
+        <div style="font-size:32px; font-weight:800; color:#34d399;">
+            {% if score is not none %}{{ '%.1f'|format(score) }}{% else %}—{% endif %}
+        </div>
+    </div>
+
+    <div class="card" style="padding:20px; text-align:center;">
+        <div style="font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:#6c63ff; font-weight:700; margin-bottom:8px;">Prediction</div>
+        <div style="font-size:22px; font-weight:800; color:#a5b4fc; margin-top:6px;">
+            {{ grade or '—' }}
+        </div>
+    </div>
+
+    <div class="card" style="padding:20px; text-align:center;">
+        <div style="font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:#6c63ff; font-weight:700; margin-bottom:8px;">Credibility</div>
+        <div style="font-size:32px; font-weight:800; color:#fbbf24;">
+            {% if cred is not none %}{{ '%.0f'|format(cred) }}%{% else %}—{% endif %}
+        </div>
+    </div>
+
+    <div class="card" style="padding:20px; text-align:center;">
+        <div style="font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:#6c63ff; font-weight:700; margin-bottom:8px;">Duration</div>
+        <div style="font-size:22px; font-weight:800; color:#cbd5e1; margin-top:6px;">
+            {% if duration_secs %}{{ (duration_secs // 60) }}m {{ (duration_secs % 60) }}s{% else %}—{% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Recommendations -->
+{% set recs = evaluation.get('recommendations') or [] %}
+{% if recs %}
+<div class="card" style="padding:20px; margin-bottom:16px;">
+    <h3 style="margin:0 0 12px; font-size:16px;">💡 Recommendations</h3>
+    <ul style="margin:0; padding-left:20px; line-height:1.8; font-size:14px;">
+        {% for r in recs %}
+        <li>{{ r }}</li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+
+<!-- Per-Question Breakdown -->
+{% if answers %}
+<div class="card" style="padding:20px; margin-bottom:16px;">
+    <h3 style="margin:0 0 12px; font-size:16px;">📋 Per-Question Breakdown</h3>
+    <div style="overflow-x:auto;">
+        <table style="width:100%; border-collapse:collapse; font-size:13px;">
+            <thead>
+                <tr style="border-bottom:2px solid rgba(108,99,255,0.3);">
+                    <th style="padding:10px 8px; text-align:left; width:40px;">Q#</th>
+                    <th style="padding:10px 8px; text-align:left;">Response</th>
+                    <th style="padding:10px 8px; text-align:center; width:80px;">Score</th>
+                    <th style="padding:10px 8px; text-align:left;">Feedback</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for q_key, q_data in answers.items() %}
+                    {% if q_data is mapping %}
+                        {% set q_score = q_data.get('evaluation', {}).get('overall_score') if q_data.get('evaluation') is mapping else None %}
+                        {% set q_fb = q_data.get('evaluation', {}).get('feedback', '') if q_data.get('evaluation') is mapping else '' %}
+                        {% set q_resp = q_data.get('response', '') %}
+                        <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+                            <td style="padding:10px 8px; font-weight:700; color:#a5b4fc;">{{ q_key }}</td>
+                            <td style="padding:10px 8px; line-height:1.5; max-width:400px;">
+                                {{ q_resp[:300] }}{% if q_resp|length > 300 %}...{% endif %}
+                            </td>
+                            <td style="padding:10px 8px; text-align:center; font-weight:700;
+                                {% if q_score and q_score >= 7 %}color:#34d399;
+                                {% elif q_score and q_score >= 5 %}color:#fbbf24;
+                                {% else %}color:#f87171;{% endif %}">
+                                {% if q_score is not none %}{{ '%.1f'|format(q_score) }}{% else %}—{% endif %}
+                            </td>
+                            <td style="padding:10px 8px; font-size:12px; color:#cbd5e1; line-height:1.5;">
+                                {{ q_fb[:200] }}{% if q_fb|length > 200 %}...{% endif %}
+                            </td>
+                        </tr>
+                    {% endif %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- Session History -->
+{% if all_sessions and all_sessions|length > 1 %}
+<div class="card" style="padding:20px; margin-bottom:16px;">
+    <h3 style="margin:0 0 12px; font-size:16px;">🗂️ Session History</h3>
+    <div style="display:flex; flex-direction:column; gap:8px;">
+        {% for s in all_sessions %}
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 14px; background:rgba(255,255,255,0.03); border-radius:8px; border:1px solid rgba(255,255,255,0.05); font-size:13px;">
+            <div>
+                <strong>Session #{{ s.id }}</strong>
+                <span style="opacity:0.6; margin-left:8px;">
+                    {{ s.start_time.strftime('%Y-%m-%d %H:%M') if s.start_time else '—' }}
+                </span>
+            </div>
+            <span style="padding:3px 10px; border-radius:20px; font-size:11px; font-weight:700;
+                {% if s.status == 'completed' %}background:rgba(16,185,129,0.18); color:#34d399;
+                {% elif s.status == 'in_progress' %}background:rgba(245,158,11,0.2); color:#fbbf24;
+                {% else %}background:rgba(239,68,68,0.18); color:#f87171;{% endif %}">
+                {{ s.status }}
+            </span>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+{% if not evaluation and not answers %}
+<div class="card" style="padding:20px; background:rgba(245,158,11,0.08); border-left:3px solid #f59e0b;">
+    <strong style="color:#fbbf24;">⚠️ Limited result data</strong>
+    <p style="margin:8px 0 0; font-size:13px; line-height:1.6; color:#cbd5e1;">
+        Detailed per-question evaluation is not stored for this session.
+        Only the overall score is available. This may happen if the test
+        was completed before detailed evaluation logging was enabled.
+    </p>
+</div>
+{% endif %}
+
+{% endblock %}

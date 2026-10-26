@@ -605,3 +605,205 @@ window.addEventListener('beforeunload', (e) => {
 });
 </script>
 {% endblock %}
+
+<script>
+(function(){
+  var el = document.getElementById("username");
+  if (!el) return;
+  var hint = document.createElement("small");
+  hint.style.cssText = "display:block;margin-top:6px;font-size:12px;";
+  el.parentNode.appendChild(hint);
+  var timer;
+  el.addEventListener("input", function(){
+    clearTimeout(timer);
+    var u = this.value.trim();
+    hint.textContent = ""; hint.style.color = ""; hint.onclick = null;
+    if (u.length < 3) return;
+    timer = setTimeout(function(){
+      fetch("/ukvi/b2b/api/check-username?u=" + encodeURIComponent(u))
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          if (!d.success) { hint.textContent = d.error; hint.style.color = "#f87171"; return; }
+          if (d.available) { hint.textContent = "Available"; hint.style.color = "#34d399"; return; }
+          hint.textContent = "Taken - try: " + d.suggestions.join(", ");
+          hint.style.color = "#fbbf24"; hint.style.cursor = "pointer";
+          hint.onclick = function(){
+            if (d.suggestions.length) {
+              el.value = d.suggestions[0];
+              hint.textContent = "Picked: " + d.suggestions[0];
+              hint.style.color = "#34d399"; hint.style.cursor = "default"; hint.onclick = null;
+            }
+          };
+        }).catch(function(){});
+    }, 400);
+  });
+})();
+</script>
+
+<!-- ═══ B2B PASSWORD MODAL v1 ═══ -->
+<style>
+#b2b-pw-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.75);
+    z-index: 99999;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+#b2b-pw-modal.show { display: flex; }
+#b2b-pw-modal .pm-box {
+    background: #0d121c;
+    border: 1px solid rgba(108, 99, 255, 0.3);
+    border-radius: 16px;
+    padding: 28px 24px;
+    max-width: 440px;
+    width: 100%;
+    text-align: center;
+}
+#b2b-pw-modal .pm-title {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    color: #a5b4fc;
+}
+#b2b-pw-modal .pm-sub {
+    font-size: 13px;
+    color: #94a3b8;
+    margin-bottom: 20px;
+    line-height: 1.5;
+}
+#b2b-pw-modal .pm-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 10px;
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+}
+#b2b-pw-modal .pm-row code {
+    color: #e6edf3;
+    font-family: inherit;
+}
+#b2b-pw-modal .pm-copy {
+    background: #6c63ff;
+    color: #fff;
+    border: none;
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+}
+#b2b-pw-modal .pm-copy:hover { background: #8b7dff; }
+#b2b-pw-modal .pm-warn {
+    background: rgba(245, 158, 11, 0.12);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    color: #fbbf24;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    line-height: 1.5;
+    margin: 16px 0;
+}
+#b2b-pw-modal .pm-close {
+    width: 100%;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.06);
+    color: #cbd5e1;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    margin-top: 8px;
+}
+</style>
+
+<div id="b2b-pw-modal">
+    <div class="pm-box">
+        <div class="pm-title">✅ Student Created</div>
+        <div class="pm-sub">Share these credentials with the student</div>
+
+        <div class="pm-row">
+            <code id="pm-username">—</code>
+            <button class="pm-copy" onclick="pmCopy('username')">Copy</button>
+        </div>
+        <div class="pm-row">
+            <code id="pm-password">—</code>
+            <button class="pm-copy" onclick="pmCopy('password')">Copy</button>
+        </div>
+
+        <div class="pm-warn">
+            ⚠️ <strong>Save this now</strong> — the password is encrypted and cannot
+            be shown again after you close this window.
+        </div>
+
+        <button class="pm-close" onclick="pmClose()">I've saved it — Close</button>
+    </div>
+</div>
+
+<script>
+(function() {
+    'use strict';
+    window.pmCopy = function(field) {
+        var el = document.getElementById('pm-' + field);
+        if (!el) return;
+        var txt = el.textContent;
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(txt).then(function() {
+                flash('Copied!');
+            }).catch(function() { legacyCopy(txt); });
+        } else {
+            legacyCopy(txt);
+        }
+    };
+    function legacyCopy(txt) {
+        var ta = document.createElement('textarea');
+        ta.value = txt; ta.style.opacity = '0'; ta.style.position = 'fixed';
+        document.body.appendChild(ta); ta.select();
+        try { document.execCommand('copy'); flash('Copied!'); } catch (e) {}
+        document.body.removeChild(ta);
+    }
+    function flash(msg) {
+        var f = document.createElement('div');
+        f.textContent = msg;
+        f.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);' +
+                          'background:#10b981;color:#fff;padding:10px 22px;border-radius:8px;' +
+                          'font-weight:600;font-size:13px;z-index:100000;box-shadow:0 6px 20px rgba(16,185,129,0.4);';
+        document.body.appendChild(f);
+        setTimeout(function() { if (f.parentNode) f.parentNode.removeChild(f); }, 1500);
+    }
+    window.pmClose = function() {
+        var m = document.getElementById('b2b-pw-modal');
+        if (m) m.classList.remove('show');
+    };
+
+    // Auto-open modal when URL contains #credentials
+    // (partner redirected to student detail; the flash message contains creds)
+    // OR: this file listens for a server-injected data element
+    function maybeShow() {
+        // Check for a flash message containing "Username: ... Password: ..."
+        // (this is what Flask shows after successful add)
+        var bodyText = document.body.textContent || '';
+        var m = bodyText.match(/Username:\s*([A-Za-z0-9._\-]+)\s*\|\s*Password:\s*([A-Za-z0-9!@#$%^&*._\-]+)/);
+        if (m) {
+            document.getElementById('pm-username').textContent = m[1];
+            document.getElementById('pm-password').textContent = m[2];
+            document.getElementById('b2b-pw-modal').classList.add('show');
+        }
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', maybeShow);
+    } else {
+        maybeShow();
+    }
+})();
+</script>
+<!-- ═══ END B2B PASSWORD MODAL v1 ═══ -->

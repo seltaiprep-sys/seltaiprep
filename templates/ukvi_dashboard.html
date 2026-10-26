@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>UKVI Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body {
+            min-height: 100%;
+            font-family: 'Segoe UI', -apple-system, Arial, sans-serif;
+            background: #0a0e17;
+            color: #e6edf3;
+            -webkit-font-smoothing: antialiased;
+        }
+        .wrap { max-width: 900px; margin: 0 auto; padding: 24px 20px 60px; }
+
+        /* ── Header ── */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 18px;
+            border-bottom: 1px solid rgba(108,99,255,0.15);
+            margin-bottom: 24px;
+        }
+        .logo h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; }
+        .logo h1 span { color: #6c63ff; }
+        .logo p { font-size: 12px; opacity: 0.55; margin-top: 3px; letter-spacing: 0.5px; }
+        .nav { display: flex; gap: 16px; align-items: center; }
+        .nav a {
+            color: #94a3b8;
+            text-decoration: none;
+            font-size: 13px;
+            transition: 0.15s;
+        }
+        .nav a:hover { color: #fff; }
+
+        /* ── Subscription bar ── */
+        .sub-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            background: rgba(108,99,255,0.08);
+            border: 1px solid rgba(108,99,255,0.15);
+            border-radius: 12px;
+            padding: 14px 18px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.4px;
+            text-transform: uppercase;
+        }
+        .badge-free    { background: rgba(245,158,11,0.2); color: #fbbf24; border: 1px solid rgba(245,158,11,0.35); }
+        .badge-active  { background: rgba(16,185,129,0.18); color: #34d399; border: 1px solid rgba(16,185,129,0.35); }
+        .badge-expired { background: rgba(239,68,68,0.18); color: #f87171; border: 1px solid rgba(239,68,68,0.35); }
+        .sub-text { font-size: 13px; color: #cbd5e1; flex: 1; }
+        .btn-subscribe {
+            background: linear-gradient(135deg, #f093fb, #f5576c);
+            color: #fff;
+            border: none;
+            padding: 8px 18px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 12px;
+            cursor: pointer;
+            text-decoration: none;
+            letter-spacing: 0.3px;
+            transition: 0.15s;
+        }
+        .btn-subscribe:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(245,87,108,0.4); }
+
+        /* ── Start CTA ── */
+        .cta-card {
+            background: linear-gradient(135deg, rgba(108,99,255,0.12), rgba(139,125,255,0.08));
+            border: 1px solid rgba(108,99,255,0.25);
+            border-radius: 16px;
+            padding: 28px 24px;
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        .cta-card h2 {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            letter-spacing: -0.3px;
+        }
+        .cta-card p {
+            font-size: 13px;
+            opacity: 0.65;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+        .btn-start {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: linear-gradient(135deg, #6c63ff, #8b7dff);
+            color: #fff;
+            border: none;
+            padding: 14px 32px;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            text-decoration: none;
+            letter-spacing: 0.2px;
+            transition: 0.15s;
+        }
+        .btn-start:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(108,99,255,0.45); }
+        .btn-start.disabled {
+            background: rgba(100,116,139,0.3);
+            color: #94a3b8;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        /* ── Section ── */
+        .section-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: #6c63ff;
+            font-weight: 700;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(108,99,255,0.15);
+        }
+
+        /* ── Past sessions ── */
+        .session-list { display: flex; flex-direction: column; gap: 10px; }
+        .session-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 12px;
+            padding: 14px 18px;
+            transition: 0.15s;
+        }
+        .session-item:hover { background: rgba(108,99,255,0.08); border-color: rgba(108,99,255,0.25); }
+        .session-info { display: flex; flex-direction: column; gap: 4px; }
+        .session-title { font-size: 14px; font-weight: 600; }
+        .session-meta { font-size: 11px; opacity: 0.55; letter-spacing: 0.3px; }
+        .session-status {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .status-completed { background: rgba(16,185,129,0.18); color: #34d399; }
+        .status-in_progress { background: rgba(245,158,11,0.2); color: #fbbf24; }
+        .status-abandoned { background: rgba(239,68,68,0.18); color: #f87171; }
+
+        .empty {
+            text-align: center;
+            padding: 32px 20px;
+            opacity: 0.55;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        @media (max-width: 600px) {
+            .wrap { padding: 16px 14px 40px; }
+            .header { flex-wrap: wrap; gap: 12px; }
+            .logo h1 { font-size: 17px; }
+            .sub-bar { padding: 12px 14px; }
+            .cta-card { padding: 22px 18px; }
+            .cta-card h2 { font-size: 19px; }
+            .btn-start { width: 100%; justify-content: center; }
+        }
+    </style>
+</head>
+<body>
+<div class="wrap">
+
+    <!-- Header -->
+    <div class="header">
+        <div class="logo">
+            <h1>🎓 <span>UKVI</span> Interview</h1>
+            <p>AI Examiner · Dashboard</p>
+        </div>
+        <div class="nav">
+            <a href="/dashboard">Dashboard</a>
+            <a href="/saved-tests">Results</a>
+            <a href="/logout">Logout</a>
+        </div>
+    </div>
+
+    <!-- Subscription status -->
+    {% set has_sub = subscription_status.has_subscription %}
+    {% set free_used = subscription_status.free_used or 0 %}
+    {% set free_limit = subscription_status.free_limit or 2 %}
+    {% set free_left = free_limit - free_used %}
+
+    <div class="sub-bar">
+        {% if has_sub %}
+            <span class="badge badge-active">✅ Active</span>
+            <span class="sub-text">
+                {{ subscription_status.plan or 'Premium' }} ·
+                {{ subscription_status.tests_remaining or 'Unlimited' }} tests remaining
+            </span>
+        {% elif free_left > 0 %}
+            <span class="badge badge-free">⚡ Free</span>
+            <span class="sub-text">
+                <strong>{{ free_left }}</strong> of {{ free_limit }} free interviews left
+            </span>
+        {% else %}
+            <span class="badge badge-expired">🔒 Limit Reached</span>
+            <span class="sub-text">You've used all free interviews</span>
+            <a href="/ukvi/subscription" class="btn-subscribe">Subscribe</a>
+        {% endif %}
+    </div>
+
+    <!-- Start new interview -->
+    <div class="cta-card">
+        <h2>🚀 Start a New Interview</h2>
+        <p>
+            Practice a realistic UKVI credibility interview with a 3D AI examiner.
+            You'll fill in your details on the next page.
+        </p>
+        {% if has_sub or free_left > 0 %}
+            <a href="{{ url_for('ukvi_test_page') }}" class="btn-start">
+                🎤 Start Interview
+            </a>
+        {% else %}
+            <a href="/ukvi/subscription" class="btn-start disabled">
+                🔒 Subscribe to Start
+            </a>
+        {% endif %}
+    </div>
+
+    <!-- Past interviews -->
+    <div class="section-label">📊 Recent Interviews</div>
+
+    {% if past_sessions %}
+        <div class="session-list">
+            {% for s in past_sessions %}
+                <div class="session-item">
+                    <div class="session-info">
+                        <div class="session-title">Interview #{{ s.id }}</div>
+                        <div class="session-meta">
+                            {% if s.start_time %}
+                                {{ s.start_time.strftime('%Y-%m-%d %H:%M') }}
+                            {% else %}
+                                Unknown time
+                            {% endif %}
+                        </div>
+                    </div>
+                    <span class="session-status status-{{ s.status or 'in_progress' }}">
+                        {{ (s.status or 'in_progress') | replace('_', ' ') }}
+                    </span>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty">
+            No interviews yet. Start your first one above! 👆
+        </div>
+    {% endif %}
+
+</div>
+</body>
+</html>

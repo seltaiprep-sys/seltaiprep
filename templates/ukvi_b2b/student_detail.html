@@ -373,5 +373,279 @@ function showToast(msg) {
     setTimeout(() => toast.remove(), 2500);
 }
 </script>
+
+<!-- ═══ B2B UI ENHANCEMENTS v1 ═══ -->
+<input type="hidden" id="b2b-expiry-remaining" value="{{ student.expiry_seconds_remaining|default('', true) }}">
+<input type="hidden" id="b2b-window-state" value="{{ student.expiry_window_state|default('', true) }}">
+
+<style>
+.b2b-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 10px 0;
+    padding: 12px;
+    background: rgba(108, 99, 255, 0.08);
+    border: 1px solid rgba(108, 99, 255, 0.2);
+    border-radius: 10px;
+}
+.b2b-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: 0.15s;
+    font-family: inherit;
+}
+.b2b-btn-primary { background: #6c63ff; color: #fff; }
+.b2b-btn-primary:hover { background: #8b7dff; }
+.b2b-btn-ghost {
+    background: rgba(255,255,255,0.06);
+    color: #cbd5e1;
+    border: 1px solid rgba(255,255,255,0.1);
+}
+.b2b-btn-ghost:hover { background: rgba(255,255,255,0.1); }
+.b2b-btn-wa {
+    background: #25D366;
+    color: #fff;
+}
+.b2b-btn-wa:hover { background: #1ea952; }
+.b2b-btn-email {
+    background: #1e40af;
+    color: #fff;
+}
+.b2b-btn-email:hover { background: #1e3a8a; }
+.b2b-copy-flash {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #10b981;
+    color: #fff;
+    padding: 12px 24px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 14px;
+    box-shadow: 0 8px 24px rgba(16,185,129,0.4);
+    z-index: 99999;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+.b2b-copy-flash.show { opacity: 1; }
+.b2b-countdown {
+    display: inline-block;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    margin: 8px 0;
+}
+.b2b-countdown.active { background: rgba(16,185,129,0.18); color: #34d399; }
+.b2b-countdown.expiring_soon { background: rgba(245,158,11,0.2); color: #fbbf24; }
+.b2b-countdown.expired { background: rgba(239,68,68,0.18); color: #f87171; }
+.b2b-countdown.completed { background: rgba(108,99,255,0.2); color: #a5b4fc; }
+@media print {
+    .b2b-toolbar, .b2b-btn { display: none !important; }
+}
+</style>
+
+<script>
+(function() {
+    'use strict';
+
+    // ── Toast for copy confirmation ──
+    var toast = document.createElement('div');
+    toast.className = 'b2b-copy-flash';
+    toast.textContent = 'Copied!';
+    document.body.appendChild(toast);
+
+    function showToast(msg) {
+        toast.textContent = msg || 'Copied!';
+        toast.classList.add('show');
+        setTimeout(function() { toast.classList.remove('show'); }, 1600);
+    }
+
+    // ── Copy helper with fallback ──
+    function copyText(text) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            return navigator.clipboard.writeText(text).then(function() {
+                showToast('Copied!');
+            }).catch(function() {
+                fallbackCopy(text);
+            });
+        }
+        fallbackCopy(text);
+    }
+    function fallbackCopy(text) {
+        var ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand('copy'); showToast('Copied!'); }
+        catch(e) { alert('Copy failed. Manual: ' + text); }
+        document.body.removeChild(ta);
+    }
+
+    // ── Find test link + username + password text ──
+    function findTestLink() {
+        // Look for text starting with http that contains /ukvi/b2b/test/
+        var m = document.body.innerHTML.match(/https?:\/\/[^\s"'<>]+\/ukvi\/b2b\/test\/[A-Za-z0-9_\-]+/);
+        return m ? m[0] : null;
+    }
+    function findUsername() {
+        var m = document.body.innerHTML.match(/Username[:\s]+([A-Za-z0-9._\-]+)/i);
+        return m ? m[1] : null;
+    }
+    function findPassword() {
+        var m = document.body.innerHTML.match(/Password[:\s]+([A-Za-z0-9!@#$%^&*._\-]+)/i);
+        return m ? m[1] : null;
+    }
+
+    // ── Build toolbar and inject after test link ──
+    function enhance() {
+        var link = findTestLink();
+        var username = findUsername();
+        var password = findPassword();
+
+        var toolbar = document.createElement('div');
+        toolbar.className = 'b2b-toolbar';
+
+        if (link) {
+            var b1 = document.createElement('button');
+            b1.className = 'b2b-btn b2b-btn-primary';
+            b1.textContent = '📋 Copy Link';
+            b1.onclick = function() { copyText(link); };
+            toolbar.appendChild(b1);
+
+            var wa = document.createElement('a');
+            wa.className = 'b2b-btn b2b-btn-wa';
+            wa.textContent = '💬 WhatsApp';
+            wa.href = 'https://wa.me/?text=' + encodeURIComponent(
+                'Your UKVI test link: ' + link
+            );
+            wa.target = '_blank';
+            toolbar.appendChild(wa);
+
+            var em = document.createElement('a');
+            em.className = 'b2b-btn b2b-btn-email';
+            em.textContent = '✉️ Email';
+            em.href = 'mailto:?subject=' + encodeURIComponent('Your UKVI Test')
+                    + '&body=' + encodeURIComponent('Your UKVI test link: ' + link);
+            toolbar.appendChild(em);
+        }
+
+        if (username) {
+            var bu = document.createElement('button');
+            bu.className = 'b2b-btn b2b-btn-ghost';
+            bu.textContent = '👤 Copy Username';
+            bu.onclick = function() { copyText(username); };
+            toolbar.appendChild(bu);
+        }
+
+        if (password) {
+            var bp = document.createElement('button');
+            bp.className = 'b2b-btn b2b-btn-ghost';
+            bp.textContent = '🔑 Copy Password';
+            bp.onclick = function() { copyText(password); };
+            toolbar.appendChild(bp);
+        }
+
+        var print = document.createElement('button');
+        print.className = 'b2b-btn b2b-btn-ghost';
+        print.textContent = '🖨️ Print Card';
+        print.onclick = function() { window.print(); };
+        toolbar.appendChild(print);
+
+        if (toolbar.children.length === 0) return;
+
+        // Insert toolbar before the test-link block, or at top of content
+        var target = null;
+        var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+        var node;
+        while ((node = walker.nextNode())) {
+            if (link && node.nodeValue.indexOf(link) !== -1) {
+                target = node.parentNode;
+                break;
+            }
+        }
+        if (target && target.parentNode) {
+            target.parentNode.insertBefore(toolbar, target.parentNode.nextSibling);
+        } else {
+            var main = document.querySelector('main, .container, .content, body');
+            if (main && main.insertBefore) {
+                main.insertBefore(toolbar, main.firstChild);
+            }
+        }
+
+        // ── Countdown ──
+        var expiry = document.getElementById('b2b-expiry-remaining');
+        var state = document.getElementById('b2b-window-state');
+        if (expiry && expiry.value !== '' && !isNaN(parseInt(expiry.value))) {
+            var secs = parseInt(expiry.value);
+            var cd = document.createElement('div');
+            cd.className = 'b2b-countdown ' + (state ? state.value : 'active');
+
+            function tick() {
+                if (secs <= 0) {
+                    cd.textContent = '⏰ Link expired';
+                    cd.className = 'b2b-countdown expired';
+                    return;
+                }
+                var h = Math.floor(secs / 3600);
+                var m = Math.floor((secs % 3600) / 60);
+                var s = secs % 60;
+                cd.textContent = '⏳ Expires in ' + h + 'h ' + m + 'm ' + s + 's';
+                secs--;
+                setTimeout(tick, 1000);
+            }
+            tick();
+            toolbar.parentNode.insertBefore(cd, toolbar);
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', enhance);
+    } else {
+        enhance();
+    }
+})();
+</script>
+<!-- ═══ END B2B UI ENHANCEMENTS v1 ═══ -->
 {% endblock %}
+<!-- B2B_RESULT_LINK_V1 -->
+{% if student.test_completed_at %}
+<script>
+(function(){
+  function add() {
+    if (document.getElementById('b2b-result-btn')) return;
+    var url = '/ukvi/b2b/students/{{ student.id }}/result';
+    var a = document.createElement('a');
+    a.id = 'b2b-result-btn';
+    a.href = url;
+    a.textContent = '🎯 View Full Result';
+    a.style.cssText = 'display:inline-block;padding:12px 24px;background:linear-gradient(135deg,#10b981,#059669);color:#fff;border-radius:10px;font-weight:700;font-size:14px;text-decoration:none;margin:12px 0;box-shadow:0 4px 16px rgba(16,185,129,0.3);';
+    var target = document.querySelector('.card h2, h1, h2');
+    if (target && target.parentNode) {
+      target.parentNode.insertBefore(a, target.nextSibling);
+    } else {
+      document.body.insertBefore(a, document.body.firstChild);
+    }
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', add);
+  } else { add(); }
+})();
+</script>
+{% endif %}
+<!-- END B2B_RESULT_LINK_V1 -->
+
 {% endblock %}
+

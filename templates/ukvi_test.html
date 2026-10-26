@@ -454,7 +454,7 @@
                 <p>AI Examiner · 3D Avatar</p>
             </div>
             <div class="nav">
-                <a href="/dashboard">Dashboard</a>
+                <a href="/ukvi/dashboard">UKVI Dashboard</a>
                 <a href="/logout">Logout</a>
             </div>
         </div>
@@ -594,7 +594,7 @@
                     <button class="btn btn-primary" id="restart-btn" style="flex:1;">
                         🔄 Another Interview
                     </button>
-                    <a href="/dashboard" class="btn btn-ghost" style="flex:1; text-decoration:none;">
+                    <a href="/ukvi/dashboard" class="btn btn-ghost" style="flex:1; text-decoration:none;">
                         📜 Dashboard
                     </a>
                 </div>
@@ -1140,12 +1140,17 @@ function startCaptions(text) {
     captionIndex = 0;
     overlayText.textContent = '';
     if (captionWords.length) { overlayText.textContent = captionWords[0]; captionIndex = 1; }
+    // OPT3: caption speed boosted — 90ms/word + 2-word batches
     captionInterval = setInterval(() => {
         if (captionIndex < captionWords.length) {
-            overlayText.textContent += ' ' + captionWords[captionIndex];
-            captionIndex++;
+            const batch = captionWords.slice(captionIndex, captionIndex + 2).join(' ');
+            overlayText.textContent += ' ' + batch;
+            captionIndex += 2;
+        } else {
+            clearInterval(captionInterval);
+            captionInterval = null;
         }
-    }, 180);
+    }, 90);
 }
 function stopCaptions() {
     if (captionInterval) { clearInterval(captionInterval); captionInterval = null; }
@@ -1263,7 +1268,7 @@ async function startRecording() {
             }
         };
         audioRecorder.onerror = (e) => console.error('❌ MR error:', e.error);
-        audioRecorder.start(1000);
+        audioRecorder.start(250);  // OPT: 250ms chunks for faster STT
         const ind = document.getElementById('recording-indicator');
         if (ind) ind.classList.add('show');
     } catch (e) {
@@ -1617,11 +1622,11 @@ function startListeningForPhase(attempt) {
         let gotAnyResult = false;
         const fallbackTimer = setTimeout(() => {
             if (!gotAnyResult && !answerInput.value.trim()) {
-                console.warn('[Live] ⚠️ No Web Speech result in 5s → server STT');
+                console.warn('[Live] ⚠️ No Web Speech result in 2.5s → server STT');
                 try { recognition.abort(); } catch (e) {}
                 startIOSStreamingSTT();
             }
-        }, 5000);
+        }, 2500);  // OPT5: faster fallback to server STT
 
         recognition.onstart = () => {
             isListening = true;
@@ -1641,7 +1646,7 @@ function startListeningForPhase(attempt) {
                 liveFinalText += final;
                 console.log('[Live] Final:', final.trim());
             }
-            answerInput.value = (liveFinalText + interim).trim();
+            answerInput.value = (liveFinalText + interim).trim();  // OPT4: interim UI already active
             statusText.textContent = '📝 ' + answerInput.value.slice(-80);
             questionAttempts[currentQ] = 0;
         };
@@ -1718,7 +1723,7 @@ async function startIOSStreamingSTT() {
             if (ctx.audioCtx.state === 'suspended') await ctx.audioCtx.resume();
             ctx.source = ctx.audioCtx.createMediaStreamSource(ctx.stream);
             // iOS Safari: AudioWorklet unavailable → ScriptProcessorNode fallback
-            ctx.processor = ctx.audioCtx.createScriptProcessor(4096, 1, 1);
+            ctx.processor = ctx.audioCtx.createScriptProcessor(1024, 1, 1);
             ctx.processor.onaudioprocess = (e) => {
                 if (!iosSTT || ws.readyState !== WebSocket.OPEN) return;
                 const f32 = e.inputBuffer.getChannelData(0);
@@ -2046,7 +2051,7 @@ function exitTest() {
     if (isListening && recognition) recognition.abort();
     if (timerInterval) clearInterval(timerInterval);
     if (prepTimerInterval) clearInterval(prepTimerInterval);
-    if (confirm('Are you sure you want to exit?')) window.location.href = '/dashboard';
+    if (confirm('Are you sure you want to exit?')) window.location.href = '/ukvi/dashboard';
 }
 
 function restart() {
@@ -2124,10 +2129,10 @@ console.log('✅ UKVI Real 7-Phase Interview ready — Follow-ups + Consistency 
 <script src="/static/js/sw-register.js"></script>
 <script src="/static/js/push-notifications.js"></script>
 
-{% if b2b_profile %}
+{% if b2b_mode %}
 <script>
 (function(){
-window._B2B_PROFILE = {{ b2b_profile | tojson | safe }};
+window._B2B_PROFILE = {{ (b2b_profile or {}) | tojson | safe }};
 window._B2B_SKIP = {{ 'true' if b2b_skip_profile else 'false' }};
 console.log('[B2B] profile:', window._B2B_PROFILE);
 console.log('[B2B] skip:', window._B2B_SKIP);

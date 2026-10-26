@@ -47,4 +47,31 @@
     </div>
     {% endif %}
 </div>
+<!-- B2B_RESULTS_DETAIL_LINK_V1 -->
+<script>
+(function(){
+  function enhance() {
+    var links = document.querySelectorAll('a[href*="/ukvi/b2b/students/"]');
+    links.forEach(function(a) {
+      var m = a.href.match(/\/ukvi\/b2b\/students\/(\d+)(?:\?|#|$)/);
+      if (!m) return;
+      var sid = m[1];
+      var row = a.closest('tr, li, .student-row, .card, div');
+      if (!row) return;
+      if (row.querySelector('.b2b-result-link')) return;
+      var r = document.createElement('a');
+      r.className = 'b2b-result-link';
+      r.href = '/ukvi/b2b/students/' + sid + '/result';
+      r.textContent = '🎯 Result';
+      r.style.cssText = 'display:inline-block;margin-left:8px;padding:5px 10px;background:#10b981;color:#fff;border-radius:6px;font-size:11px;font-weight:700;text-decoration:none;';
+      a.parentNode.insertBefore(r, a.nextSibling);
+    });
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', enhance);
+  } else { enhance(); }
+})();
+</script>
+<!-- END B2B_RESULTS_DETAIL_LINK_V1 -->
+
 {% endblock %}
