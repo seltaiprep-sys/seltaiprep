@@ -8,8 +8,8 @@
             <h2 style="margin:0 0 6px;">🎯 {{ student.full_name }}</h2>
             <div style="opacity:0.65; font-size:13px;">
                 Completed: {{ student.test_completed_at.strftime('%Y-%m-%d %H:%M') if student.test_completed_at else '—' }}
-                {% if duration_secs %}
-                    &middot; Duration: {{ (duration_secs // 60) }}m {{ (duration_secs % 60) }}s
+                {% if session_duration %}
+                    &middot; Duration: {{ (session_duration // 60) }}m {{ (session_duration % 60) }}s
                 {% endif %}
             </div>
         </div>
@@ -56,7 +56,7 @@
     <div class="card" style="padding:20px; text-align:center;">
         <div style="font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:#6c63ff; font-weight:700; margin-bottom:8px;">Duration</div>
         <div style="font-size:22px; font-weight:800; color:#cbd5e1; margin-top:6px;">
-            {% if duration_secs %}{{ (duration_secs // 60) }}m {{ (duration_secs % 60) }}s{% else %}—{% endif %}
+            {% if session_duration %}{{ (session_duration // 60) }}m {{ (session_duration % 60) }}s{% else %}—{% endif %}
         </div>
     </div>
 </div>
@@ -119,27 +119,7 @@
 
 <!-- Session History -->
 {% if all_sessions and all_sessions|length > 1 %}
-<div class="card" style="padding:20px; margin-bottom:16px;">
-    <h3 style="margin:0 0 12px; font-size:16px;">🗂️ Session History</h3>
-    <div style="display:flex; flex-direction:column; gap:8px;">
-        {% for s in all_sessions %}
-        <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 14px; background:rgba(255,255,255,0.03); border-radius:8px; border:1px solid rgba(255,255,255,0.05); font-size:13px;">
-            <div>
-                <strong>Session #{{ s.id }}</strong>
-                <span style="opacity:0.6; margin-left:8px;">
-                    {{ s.start_time.strftime('%Y-%m-%d %H:%M') if s.start_time else '—' }}
-                </span>
-            </div>
-            <span style="padding:3px 10px; border-radius:20px; font-size:11px; font-weight:700;
-                {% if s.status == 'completed' %}background:rgba(16,185,129,0.18); color:#34d399;
-                {% elif s.status == 'in_progress' %}background:rgba(245,158,11,0.2); color:#fbbf24;
-                {% else %}background:rgba(239,68,68,0.18); color:#f87171;{% endif %}">
-                {{ s.status }}
-            </span>
-        </div>
-        {% endfor %}
-    </div>
-</div>
+
 {% endif %}
 
 {% if not evaluation and not answers %}
@@ -152,5 +132,61 @@
     </p>
 </div>
 {% endif %}
+
+
+<!-- ═══ PER-SESSION HISTORY (clickable) ═══ -->
+{% if session_summaries is defined and session_summaries %}
+<div class="card" style="padding:20px; margin-top:16px;">
+    <h3 style="margin:0 0 6px; font-size:16px;">🗂️ Session History</h3>
+    <p style="margin:0 0 14px; font-size:12px; opacity:0.6;">
+        Click any session to view its detailed result
+    </p>
+    <div style="display:flex; flex-direction:column; gap:8px;">
+        {% for s in session_summaries %}
+        <a href="{{ url_for('ukvi_b2b_student_result', student_id=student.id) }}?session={{ s.id }}"
+           style="
+               display:flex; justify-content:space-between; align-items:center;
+               padding:14px 18px; border-radius:10px; text-decoration:none;
+               font-size:13px; transition:0.15s; gap:12px;
+               {% if s.id == selected_session_id %}
+                   background:rgba(108,99,255,0.18);
+                   border:1px solid rgba(108,99,255,0.5);
+                   color:#fff;
+               {% else %}
+                   background:rgba(255,255,255,0.03);
+                   border:1px solid rgba(255,255,255,0.06);
+                   color:#cbd5e1;
+               {% endif %}
+           ">
+            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                <strong style="font-size:14px;">Session #{{ s.id }}</strong>
+                {% if s.id == selected_session_id %}
+                <span style="font-size:10px; background:#6c63ff; color:#fff; padding:2px 8px; border-radius:10px; font-weight:700;">VIEWING</span>
+                {% endif %}
+                <span style="opacity:0.55; font-size:12px;">
+                    {{ s.start_time.strftime('%Y-%m-%d %H:%M') if s.start_time else '—' }}
+                </span>
+            </div>
+            <div style="display:flex; gap:14px; align-items:center; flex-wrap:wrap;">
+                {% if s.duration %}
+                <span style="font-size:11px; opacity:0.6;">{{ (s.duration // 60) }}m {{ (s.duration % 60) }}s</span>
+                {% endif %}
+                {% if s.answers_count %}
+                <span style="font-size:11px; opacity:0.6;">{{ s.answers_count }} Q</span>
+                {% endif %}
+                {% if s.score is not none %}
+                <span style="font-weight:800; font-size:15px; color:#34d399;">{{ '%.1f'|format(s.score) }}</span>
+                {% endif %}
+                {% if s.grade %}
+                <span style="font-size:11px; opacity:0.75;">{{ s.grade }}</span>
+                {% endif %}
+                <span style="color:#6c63ff; font-size:16px;">→</span>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+<!-- ═══ END PER-SESSION HISTORY ═══ -->
 
 {% endblock %}
