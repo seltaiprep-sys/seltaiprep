@@ -467,7 +467,7 @@
             </div>
 
             <div id="step-profile">
-                <div class="step-title">📋 Your Profile</div>
+                <div class="step-title" style="display:flex;justify-content:space-between;align-items:center;gap:10px;"><span>📋 Your Profile</span><button type="button" id="fill-last-profile-btn" style="background:rgba(108,99,255,0.15);border:1px solid rgba(108,99,255,0.3);color:#a5b4fc;padding:6px 12px;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;display:none;" onclick="if(typeof loadSavedProfile==='function')loadSavedProfile();this.style.display='none';">📋 Use Last Saved Profile</button></div>
                 <div class="step-sub">Fill in your details to generate realistic UKVI questions.</div>
 
                 <div class="section-label">Applicant</div>
@@ -2099,7 +2099,7 @@ exitBtn.addEventListener('click', exitTest);
 restartBtn.addEventListener('click', restart);
 
 fetchSubscriptionStatus();
-loadSavedProfile();
+// loadSavedProfile();  // DISABLED — form stays blank each time
 if (window.speechSynthesis) window.speechSynthesis.getVoices();
 setChipStatus('Ready', false);
 console.log('✅ UKVI Real 7-Phase Interview ready — Follow-ups + Consistency + Pressure + Recording (mobile-optimized)');
@@ -2397,5 +2397,398 @@ if(document.readyState === 'loading'){
     document.body && observer.observe(document.body, { childList: true, subtree: true });
 })();
 </script>
+
+<script>
+// Show "Fill Last Profile" button only if user has saved profile
+(function(){
+    var uid = (document.getElementById('user-id')||{}).value;
+    if (!uid) return;
+    fetch('/api/ukvi/profile?user_id=' + uid)
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+            if (d && d.success && d.profile && d.profile.full_name) {
+                var btn = document.getElementById('fill-last-profile-btn');
+                if (btn) btn.style.display = 'inline-block';
+            }
+        })
+        .catch(function(){});
+})();
+</script>
+
+<!-- MIC_FALLBACK_V2 -->
+<style>
+#mic-mode-banner {
+    position: fixed;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 99999;
+    padding: 10px 18px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #fff;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    max-width: 92%;
+}
+#mic-mode-banner.typing {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+}
+#mic-mode-banner.voice {
+    background: linear-gradient(135deg, #10b981, #059669);
+}
+#mic-mode-banner .close-btn {
+    background: transparent;
+    border: none;
+    color: #fff;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 0 4px;
+    opacity: 0.75;
+    font-family: inherit;
+}
+#mic-mode-banner .close-btn:hover { opacity: 1; }
+
+/* FORCE typing mode: input always editable */
+body.typing-mode #answer-input,
+body.typing-mode textarea#answer-input {
+    pointer-events: auto !important;
+    user-select: text !important;
+    -webkit-user-select: text !important;
+    cursor: text !important;
+    background: rgba(245, 158, 11, 0.08) !important;
+    border-color: rgba(245, 158, 11, 0.5) !important;
+    color: #fff !important;
+}
+body.typing-mode #manual-submit {
+    display: block !important;
+}
+body.typing-mode #status-text {
+    color: #fbbf24 !important;
+}
+@media (max-width: 480px) {
+    #mic-mode-banner {
+        top: auto;
+        bottom: 12px;
+        font-size: 12px;
+        padding: 8px 14px;
+        flex-wrap: wrap;
+    }
+}
+</style>
+
+<script>
+(function() {
+    'use strict';
+
+    var KEY_MODE = 'ukvi_mic_mode';          // 'typing' | 'voice'
+    var KEY_NOTIFIED = 'ukvi_mic_notified';  // sessionStorage: shown this tab
+    var KEY_BROKEN = 'ukvi_mic_broken';      // localStorage: mic unusable
+
+    var currentMode = localStorage.getItem(KEY_MODE) || 'unknown';
+    window._UKVI_MIC_MODE = currentMode;
+
+    // ── Banner UI ──
+    function ensureBanner() {
+        var b = document.getElementById('mic-mode-banner');
+        if (!b) {
+            b = document.createElement('div');
+            b.id = 'mic-mode-banner';
+            document.body.appendChild(b);
+        }
+        return b;
+    }
+
+    function showTypingBanner() {
+        var b = ensureBanner();
+        b.className = 'typing';
+        b.innerHTML =
+            '<span>⌨️ Typing mode — mic unavailable</span>' +
+            '<button class="close-btn" onclick="this.parentElement.style.display=\'none\'">×</button>';
+        b.style.display = 'flex';
+    }
+
+    function hideBanner() {
+        var b = document.getElementById('mic-mode-banner');
+        if (b) b.style.display = 'none';
+    }
+
+    // ── Notification — ONCE per tab session ──
+    function showNotificationOnce() {
+        if (sessionStorage.getItem(KEY_NOTIFIED) === '1') return;
+        sessionStorage.setItem(KEY_NOTIFIED, '1');
+
+        if (!('Notification' in window)) return;
+        try {
+            // ONLY show if already granted — never request (avoids prompt spam)
+            if (Notification.permission === 'granted') {
+                new Notification('Typing Mode Active', {
+                    body: 'Microphone unavailable. Type your answers to continue the test.',
+                    icon: '/static/icon-192.png',
+                    tag: 'ukvi-mic-status',
+                    requireInteraction: false,
+                });
+            }
+        } catch (e) {}
+    }
+
+    // ── Force input editable ──
+    function forceInputEditable() {
+        var ans = document.getElementById('answer-input');
+        if (ans) {
+            ans.readOnly = false;
+            ans.removeAttribute('readonly');
+            ans.style.pointerEvents = 'auto';
+            ans.style.userSelect = 'text';
+            ans.style.webkitUserSelect = 'text';
+            ans.style.cursor = 'text';
+            if (!ans.placeholder || ans.placeholder.indexOf('appear') >= 0) {
+                ans.placeholder = 'Type your answer here...';
+            }
+        }
+        var submit = document.getElementById('manual-submit');
+        if (submit) submit.style.display = 'block';
+    }
+
+    // ── Enter typing mode ──
+    function enterTypingMode(reason) {
+        // Idempotent: already in typing mode
+        if (currentMode === 'typing') {
+            // Still force input editable in case something reset it
+            forceInputEditable();
+            showTypingBanner();
+            return;
+        }
+
+        currentMode = 'typing';
+        window._UKVI_MIC_MODE = 'typing';
+        localStorage.setItem(KEY_MODE, 'typing');
+        if (reason === 'mic_failed' || reason === 'not_supported') {
+            localStorage.setItem(KEY_BROKEN, '1');
+        }
+
+        document.body.classList.add('typing-mode');
+        document.body.classList.remove('voice-mode');
+
+        showTypingBanner();
+        showNotificationOnce();
+        forceInputEditable();
+
+        var statusEl = document.getElementById('status-text');
+        if (statusEl) statusEl.textContent = '⌨️ Typing mode — type your answer';
+
+        if (window.setChipStatus) {
+            try { window.setChipStatus('Typing mode', false); } catch (e) {}
+        }
+
+        console.log('[MIC-V2] Typing mode active. Reason:', reason);
+    }
+
+    // ── Periodic insurance: keep input editable ──
+    setInterval(function() {
+        if (window._UKVI_MIC_MODE !== 'typing') return;
+        forceInputEditable();
+    }, 1500);
+
+    // ── MutationObserver: catch readOnly changes ──
+    (function watchReadOnly() {
+        var ans = document.getElementById('answer-input');
+        if (!ans) {
+            setTimeout(watchReadOnly, 500);
+            return;
+        }
+        var observer = new MutationObserver(function() {
+            if (window._UKVI_MIC_MODE === 'typing' && ans.readOnly) {
+                ans.readOnly = false;
+                ans.removeAttribute('readonly');
+            }
+        });
+        observer.observe(ans, { attributes: true, attributeFilter: ['readonly'] });
+    })();
+
+    // ── Wrap startPhaseQuestionTimer ──
+    function wrapTimer() {
+        if (!window.startPhaseQuestionTimer) {
+            setTimeout(wrapTimer, 300);
+            return;
+        }
+        if (window._UKVI_TIMER_WRAPPED_V2) return;
+        window._UKVI_TIMER_WRAPPED_V2 = true;
+
+        var original = window.startPhaseQuestionTimer;
+
+        window.startPhaseQuestionTimer = function(question, attempt) {
+            // Check mode from multiple sources (belt-and-suspenders)
+            var mode = window._UKVI_MIC_MODE
+                    || localStorage.getItem(KEY_MODE)
+                    || 'unknown';
+
+            if (mode === 'typing') {
+                try { stopLiveTranscription(); } catch (e) {}
+
+                forceInputEditable();
+
+                var answerTimeSec = (question && question.time_seconds) || 20;
+                var statusEl = document.getElementById('status-text');
+                var submitBtn = document.getElementById('manual-submit');
+                var ansInput = document.getElementById('answer-input');
+
+                if (statusEl) statusEl.textContent = '⌨️ Type your answer (' + answerTimeSec + 's)';
+                if (submitBtn) submitBtn.style.display = 'block';
+                if (ansInput) {
+                    ansInput.focus();
+                    ansInput.readOnly = false;
+                    ansInput.removeAttribute('readonly');
+                }
+
+                if (window.setChipStatus) {
+                    try { window.setChipStatus('Typing mode', false); } catch (e) {}
+                }
+
+                var remaining = answerTimeSec;
+                if (window.updatePhaseTimerDisplay) {
+                    try { window.updatePhaseTimerDisplay(remaining); } catch (e) {}
+                }
+
+                if (window.timerInterval) clearInterval(window.timerInterval);
+                window.timerInterval = setInterval(function() {
+                    remaining--;
+                    if (window.updatePhaseTimerDisplay) {
+                        try { window.updatePhaseTimerDisplay(remaining); } catch (e) {}
+                    }
+                    if (remaining <= 0) {
+                        clearInterval(window.timerInterval);
+                        var typed = ansInput ? ansInput.value.trim() : '';
+                        if (typed && typeof submitManualText === 'function') {
+                            submitManualText();
+                        } else if (typeof handleNoAnswer === 'function') {
+                            handleNoAnswer(attempt);
+                        }
+                    }
+                }, 1000);
+
+                return;
+            }
+
+            return original.apply(this, arguments);
+        };
+
+        console.log('[MIC-V2] startPhaseQuestionTimer wrapped');
+    }
+
+    wrapTimer();
+
+    // ── Initial mode decision ──
+    async function initMicMode() {
+        // Already typing from previous session?
+        if (currentMode === 'typing') {
+            console.log('[MIC-V2] Restoring typing mode');
+            enterTypingMode('restored');
+            return;
+        }
+
+        // Mic known broken?
+        if (localStorage.getItem(KEY_BROKEN) === '1') {
+            console.log('[MIC-V2] Mic known broken — typing mode');
+            enterTypingMode('mic_failed');
+            return;
+        }
+
+        // No mediaDevices support?
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            enterTypingMode('not_supported');
+            return;
+        }
+
+        // Check permission state
+        var permissionState = 'prompt';
+        try {
+            if (navigator.permissions && navigator.permissions.query) {
+                var perm = await navigator.permissions.query({ name: 'microphone' });
+                permissionState = perm.state;
+            }
+        } catch (e) {}
+
+        if (permissionState === 'denied') {
+            enterTypingMode('denied');
+            return;
+        }
+
+        // Permission 'prompt' → default to typing (avoid prompt spam)
+        if (permissionState === 'prompt') {
+            console.log('[MIC-V2] Permission prompt — defaulting to typing mode');
+            enterTypingMode('permission_not_granted');
+            return;
+        }
+
+        // Granted → try once
+        try {
+            var stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            stream.getTracks().forEach(function(t) { t.stop(); });
+
+            currentMode = 'voice';
+            window._UKVI_MIC_MODE = 'voice';
+            localStorage.setItem(KEY_MODE, 'voice');
+
+            var b = ensureBanner();
+            b.className = 'voice';
+            b.innerHTML = '<span>🎤 Voice mode active</span>';
+            b.style.display = 'flex';
+            setTimeout(hideBanner, 3000);
+
+            console.log('[MIC-V2] Voice mode active');
+        } catch (e) {
+            console.warn('[MIC-V2] getUserMedia failed:', e.name);
+            enterTypingMode('mic_failed');
+        }
+    }
+
+    // ── Manual retry (from explicit user click only) ──
+    window._ukviRetryMic = async function() {
+        localStorage.removeItem(KEY_BROKEN);
+        localStorage.removeItem(KEY_MODE);
+        sessionStorage.removeItem(KEY_NOTIFIED);
+
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            alert('Microphone not supported in this browser.');
+            return;
+        }
+
+        try {
+            var stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            stream.getTracks().forEach(function(t) { t.stop(); });
+
+            currentMode = 'voice';
+            window._UKVI_MIC_MODE = 'voice';
+            localStorage.setItem(KEY_MODE, 'voice');
+
+            document.body.classList.remove('typing-mode');
+            var b = ensureBanner();
+            b.className = 'voice';
+            b.innerHTML = '<span>🎤 Voice mode active</span>';
+            b.style.display = 'flex';
+            setTimeout(hideBanner, 3000);
+        } catch (e) {
+            localStorage.setItem(KEY_BROKEN, '1');
+            alert('Microphone not accessible — typing mode will continue.');
+        }
+    };
+
+    // ── Kick off ──
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(initMicMode, 300);
+        });
+    } else {
+        setTimeout(initMicMode, 300);
+    }
+
+})();
+</script>
+<!-- /MIC_FALLBACK_V2 -->
+
 </body>
 </html>

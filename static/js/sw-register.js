@@ -11,7 +11,7 @@
     }
 
     window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/static/sw.js', { scope: '/' })
+        navigator.serviceWorker.register('/sw.js', { scope: '/' })
             .then(registration => {
                 console.log('[SW] ✅ Registered:', registration.scope);
 

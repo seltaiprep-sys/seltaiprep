@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Test Complete — UKVI Interview</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, 'Segoe UI', Arial, sans-serif;
+            background: #0a0e17;
+            color: #e6edf3;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+            -webkit-font-smoothing: antialiased;
+        }
+        .card {
+            max-width: 540px;
+            width: 100%;
+            background: rgba(16, 185, 129, 0.08);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: 20px;
+            padding: 44px 32px;
+            text-align: center;
+            box-shadow: 0 12px 48px rgba(16, 185, 129, 0.15);
+        }
+        .check {
+            font-size: 80px;
+            line-height: 1;
+            margin-bottom: 24px;
+            animation: pop 0.6s ease-out;
+        }
+        @keyframes pop {
+            0% { transform: scale(0); opacity: 0; }
+            50% { transform: scale(1.2); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        h1 {
+            font-size: 26px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: #34d399;
+            letter-spacing: -0.3px;
+        }
+        .student-name {
+            font-size: 17px;
+            color: #a5b4fc;
+            margin-bottom: 24px;
+            font-weight: 600;
+        }
+        .message {
+            font-size: 15px;
+            line-height: 1.7;
+            color: #cbd5e1;
+            margin-bottom: 20px;
+        }
+        .info {
+            background: rgba(108, 99, 255, 0.08);
+            border-left: 3px solid #6c63ff;
+            padding: 18px 22px;
+            border-radius: 10px;
+            text-align: left;
+            font-size: 14px;
+            line-height: 1.7;
+            margin: 28px 0;
+            color: #cbd5e1;
+        }
+        .info strong {
+            color: #a5b4fc;
+            display: block;
+            margin-bottom: 8px;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .thanks {
+            font-size: 12px;
+            opacity: 0.55;
+            margin-top: 20px;
+            line-height: 1.6;
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.06);
+            color: #cbd5e1;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            padding: 12px 24px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+            transition: 0.15s;
+            margin-top: 28px;
+            font-family: inherit;
+        }
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+        @media (max-width: 480px) {
+            .card { padding: 32px 22px; }
+            .check { font-size: 64px; margin-bottom: 18px; }
+            h1 { font-size: 22px; }
+            .student-name { font-size: 15px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="check">✅</div>
+        <h1>Test Complete!</h1>
+        <div class="student-name">{{ student_name }}</div>
+
+        <p class="message">
+            You have successfully completed your UKVI credibility interview practice.
+        </p>
+
+        <div class="info">
+            <strong>What happens next?</strong>
+            Your institute will review your performance and contact you with the results.
+            You can safely close this browser tab now.
+        </div>
+
+        <p class="thanks">
+            Thank you for using SeltaPrep UKVI Interview practice.<br>
+            This session is now closed.
+        </p>
+
+        <a href="/logout" class="btn">
+            🚪 Exit Session
+        </a>
+    </div>
+
+<script>
+(function() {
+    // ═══ Back button → /ukvi/expired ═══
+    history.pushState(null, '', location.href);
+    window.addEventListener('popstate', function() {
+        window.location.href = '/ukvi/expired';
+    });
+    // ═══ Pageshow from cache (back button) → expired ═══
+    window.addEventListener('pageshow', function(ev) {
+        if (ev.persisted) {
+            window.location.href = '/ukvi/expired';
+        }
+    });
+})();
+</script>
+</body>
+</html>

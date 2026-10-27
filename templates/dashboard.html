@@ -813,6 +813,40 @@
 </head>
 <body>
 
+
+    {% if b2b_notice %}
+    <div style="
+        background: linear-gradient(135deg, #f59e0b, #d97706);
+        color: #fff;
+        padding: 14px 20px;
+        margin-bottom: 20px;
+        border-radius: 10px;
+        box-shadow: 0 4px 16px rgba(245,158,11,0.4);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 10px;
+    ">
+        <div style="display:flex; align-items:center; gap:10px; font-size:14px; font-weight:600;">
+            <span style="font-size:22px;">⚠️</span>
+            <span>
+                You have an <strong>active B2B test</strong> as 
+                <strong>{{ b2b_notice.student_name }}</strong>
+            </span>
+        </div>
+        <a href="{{ b2b_notice.test_url }}" style="
+            background: #fff;
+            color: #d97706;
+            padding: 8px 18px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 13px;
+            white-space: nowrap;
+        ">Continue Test →</a>
+    </div>
+    {% endif %}
     <!-- ─── HEADER ─── -->
     <header class="header">
         <div class="logo">
@@ -978,12 +1012,7 @@
                         <p>Stay tuned</p>
                     </div>
                 {% elif selected_module == 'ukvi' %}
-                    <a href="/ukvi" class="skill-card speaking" style="grid-column: span 2;">
-                        <span class="icon">🎙️</span>
-                        <h4>UKVI Interview</h4>
-                        <p>Realistic visa interview practice</p>
-                        <span class="tag">Start Interview</span>
-                    </a>
+<!-- REMOVED-UKVI-LINK:                     
                     <div class="skill-card" style="opacity:0.3; pointer-events:none; border-top-color:#cbd5e1; grid-column: span 2;">
                         <span class="icon">📌</span>
                         <h4>More UKVI content</h4>

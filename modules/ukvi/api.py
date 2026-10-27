@@ -13,6 +13,7 @@ v1.0 — Initial blueprint.
 
 from datetime import datetime, timezone
 from flask import Blueprint, request, jsonify
+from flask_login import login_required, current_user
 from .service import UKVIService
 from .managers import UKVISubscriptionManager, UKVITestManager, ukvi_pool_manager
 import logging
@@ -42,13 +43,20 @@ def get_blueprint():
     # PROFILE
     # ═══════════════════════════════════════════════════════════
     @bp.route('/profile', methods=['GET', 'POST'])
+    @login_required
     def profile():
-        """GET or POST user profile."""
+        """GET or POST user profile — auth required, own profile only."""
         if request.method == 'GET':
             user_id = request.args.get('user_id')
             if not user_id:
                 return jsonify({'error': 'user_id required'}), 400
-            data = ukvi_service.get_profile(int(user_id))
+            try:
+                uid_int = int(user_id)
+            except (ValueError, TypeError):
+                return jsonify({'error': 'invalid user_id'}), 400
+            if uid_int != current_user.id:
+                return jsonify({'error': 'Forbidden'}), 403
+            data = ukvi_service.get_profile(uid_int)
             return jsonify({'success': True, 'profile': data or {}})
 
         # POST
@@ -57,7 +65,13 @@ def get_blueprint():
         profile_data = data.get('profile', {})
         if not user_id:
             return jsonify({'error': 'user_id required'}), 400
-        result = ukvi_service.save_profile(int(user_id), profile_data)
+        try:
+            uid_int = int(user_id)
+        except (ValueError, TypeError):
+            return jsonify({'error': 'invalid user_id'}), 400
+        if uid_int != current_user.id:
+            return jsonify({'error': 'Forbidden'}), 403
+        result = ukvi_service.save_profile(uid_int, profile_data)
         return jsonify(result)
 
     @bp.route('/register', methods=['POST'])
@@ -337,14 +351,20 @@ def get_blueprint():
         return jsonify(result)
 
     @bp.route('/history/<int:user_id>', methods=['GET'])
+    @login_required
     def history(user_id):
-        """List all interview sessions for a user."""
+        """List interview sessions — own history only."""
+        if user_id != current_user.id:
+            return jsonify({'error': 'Forbidden'}), 403
         result = test_manager.get_history(user_id)
         return jsonify(result)
 
     @bp.route('/progress/<int:user_id>', methods=['GET'])
+    @login_required
     def progress(user_id):
-        """Get summary progress for a user."""
+        """Get summary progress — own progress only."""
+        if user_id != current_user.id:
+            return jsonify({'error': 'Forbidden'}), 403
         result = test_manager.get_progress(user_id)
         return jsonify(result)
 
