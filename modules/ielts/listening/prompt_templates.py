@@ -52,6 +52,18 @@ STRICT_JSON_BLOCK = """
 - Each question: "question", "answer", "type".
 - For multiple_choice and matching questions: include "options" array.
 - Escape newlines in the script as \\n.
+
+=== QUALITY CHECKS (v10) ===
+1. NO DUPLICATE MCQ ANSWERS: two MCQs in the same section must have
+   DIFFERENT answer letters. If Q9=A, then Q10 cannot be A (must be B or C).
+2. MATCHING QUESTIONS: every "items" entry MUST include a
+   "correct_answer" field. Example:
+   {"type": "matching", "items": [{"name": "Speaker1", "correct_answer": "A"},
+                                  {"name": "Speaker2", "correct_answer": "C"}]}
+3. NO OFF-TOPIC QUESTIONS: every question must relate directly to the
+   section's topic. Never insert unrelated questions (e.g. no essay
+   deadlines in an ecommerce discussion).
+4. FOLLOW the exact question types listed above for each section.
 """
 
 NATURAL_SPEECH_GUIDE = """
@@ -215,10 +227,10 @@ annually. That's roughly 2.3 percent of GDP.
 # ============================================================
 
 SECTION_WORD_TARGETS = {
-    1: "Target length: around 400 words (range 380–450). Focus on quality.",
-    2: "Target length: around 450 words (range 420–480). Focus on quality.",
-    3: "Target length: around 500 words (range 480–540). Focus on quality.",
-    4: "Target length: around 600 words (range 580–650). Focus on quality.",
+    1: "Target length: around 750 words (range 650–850). Focus on quality.",
+    2: "Target length: around 700 words (range 620–800). Focus on quality.",
+    3: "Target length: around 800 words (range 720–900). Focus on quality.",
+    4: "Target length: around 780 words (range 720–850). Focus on quality.",
 }
 
 
@@ -737,3 +749,58 @@ __all__ = [
     "get_section4_topics",
     "get_all_topics",
 ]
+
+
+# ═══════════════════════════════════════════════════════════════
+# SECTION 3 ANTI-ANSWER-RECAP RULE (v24)
+# ═══════════════════════════════════════════════════════════════
+SECTION3_NO_RECAP_RULE = """
+CRITICAL FOR SECTION 3 SCRIPT:
+
+The dialogue is a NATURAL academic discussion ONLY.
+NEVER include:
+- "for question 21, the answer is X"
+- "Options are A, B, C"
+- "So the answer is"
+- "I said X" (as answer confirmation)
+- Numbered question references
+- Tutor asking students to confirm answers
+
+The questions are answerable because the FACTS are discussed
+naturally in conversation. DO NOT step out of character.
+
+BAD (never generate):
+  Tutor: What did Nova identify as a major issue?
+  Nova: I said lack of effective communication.
+  Tutor: Right. For question 21, the answer is 'communication'.
+
+GOOD (always generate):
+  Nova: I think one major issue is the lack of communication.
+  Isabella: I agree. And there's also the issue of short-term targets.
+  [Natural discussion continues without Q&A recap]
+"""
+
+
+def _inject_section3_rule():
+    """Append rule to Section 3 prompts."""
+    return SECTION3_NO_RECAP_RULE
+
+
+# ==================================================================
+# FIX v26 - S1 longer turns prompt hint
+# ==================================================================
+
+SECTION1_LONGER_TURNS_HINT = """
+CRITICAL FOR SECTION 1 SCRIPT:
+- Each speaker turn should contain 2-3 sentences (not just 1)
+- Real IELTS Section 1 has 15-20 total turns, not 25+
+- Natural flow: "Agent: Good morning, thanks for calling. How can I help you today?"
+  (2 sentences in one turn)
+- Do NOT write: "Agent: Good morning.\nCustomer: Hello.\nAgent: Thanks."
+  (1 sentence per turn is too choppy)
+- Each turn: at least 2 sentences, prefer 2-3 for natural pace
+"""
+
+
+def get_section1_longer_turns_hint():
+    return SECTION1_LONGER_TURNS_HINT

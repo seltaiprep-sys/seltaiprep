@@ -101,7 +101,49 @@ class ListeningTestGenerator:
         logger.info(f"Generating Section {section} (difficulty={difficulty}, accent={accent}, fast={fast})")
 
         if section == 1:
-            return self.section_generator.section1(difficulty=difficulty, accent=accent, fast=fast)
+            # FIX v11.2: pass use_cache=False + force_new=True
+            import inspect
+            sg = self.section_generator
+            
+            # Try to clear any internal cache
+            for attr_name in ['_section1_cache', '_cache', '_scenario_cache']:
+                if hasattr(sg, attr_name):
+                    try:
+                        cache = getattr(sg, attr_name)
+                        if isinstance(cache, dict):
+                            cache.clear()
+                            logger.info(f" [S1-cache] cleared {attr_name}")
+                    except Exception:
+                        pass
+            
+            sig = inspect.signature(sg.section1)
+            kwargs = {'difficulty': difficulty, 'accent': accent, 'fast': fast}
+            
+            # FIX v11.2: BOTH force_new AND use_cache=False
+            if 'force_new' in sig.parameters:
+                kwargs['force_new'] = True
+                logger.info(" [S1-cache] force_new=True")
+            if 'use_cache' in sig.parameters:
+                kwargs['use_cache'] = False
+                logger.info(" [S1-cache] use_cache=False")
+            
+            if 'topic' in sig.parameters and topic:
+                kwargs['topic'] = topic
+            
+            result = sg.section1(**kwargs)
+            
+            # Verify it's not the old Zoo script
+            if isinstance(result, dict):
+                script_preview = (result.get('script') or result.get('audio_script') or '')[:80]
+                if 'City Zoo' in script_preview:
+                    logger.warning(
+                        f" [S1-cache] STILL cached: '{script_preview}' — "
+                        f"need deeper fix in section_generator.section1()"
+                    )
+                else:
+                    logger.info(f" [S1-cache] fresh script OK: '{script_preview}'")
+            
+            return result
 
         if not topic:
             topic = self._get_single_section_topic(section, difficulty)
@@ -480,16 +522,23 @@ class ListeningTestGenerator:
         for i, q in enumerate(section_data.get("questions", []), start=start_num):
             q_type = (q.get("type") or "").lower()
 
-            # Handle matching questions
+            # FIX v10: Handle matching questions (all variants)
             if q_type == "matching":
-                items = q.get("items") or []
+                items = q.get("items") or q.get("matches") or q.get("pairs") or []
                 item_answers = []
-                for it in items:
-                    if not isinstance(it, dict):
-                        continue
-                    a = (it.get("correct_answer") or it.get("answer") or "").strip()
-                    if a:
-                        item_answers.append(a)
+                if isinstance(items, list) and items:
+                    for it in items:
+                        if not isinstance(it, dict):
+                            continue
+                        a = (it.get("correct_answer") or it.get("answer")
+                             or it.get("match") or "").strip()
+                        if a:
+                            item_answers.append(a)
+                # Fallback: top-level answer (some matching have single answer list)
+                if not item_answers:
+                    top = (q.get("answer") or q.get("correct_answer") or "").strip()
+                    if top:
+                        item_answers = [top]
                 if item_answers:
                     answers[str(i)] = ",".join(item_answers)
                 continue
@@ -543,3 +592,1012 @@ class ListeningTestGenerator:
 def create_test_generator(ai_engine=None) -> ListeningTestGenerator:
     """Factory function to create a ListeningTestGenerator instance."""
     return ListeningTestGenerator(ai_engine)
+
+
+# ═══════════════════════════════════════════════════════════════════
+# FIX v12 — Post-process: truncate + MCQ + type validator
+# ═══════════════════════════════════════════════════════════════════
+
+_original_generate_v12 = ListeningTestGenerator.generate
+
+
+def _v12_truncate_script(script, target_words, section_num):
+    """Truncate at sentence boundary if script > 1.2 * target."""
+    if not script:
+        return script
+    import re as _re
+    words = script.split()
+    cap = int(target_words * 1.2)
+    if len(words) <= cap:
+        return script
+    sentences = _re.split(r'(?<=[.!?])\s+', script)
+    out = []
+    count = 0
+    for s in sentences:
+        n = len(s.split())
+        if count + n > cap and out:
+            break
+        out.append(s)
+        count += n
+    if out:
+        result = ' '.join(out).strip()
+        if result and not result.endswith(('.', '!', '?')):
+            result += '.'
+        logger.info(
+            f" [S{section_num}-trunc-v12] {len(words)} → {len(result.split())} words "
+            f"(target {target_words})"
+        )
+        return result
+    return script
+
+
+def _v12_fix_duplicate_mcq(questions, section_num):
+    """Swap option content to give duplicates unique answer letters."""
+    import re as _re
+    mcq_positions = []
+    for i, q in enumerate(questions):
+        if (q.get('type') or '').lower() != 'multiple_choice':
+            continue
+        ans = (q.get('answer') or q.get('correct_answer') or '').strip().upper()
+        if ans and len(ans) == 1 and ans in 'ABCD':
+            mcq_positions.append((i, ans))
+    
+    if len(mcq_positions) < 2:
+        return questions
+    
+    seen = {}
+    for idx, ans in mcq_positions:
+        if ans not in seen:
+            seen[ans] = True
+            continue
+        # Duplicate — remap to a free letter
+        q = questions[idx]
+        options = q.get('options', [])
+        if not options or len(options) < 2:
+            continue
+        letters = [chr(ord('A') + k) for k in range(len(options))]
+        used = set(seen.keys())
+        free = [L for L in letters if L not in used]
+        if not free:
+            continue
+        target = free[0]
+        idx_a = ord(ans) - ord('A')
+        idx_t = ord(target) - ord('A')
+        if idx_a >= len(options) or idx_t >= len(options):
+            continue
+        text_a = _re.sub(r'^[A-Z]:\s*', '', str(options[idx_a]))
+        text_t = _re.sub(r'^[A-Z]:\s*', '', str(options[idx_t]))
+        new_options = list(options)
+        new_options[idx_a] = f"{target}: {text_t}"
+        new_options[idx_t] = f"{ans}: {text_a}"
+        questions[idx] = {**q, 'options': new_options, 'answer': target}
+        seen[target] = True
+        logger.info(f" [S{section_num}-mcq-v12] Q{idx+1}: {ans} → {target}")
+    return questions
+
+
+def _v12_validate_types(sections):
+    from collections import Counter
+    EXPECTED = {
+        1: {'form_completion': 8, 'multiple_choice': 2},
+        2: {'map_labeling': 3, 'matching': 4, 'multiple_choice': 3},
+        3: {'matching': 4, 'note_completion': 3, 'multiple_choice': 3},
+        4: {'note_completion': 5, 'multiple_choice': 5},
+    }
+    for i, sec in enumerate(sections, 1):
+        if not sec:
+            continue
+        questions = sec.get('questions', [])
+        if not questions:
+            continue
+        types = Counter(q.get('type', 'unknown') for q in questions)
+        expected = EXPECTED.get(i, {})
+        issues = []
+        for t, count in expected.items():
+            actual = types.get(t, 0)
+            if abs(actual - count) > 1:
+                issues.append(f"{t}={actual}/{count}")
+        if issues:
+            logger.warning(
+                f" [S{i}-types-v12] Distribution off: {', '.join(issues)}"
+            )
+        else:
+            logger.info(f" [S{i}-types-v12] OK")
+
+
+def _patched_generate_v12(self, *args, **kwargs):
+    result = _original_generate_v12(self, *args, **kwargs)
+    if not isinstance(result, dict) or result.get('error'):
+        return result
+    
+    sections = result.get('sections', [])
+    targets = {1: 750, 2: 700, 3: 800, 4: 780}
+    
+    # FIX 2: Truncate overshooting scripts
+    for i, sec in enumerate(sections, 1):
+        if not sec:
+            continue
+        script = sec.get('script') or sec.get('audio_script') or ''
+        if not script:
+            continue
+        target = targets.get(i, 700)
+        new_script = _v12_truncate_script(script, target, i)
+        if new_script != script:
+            sec['script'] = new_script
+            sec['audio_script'] = new_script
+            sec['word_count'] = len(new_script.split())
+    
+    # FIX 3: Duplicate MCQ
+    for i, sec in enumerate(sections, 1):
+        if not sec:
+            continue
+        q = sec.get('questions', [])
+        if q:
+            sec['questions'] = _v12_fix_duplicate_mcq(q, i)
+    
+    # FIX 4: Validate types
+    _v12_validate_types(sections)
+    
+    return result
+
+
+ListeningTestGenerator.generate = _patched_generate_v12
+logger.info(" [v12] ListeningTestGenerator.generate monkey-patched")
+
+
+# ═══════════════════════════════════════════════════════════════════
+# FIX v12c — Tighter truncate 1.1x (in test_generator.py)
+# ═══════════════════════════════════════════════════════════════════
+
+_orig_gen_v12c = ListeningTestGenerator.generate
+
+
+def _patched_gen_v12c(self, *args, **kwargs):
+    result = _orig_gen_v12c(self, *args, **kwargs)
+    if not isinstance(result, dict) or result.get('error'):
+        return result
+    
+    sections = result.get('sections', [])
+    targets = {1: 750, 2: 700, 3: 800, 4: 780}
+    
+    for i, sec in enumerate(sections, 1):
+        if not sec:
+            continue
+        script = sec.get('script') or sec.get('audio_script') or ''
+        if not script:
+            continue
+        target = targets.get(i, 700)
+        cap = int(target * 1.1)
+        words = script.split()
+        if len(words) > cap:
+            import re as _re
+            sentences = _re.split(r'(?<=[.!?])\s+', script)
+            out, count = [], 0
+            for s in sentences:
+                n = len(s.split())
+                if count + n > cap and out:
+                    break
+                out.append(s); count += n
+            if out:
+                new_script = ' '.join(out).strip()
+                if new_script and not new_script.endswith(('.', '!', '?')):
+                    new_script += '.'
+                sec['script'] = new_script
+                sec['audio_script'] = new_script
+                sec['word_count'] = len(new_script.split())
+                logger.info(
+                    f" [S{i}-trunc-v12c] {len(words)} → {len(new_script.split())} words (cap {cap})"
+                )
+    return result
+
+
+ListeningTestGenerator.generate = _patched_gen_v12c
+logger.info(" [v12c] ListeningTestGenerator.generate patched (1.1x cap)")
+
+
+# ═══════════════════════════════════════════════════════════════════
+# FIX v13 — Tighter post-truncate (1.1x → 1.05x)
+# ═══════════════════════════════════════════════════════════════════
+
+# Chain onto existing generate (from v12c)
+_prev_gen_v13 = ListeningTestGenerator.generate
+
+
+def _patched_gen_v13(self, *args, **kwargs):
+    result = _prev_gen_v13(self, *args, **kwargs)
+    if not isinstance(result, dict) or result.get('error'):
+        return result
+    
+    sections = result.get('sections', [])
+    targets = {1: 750, 2: 700, 3: 800, 4: 780}
+    
+    for i, sec in enumerate(sections, 1):
+        if not sec:
+            continue
+        script = sec.get('script') or sec.get('audio_script') or ''
+        if not script:
+            continue
+        target = targets.get(i, 700)
+        cap = int(target * 1.05)  # TIGHTER: was 1.1x
+        words = script.split()
+        if len(words) > cap:
+            import re as _re
+            sentences = _re.split(r'(?<=[.!?])\s+', script)
+            out, count = [], 0
+            for s in sentences:
+                n = len(s.split())
+                if count + n > cap and out:
+                    break
+                out.append(s); count += n
+            if out:
+                new_script = ' '.join(out).strip()
+                if new_script and not new_script.endswith(('.', '!', '?')):
+                    new_script += '.'
+                sec['script'] = new_script
+                sec['audio_script'] = new_script
+                sec['word_count'] = len(new_script.split())
+                logger.info(
+                    f" [S{i}-trunc-v13] {len(words)} → {len(new_script.split())} words "
+                    f"(cap {cap} = target {target} × 1.05)"
+                )
+    return result
+
+
+ListeningTestGenerator.generate = _patched_gen_v13
+logger.info(" [v13] test_generator tighter truncate 1.05x")
+
+
+# ═══════════════════════════════════════════════════════════════════
+# FIX v14 — Type Distribution Converter
+# ═══════════════════════════════════════════════════════════════════
+
+_TARGET_TYPES = {
+    1: {'form_completion': 8, 'multiple_choice': 2},
+    2: {'matching': 4, 'map_labeling': 3, 'multiple_choice': 3},
+    3: {'matching': 4, 'note_completion': 3, 'multiple_choice': 3},
+    4: {'note_completion': 5, 'multiple_choice': 5},
+}
+
+
+def _v14_ai_convert_question(old_q, target_type, ai_engine, context):
+    """Use AI to convert a question to target_type."""
+    import json as _json
+    
+    old_type = old_q.get('type', '')
+    old_stem = old_q.get('question') or old_q.get('text') or ''
+    old_answer = old_q.get('answer') or old_q.get('correct_answer') or ''
+    
+    if not old_stem or not old_answer:
+        return None
+    
+    prompt = f"""You are an IELTS listening question converter.
+Convert this question to "{target_type}" type.
+
+ORIGINAL:
+- Type: {old_type}
+- Question: {old_stem}
+- Answer: {old_answer}
+- Context: {context[:300]}
+
+TARGET FORMAT:
+
+If target is "multiple_choice":
+Return {{"question": "...", "type": "multiple_choice", "options": ["A: ...", "B: ...", "C: ..."], "answer": "A"}}
+- Rewrite the question to ask about the same fact
+- Correct answer MUST be one of A/B/C
+- Create 2 plausible distractors
+
+If target is "matching":
+Return {{"question": "Match ...", "type": "matching", "options": ["A: ...", "B: ...", "C: ...", "D: ..."], "items": [{{"name": "X", "correct_answer": "A"}}]}}
+
+If target is "note_completion" or "form_completion" or "sentence_completion":
+Return {{"question": "___ with blank", "type": "{target_type}", "answer": "..."}}
+
+RULES:
+- Preserve the SAME answer being tested
+- Keep question topic consistent with context
+- Return ONLY valid JSON, no explanation
+"""
+
+    try:
+        response = ai_engine.chat(prompt) if hasattr(ai_engine, 'chat') else ai_engine.generate(prompt)
+        text = response if isinstance(response, str) else str(response)
+        
+        # Extract JSON
+        import re as _re
+        m = _re.search(r'\{.*\}', text, _re.DOTALL)
+        if m:
+            new_q = _json.loads(m.group())
+            if new_q.get('question') and new_q.get('type') == target_type:
+                logger.info(f" [v14-convert] {old_type} → {target_type}: {old_stem[:40]}...")
+                return new_q
+    except Exception as e:
+        logger.warning(f" [v14-convert] failed: {e}")
+    return None
+
+
+def _v14_fix_distribution(sections, ai_engine):
+    """Convert questions to match target distribution."""
+    from collections import Counter
+    
+    for i, sec in enumerate(sections, 1):
+        if not sec:
+            continue
+        questions = sec.get('questions', [])
+        if not questions:
+            continue
+        
+        target = _TARGET_TYPES.get(i, {})
+        if not target:
+            continue
+        
+        current = Counter(q.get('type', 'unknown') for q in questions)
+        
+        # Compute excess/deficit
+        excess = {t: current.get(t, 0) - target.get(t, 0) 
+                  for t in current if current.get(t, 0) > target.get(t, 0)}
+        deficit = {t: target.get(t, 0) - current.get(t, 0) 
+                   for t in target if current.get(t, 0) < target.get(t, 0)}
+        
+        if not deficit:
+            logger.info(f" [v14-types] S{i}: already correct")
+            continue
+        
+        # Build conversion queue
+        conversions = []  # (question_index, from_type, to_type)
+        deficit_remaining = dict(deficit)
+        
+        for excess_type, excess_count in excess.items():
+            for j, q in enumerate(questions):
+                if deficit_remaining.get('__done'):
+                    break
+                if q.get('type') != excess_type:
+                    continue
+                if excess_count <= 0:
+                    break
+                
+                # Find next deficit
+                target_type = None
+                for dt, dc in deficit_remaining.items():
+                    if dt != '__done' and dc > 0:
+                        target_type = dt
+                        break
+                if not target_type:
+                    break
+                
+                conversions.append((j, excess_type, target_type))
+                excess_count -= 1
+                deficit_remaining[target_type] -= 1
+        
+        if not conversions:
+            logger.info(f" [v14-types] S{i}: no conversions needed")
+            continue
+        
+        # Get context from script
+        script = sec.get('script') or ''
+        
+        # Convert
+        converted = 0
+        for idx, from_t, to_t in conversions:
+            if idx >= len(questions):
+                continue
+            new_q = _v14_ai_convert_question(questions[idx], to_t, ai_engine, script)
+            if new_q:
+                questions[idx] = new_q
+                converted += 1
+        
+        sec['questions'] = questions
+        
+        # Final check
+        final = Counter(q.get('type', 'unknown') for q in questions)
+        logger.info(
+            f" [v14-types] S{i}: converted {converted} questions "
+            f"(before: {dict(current)}, after: {dict(final)})"
+        )
+    
+    return sections
+
+
+# Wrap generate
+_prev_gen_v14 = ListeningTestGenerator.generate
+
+
+def _patched_gen_v14(self, *args, **kwargs):
+    result = _prev_gen_v14(self, *args, **kwargs)
+    if not isinstance(result, dict) or result.get('error'):
+        return result
+    
+    sections = result.get('sections', [])
+    if not sections:
+        return result
+    
+    try:
+        ai_engine = self.ai
+        sections = _v14_fix_distribution(sections, ai_engine)
+        result['sections'] = sections
+    except Exception as e:
+        logger.error(f" [v14-types] fix failed: {e}")
+    
+    return result
+
+
+ListeningTestGenerator.generate = _patched_gen_v14
+logger.info(" [v14] type distribution converter applied")
+
+
+# ==================================================================
+# FIX v25 - list coercion + S2/S4 gender override
+# ==================================================================
+
+def _v25_coerce_to_string(value):
+    """Convert list/dict/None to string for AI script fields."""
+    if isinstance(value, str):
+        return value
+    if isinstance(value, list):
+        parts = []
+        for item in value:
+            if isinstance(item, str):
+                parts.append(item)
+            elif item is not None:
+                parts.append(str(item))
+        return chr(10).join(parts)
+    if isinstance(value, dict):
+        return str(value)
+    if value is None:
+        return ''
+    return str(value)
+
+
+def _v25_gender_from_name(script):
+    """Extract name and infer gender from 'My name is X' patterns."""
+    import re as _re
+    if not script or not isinstance(script, str):
+        return None
+
+    patterns = [
+        r"My name(?:'s| is)\s+([A-Z][a-z]+)",
+        r"This is\s+([A-Z][a-z]+)",
+        r"Name(?:'s| is)\s+([A-Z][a-z]+)",
+    ]
+    name = None
+    for pat in patterns:
+        m = _re.search(pat, script)
+        if m:
+            name = m.group(1).lower()
+            break
+
+    if not name:
+        return None
+
+    FEMALE = {
+        'sarah', 'emma', 'emily', 'jessica', 'ashley', 'anna', 'maria',
+        'sophie', 'sophia', 'lily', 'chloe', 'grace', 'olivia', 'mia',
+        'isabella', 'ava', 'ella', 'nadia', 'priya', 'fatima', 'kavita',
+        'hana', 'rina', 'sonia', 'nina', 'laura', 'julia', 'claire',
+        'rachel', 'hannah', 'rebecca', 'victoria', 'diana', 'helen',
+        'jane', 'mary', 'margaret', 'linda', 'barbara', 'susan',
+        'katherine', 'elizabeth', 'carol', 'michelle', 'amanda',
+        'melissa', 'stephanie', 'nicole', 'jennifer', 'patricia',
+        'elena', 'daisy', 'beatrice',
+    }
+    MALE = {
+        'james', 'john', 'david', 'robert', 'michael', 'william',
+        'richard', 'joseph', 'thomas', 'charles', 'daniel', 'matthew',
+        'anthony', 'mark', 'donald', 'steven', 'paul', 'andrew',
+        'joshua', 'kenneth', 'kevin', 'brian', 'george', 'edward',
+        'ronald', 'timothy', 'jason', 'jeffrey', 'ryan', 'jacob',
+        'gary', 'nicholas', 'eric', 'jonathan', 'stephen', 'larry',
+        'justin', 'scott', 'brandon', 'frank', 'benjamin', 'gregory',
+        'samuel', 'raymond', 'patrick', 'alexander', 'jack', 'dennis',
+        'jerry', 'tyler', 'aaron', 'henry', 'adam', 'peter', 'nathan',
+        'aiden', 'evan', 'dmitri', 'jorge', 'jose', 'lucas', 'kwame',
+        'liam', 'noah', 'oliver', 'elijah', 'mason', 'logan',
+        'ethan', 'caleb', 'owen', 'connor', 'colin',
+    }
+
+    if name in FEMALE:
+        return ('female', name)
+    if name in MALE:
+        return ('male', name)
+    return None
+
+
+def _v25_fix_section(section, section_num):
+    """Coerce string fields + fix gender for S2/S4."""
+    if not isinstance(section, dict):
+        return section
+
+    # Coerce string fields
+    for field in ['script', 'audio_script', 'title', 'context', 'type']:
+        if field in section:
+            val = section[field]
+            if not isinstance(val, (str, type(None), int, float, bool)):
+                section[field] = _v25_coerce_to_string(val)
+
+    # Coerce per-question fields
+    questions = section.get('questions', [])
+    if isinstance(questions, list):
+        for q in questions:
+            if not isinstance(q, dict):
+                continue
+            for field in ['question', 'text', 'answer', 'correct_answer']:
+                if field in q:
+                    val = q[field]
+                    if not isinstance(val, (str, type(None), int, float, bool, list)):
+                        q[field] = _v25_coerce_to_string(val)
+
+    # S2/S4 gender override from script name
+    if section_num in (2, 4):
+        script = section.get('script') or section.get('audio_script') or ''
+        gender_info = _v25_gender_from_name(script)
+        if gender_info:
+            correct_gender, name = gender_info
+            sg = section.get('speaker_genders') or {}
+            role = 'Guide' if section_num == 2 else 'Lecturer'
+            current = sg.get(role)
+            if current != correct_gender:
+                logger.info(
+                    " [v25-gender] S" + str(section_num) + " " + role +
+                    ": " + str(current) + " -> " + correct_gender +
+                    " (name=" + name + ")"
+                )
+                sg[role] = correct_gender
+                section['speaker_genders'] = sg
+
+    return section
+
+
+_orig_generate_v25 = ListeningTestGenerator.generate
+
+
+def _patched_generate_v25(self, *args, **kwargs):
+    result = _orig_generate_v25(self, *args, **kwargs)
+    if not isinstance(result, dict) or result.get('error'):
+        return result
+
+    sections = result.get('sections', [])
+    if isinstance(sections, list):
+        for i, sec in enumerate(sections, 1):
+            _v25_fix_section(sec, i)
+
+    return result
+
+
+ListeningTestGenerator.generate = _patched_generate_v25
+logger.info(" [v25] list coercion + S2/S4 gender override active")
+
+
+# ==================================================================
+# FIX v26 - Safe generation boundary (list.strip crash prevention)
+# ==================================================================
+
+_prev_gen_v26 = ListeningTestGenerator.generate
+
+
+def _v26_sanitize(value):
+    if isinstance(value, str):
+        return value
+    if isinstance(value, list):
+        return chr(10).join(str(x) for x in value if x)
+    if isinstance(value, dict):
+        return str(value)
+    if value is None:
+        return ''
+    return str(value)
+
+
+def _v26_deep_sanitize(obj, depth=0):
+    """Recursively sanitize all string fields."""
+    if depth > 6:
+        return obj
+    if isinstance(obj, dict):
+        for k in list(obj.keys()):
+            v = obj[k]
+            if isinstance(v, (str, type(None), int, float, bool)):
+                continue
+            if isinstance(v, (list, dict)):
+                obj[k] = _v26_deep_sanitize(v, depth + 1)
+            else:
+                obj[k] = _v26_sanitize(v)
+        return obj
+    if isinstance(obj, list):
+        return [_v26_deep_sanitize(x, depth + 1) if isinstance(x, (list, dict)) else x
+                for x in obj]
+    return obj
+
+
+def _patched_generate_v26(self, *args, **kwargs):
+    try:
+        result = _prev_gen_v26(self, *args, **kwargs)
+    except AttributeError as e:
+        if 'strip' in str(e).lower() or 'list' in str(e).lower():
+            logger.error(" [v26-safe] strip/list error caught: " + str(e))
+            try:
+                result = _prev_gen_v26(self, *args, **kwargs)
+            except Exception as e2:
+                logger.error(" [v26-safe] retry also failed: " + str(e2))
+                return {'error': str(e2), 'success': False}
+        else:
+            raise
+
+    if isinstance(result, dict) and not result.get('error'):
+        _v26_deep_sanitize(result)
+
+    return result
+
+
+ListeningTestGenerator.generate = _patched_generate_v26
+logger.info(" [v26] list.strip safety installed")
+
+
+# ==================================================================
+# FIX v27 - Scoring rebuild + MCQ option reorder + matching field
+# ==================================================================
+
+import re as _re_v27
+
+
+def _v27_reorder_mcq(q):
+    """Reorder MCQ options to A, B, C order. Preserves content mapping."""
+    if (q.get('type') or '').lower() != 'multiple_choice':
+        return q
+
+    options = q.get('options', [])
+    if not options or len(options) < 2:
+        return q
+
+    # Parse letter + content
+    parsed = []
+    for opt in options:
+        s = str(opt).strip()
+        m = _re_v27.match(r'^([A-Da-d])\s*[\):.\-]\s*(.*)$', s)
+        if m:
+            parsed.append((m.group(1).upper(), m.group(2)))
+        else:
+            parsed.append((None, s))
+
+    # Sort by letter (None last)
+    parsed.sort(key=lambda x: (x[0] is None, x[0] or 'Z'))
+
+    # Reassign letters sequentially, track old->new mapping
+    new_options = []
+    old_to_new = {}
+    for i, (old_letter, content) in enumerate(parsed):
+        new_letter = chr(ord('A') + i)
+        new_options.append(new_letter + ": " + content)
+        if old_letter:
+            old_to_new[old_letter] = new_letter
+
+    q['options'] = new_options
+
+    # Update answer letter to same content's new letter
+    old_answer = str(q.get('answer') or q.get('correct_answer') or '').strip().upper()
+    if old_answer in old_to_new:
+        q['answer'] = old_to_new[old_answer]
+
+    return q
+
+
+def _v27_fill_matching_answer(q):
+    """Populate top-level answer for matching from items."""
+    if (q.get('type') or '').lower() != 'matching':
+        return q
+
+    items = q.get('items') or []
+    item_answers = []
+    for it in items:
+        if not isinstance(it, dict):
+            continue
+        a = (it.get('correct_answer') or it.get('answer') or '').strip()
+        if a:
+            item_answers.append(str(a))
+
+    if item_answers and not q.get('answer'):
+        q['answer'] = ','.join(item_answers)
+
+    return q
+
+
+def _v27_normalize_question(q):
+    """Normalize single question: reorder MCQ + fill matching."""
+    if not isinstance(q, dict):
+        return q
+    _v27_reorder_mcq(q)
+    _v27_fill_matching_answer(q)
+    return q
+
+
+def _v27_rebuild_answers(sections):
+    """Rebuild correct_answers dict from actual question fields."""
+    answers = {}
+    for sec_idx, sec in enumerate(sections, 1):
+        if not isinstance(sec, dict):
+            continue
+        questions = sec.get('questions', [])
+        if not isinstance(questions, list):
+            continue
+        start = (sec_idx - 1) * 10 + 1
+        for i, q in enumerate(questions):
+            if not isinstance(q, dict):
+                continue
+            qnum = start + i
+            qtype = (q.get('type') or '').lower()
+            if qtype == 'matching':
+                items = q.get('items') or []
+                item_answers = []
+                for it in items:
+                    if not isinstance(it, dict):
+                        continue
+                    a = (it.get('correct_answer') or it.get('answer') or '').strip()
+                    if a:
+                        item_answers.append(str(a))
+                answers[str(qnum)] = ','.join(item_answers)
+            elif qtype == 'map_labeling':
+                ans = q.get('correct_answer') or q.get('answer') or ''
+                answers[str(qnum)] = str(ans).strip()
+            else:
+                ans = q.get('answer') or q.get('correct_answer') or ''
+                answers[str(qnum)] = str(ans).strip()
+    return answers
+
+
+_prev_gen_v27 = ListeningTestGenerator.generate
+
+
+def _patched_generate_v27(self, *args, **kwargs):
+    result = _prev_gen_v27(self, *args, **kwargs)
+    if not isinstance(result, dict) or result.get('error'):
+        return result
+
+    sections = result.get('sections', [])
+    if not isinstance(sections, list):
+        return result
+
+    # 1. Normalize each question (reorder MCQ + fill matching)
+    for sec in sections:
+        if not isinstance(sec, dict):
+            continue
+        for q in sec.get('questions', []):
+            _v27_normalize_question(q)
+
+    # 2. Rebuild correct_answers from fields
+    result['correct_answers'] = _v27_rebuild_answers(sections)
+
+    logger.info(
+        " [v27] scoring rebuilt: " +
+        str(len(result['correct_answers'])) + " answers normalized"
+    )
+
+    return result
+
+
+ListeningTestGenerator.generate = _patched_generate_v27
+logger.info(" [v27] scoring rebuild + MCQ reorder + matching field active")
+
+
+# ==================================================================
+# FIX v29 - Empty matching items -> convert to MCQ
+# ==================================================================
+
+def _v29_fix_empty_matching(sections, ai_engine):
+    """Find matching Q with no items, convert to MCQ."""
+    import json as _json
+    import re as _re
+
+    fixed = 0
+    for sec_idx, sec in enumerate(sections, 1):
+        if not isinstance(sec, dict):
+            continue
+        questions = sec.get('questions', [])
+        if not isinstance(questions, list):
+            continue
+
+        for q in questions:
+            if not isinstance(q, dict):
+                continue
+            qtype = (q.get('type') or '').lower()
+            if qtype != 'matching':
+                continue
+            items = q.get('items') or []
+            if items and len(items) >= 1:
+                continue  # OK
+
+            # Empty matching - convert to MCQ
+            stem = q.get('question') or q.get('text') or ''
+            answer = q.get('answer') or q.get('correct_answer') or ''
+            if not stem:
+                continue
+
+            prompt = (
+                "Convert this IELTS matching question to a multiple_choice question.\n\n"
+                "QUESTION: " + stem + "\n"
+                "ANSWER: " + str(answer) + "\n\n"
+                "Return JSON: {\"question\": \"...\", \"type\": \"multiple_choice\", "
+                "\"options\": [\"A: ...\", \"B: ...\", \"C: ...\"], \"answer\": \"A\"}\n"
+                "Ensure answer is one of A, B, C."
+            )
+            try:
+                resp = ai_engine.chat(prompt) if hasattr(ai_engine, 'chat') else ai_engine.generate(prompt)
+                text = resp if isinstance(resp, str) else str(resp)
+                m = _re.search(r'\{.*\}', text, _re.DOTALL)
+                if m:
+                    new_q = _json.loads(m.group())
+                    if new_q.get('question') and new_q.get('type') == 'multiple_choice':
+                        q.clear()
+                        q.update(new_q)
+                        fixed += 1
+                        logger.info(" [v29] empty matching -> MCQ: " + stem[:40])
+                        continue
+            except Exception as e:
+                logger.warning(" [v29] convert fail: " + str(e))
+
+            # Fallback: hard-coded MCQ with 3 options from answer
+            ans = str(answer) if answer else 'A'
+            q.clear()
+            q.update({
+                'question': stem,
+                'type': 'multiple_choice',
+                'options': ['A: ' + ans, 'B: option B', 'C: option C'],
+                'answer': 'A',
+            })
+            fixed += 1
+            logger.warning(" [v29] fallback MCQ for: " + stem[:40])
+
+    return fixed
+
+
+_prev_gen_v29 = ListeningTestGenerator.generate
+
+
+def _patched_generate_v29(self, *args, **kwargs):
+    result = _prev_gen_v29(self, *args, **kwargs)
+    if not isinstance(result, dict) or result.get('error'):
+        return result
+    try:
+        ai_engine = self.ai
+        sections = result.get('sections', [])
+        n = _v29_fix_empty_matching(sections, ai_engine)
+        if n > 0:
+            # Rebuild answers
+            from modules.ielts.listening.test_generator import ListeningTestGenerator
+            # Just update correct_answers for fixed questions
+            answers = result.get('correct_answers') or {}
+            for sec_idx, sec in enumerate(sections, 1):
+                start = (sec_idx - 1) * 10 + 1
+                for i, q in enumerate(sec.get('questions', [])):
+                    if not isinstance(q, dict):
+                        continue
+                    qnum = start + i
+                    qtype = (q.get('type') or '').lower()
+                    if qtype == 'matching':
+                        items = q.get('items') or []
+                        item_answers = [str(it.get('correct_answer') or it.get('answer') or '').strip()
+                                        for it in items if isinstance(it, dict)]
+                        answers[str(qnum)] = ','.join(a for a in item_answers if a)
+                    else:
+                        answers[str(qnum)] = str(q.get('answer') or q.get('correct_answer') or '').strip()
+            result['correct_answers'] = answers
+            logger.info(" [v29] fixed " + str(n) + " empty matching questions")
+    except Exception as e:
+        logger.error(" [v29] error: " + str(e))
+    return result
+
+
+ListeningTestGenerator.generate = _patched_generate_v29
+logger.info(" [v29] empty matching auto-converter active")
+
+
+# ==================================================================
+# FIX v30 - Trim 4-option MCQs to 3 options
+# ==================================================================
+
+def _v30_trim_mcq_to_3(q):
+    """If MCQ has 4+ options, trim to 3 (keep correct answer)."""
+    if (q.get('type') or '').lower() != 'multiple_choice':
+        return q
+
+    options = q.get('options', [])
+    if not isinstance(options, list) or len(options) <= 3:
+        return q
+
+    import re as _re
+    correct = str(q.get('answer') or q.get('correct_answer') or '').strip().upper()
+
+    # Parse letter + content
+    parsed = []
+    for opt in options:
+        s = str(opt).strip()
+        m = _re.match(r'^([A-Za-z])\s*[\):.\-]\s*(.*)$', s)
+        if m:
+            parsed.append((m.group(1).upper(), m.group(2)))
+        else:
+            parsed.append((None, s))
+
+    # Find index of correct option
+    correct_idx = None
+    for i, (letter, _) in enumerate(parsed):
+        if letter == correct:
+            correct_idx = i
+            break
+
+    if correct_idx is None:
+        return q  # Can't identify - skip
+
+    # Remove last WRONG option (highest index that isn't correct)
+    remove_idx = None
+    for i in range(len(parsed) - 1, -1, -1):
+        if i != correct_idx:
+            remove_idx = i
+            break
+
+    if remove_idx is None:
+        return q
+
+    remaining = [parsed[i] for i in range(len(parsed)) if i != remove_idx]
+
+    # Reassign A, B, C
+    new_options = []
+    old_to_new = {}
+    for i, (old_letter, content) in enumerate(remaining):
+        new_letter = chr(ord('A') + i)
+        new_options.append(new_letter + ": " + content)
+        if old_letter:
+            old_to_new[old_letter] = new_letter
+
+    q['options'] = new_options
+    if correct in old_to_new:
+        q['answer'] = old_to_new[correct]
+
+    logger.info(
+        " [v30] Q trimmed from " + str(len(options)) + " to 3 options "
+        "(answer " + correct + " -> " + q['answer'] + ")"
+    )
+    return q
+
+
+_prev_gen_v30 = ListeningTestGenerator.generate
+
+
+def _patched_generate_v30(self, *args, **kwargs):
+    result = _prev_gen_v30(self, *args, **kwargs)
+    if not isinstance(result, dict) or result.get('error'):
+        return result
+
+    sections = result.get('sections', [])
+    fixed = 0
+    for sec in sections:
+        if not isinstance(sec, dict):
+            continue
+        for q in sec.get('questions', []):
+            if isinstance(q, dict):
+                before = len(q.get('options', []) or [])
+                _v30_trim_mcq_to_3(q)
+                after = len(q.get('options', []) or [])
+                if after < before:
+                    fixed += 1
+
+    if fixed > 0:
+        # Rebuild answers for trimmed questions
+        answers = result.get('correct_answers') or {}
+        for sec_idx, sec in enumerate(sections, 1):
+            start = (sec_idx - 1) * 10 + 1
+            for i, q in enumerate(sec.get('questions', [])):
+                if not isinstance(q, dict):
+                    continue
+                qnum = start + i
+                qtype = (q.get('type') or '').lower()
+                if qtype == 'matching':
+                    items = q.get('items') or []
+                    ans = ','.join(str(it.get('correct_answer') or it.get('answer') or '').strip()
+                                   for it in items if isinstance(it, dict))
+                    answers[str(qnum)] = ans
+                else:
+                    answers[str(qnum)] = str(q.get('answer') or q.get('correct_answer') or '').strip()
+        result['correct_answers'] = answers
+        logger.info(" [v30] " + str(fixed) + " MCQs trimmed to 3 options")
+
+    return result
+
+
+ListeningTestGenerator.generate = _patched_generate_v30
+logger.info(" [v30] 4-option MCQ trimmer active")

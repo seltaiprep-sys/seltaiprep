@@ -77,8 +77,8 @@ logger = logging.getLogger(__name__)
 # Single source of truth for word counts
 # PERMANENT FIX: Section 4 min reduced 580 → 550
 # ============================================================
-SECTION_TARGET_WORDS = {1: 400, 2: 450, 3: 500, 4: 600}
-SECTION_MIN_WORDS = {1: 340, 2: 400, 3: 460, 4: 550}
+SECTION_TARGET_WORDS = {1: 750, 2: 700, 3: 800, 4: 780}
+SECTION_MIN_WORDS = {1: 650, 2: 620, 3: 720, 4: 720}
 SECTION_DURATIONS = {1: 180, 2: 210, 3: 270, 4: 330}
 SECTION_QUESTION_RANGES = {1: (1, 10), 2: (11, 20), 3: (21, 30), 4: (31, 40)}
 
@@ -2440,3 +2440,185 @@ def pre_generate_sections(ai_engine=None, difficulties: List[str] = None,
                 logger.warning(f"[PreGen] Error {difficulty}/{topic}/{accent}: {e}")
     logger.info(f"[PreGen] Pre-generated {generated} sections")
     return generated
+
+
+# ═══════════════════════════════════════════════════════════════════
+# FIX v11.3 — Section 1 nuclear cache bypass (monkey-patch)
+# ═══════════════════════════════════════════════════════════════════
+_original_section1_v11_3 = SectionGenerator.section1
+
+
+def _patched_section1_v11_3(
+    self, difficulty="medium", accent="british", fast=True,
+    use_cache=True, force_new=False, topic=None
+):
+    logger.info(" [S1-nuclear-v11.3] Bypassing section_generator cache")
+    
+    # Clear any internal caches that section1() might use
+    cache_attrs = [
+        '_section1_cache', '_scenario_cache', '_template_cache',
+        '_cache', '_recent_scenarios', '_scenario_history',
+    ]
+    for attr in cache_attrs:
+        if hasattr(self, attr):
+            try:
+                val = getattr(self, attr)
+                if isinstance(val, dict):
+                    val.clear()
+                    logger.info(f" [S1-nuclear-v11.3] cleared {attr} (dict)")
+                elif isinstance(val, list):
+                    val.clear()
+                    logger.info(f" [S1-nuclear-v11.3] cleared {attr} (list)")
+            except Exception:
+                pass
+    
+    # Force generate (use_cache=False + force_new=True)
+    try:
+        result = _original_section1_v11_3(
+            self,
+            difficulty=difficulty,
+            accent=accent,
+            fast=fast,
+            use_cache=False,
+            force_new=True,
+        )
+    except TypeError:
+        # Fallback for methods that don't accept kwargs
+        result = _original_section1_v11_3(
+            self, difficulty=difficulty, accent=accent, fast=fast
+        )
+    
+    # Reject "City Zoo" if still returned
+    if isinstance(result, dict):
+        script = result.get('script') or result.get('audio_script') or ''
+        if 'City Zoo' in script or 'City Zoo' in str(result.get('title', '')):
+            logger.error(
+                " [S1-nuclear-v11.3] STILL 'City Zoo' — hardcoded template detected!"
+            )
+            logger.error(
+                " [S1-nuclear-v11.3] → check SECTION1_SCENARIOS / SECTION1_TEMPLATES "
+                "in section_generator.py"
+            )
+            # Return placeholder so caller knows to skip/replace
+            result['_stale_cache_detected'] = True
+        else:
+            logger.info(
+                f" [S1-nuclear-v11.3] fresh script OK: "
+                f"'{script[:60]}'"
+            )
+    
+    return result
+
+
+SectionGenerator.section1 = _patched_section1_v11_3
+logger.info(" [v11.3] SectionGenerator.section1 monkey-patched for cache bypass")
+
+
+# ═══════════════════════════════════════════════════════════════════
+# FIX v13 — Expansion overshoot hard cap
+# ═══════════════════════════════════════════════════════════════════
+
+def _v13_hard_cap_expansion(script, target_words, section_num):
+    """Cap script at target*1.08 (was unbounded)."""
+    import re as _re
+    if not script:
+        return script
+    cap = int(target_words * 1.08)
+    words = script.split()
+    if len(words) <= cap:
+        return script
+    
+    # Truncate at sentence boundary
+    sentences = _re.split(r'(?<=[.!?])\s+', script)
+    out, count = [], 0
+    for s in sentences:
+        n = len(s.split())
+        if count + n > cap and out:
+            break
+        out.append(s)
+        count += n
+    
+    if out:
+        result = ' '.join(out).strip()
+        if result and not result.endswith(('.', '!', '?')):
+            result += '.'
+        logger.info(
+            f" [S{section_num}-expand-cap-v13] {len(words)} → {len(result.split())} words "
+            f"(cap {cap} = target {target_words} × 1.08)"
+        )
+        return result
+    return script
+
+
+# Find all expansion methods that might exist
+for _method_name in ['_ai_expand', '_expand_script', '_expand_section', 
+                     '_ai_expand_script', '_grow_script']:
+    if hasattr(SectionGenerator, _method_name):
+        _orig = getattr(SectionGenerator, _method_name)
+        logger.info(f" [v13] Found {_method_name}, wrapping")
+        
+        def _make_wrapper(orig, name):
+            def _wrapper(self, *args, **kwargs):
+                result = orig(self, *args, **kwargs)
+                # Extract target_words from kwargs/args
+                target = kwargs.get('target_words') or kwargs.get('target') or 700
+                if isinstance(target, str):
+                    import re as _r
+                    m = _r.search(r'\d+', target)
+                    target = int(m.group()) if m else 700
+                section_num = kwargs.get('section_num') or kwargs.get('section') or 0
+                
+                # If result is dict with script
+                if isinstance(result, dict):
+                    script = result.get('script') or result.get('audio_script') or ''
+                    if script:
+                        capped = _v13_hard_cap_expansion(script, target, section_num)
+                        if capped != script:
+                            result['script'] = capped
+                            result['audio_script'] = capped
+                            result['word_count'] = len(capped.split())
+                    return result
+                # If result is string
+                elif isinstance(result, str):
+                    return _v13_hard_cap_expansion(result, target, section_num)
+                return result
+            return _wrapper
+        
+        setattr(SectionGenerator, _method_name, _make_wrapper(_orig, _method_name))
+
+logger.info(" [v13] section_generator expansion hard-capped at target×1.08")
+
+
+# ═══════════════════════════════════════════════════════════════
+# SECTION 3 ANTI-ANSWER-RECAP RULE (v24)
+# ═══════════════════════════════════════════════════════════════
+SECTION3_NO_RECAP_RULE = """
+CRITICAL FOR SECTION 3 SCRIPT:
+
+The dialogue is a NATURAL academic discussion ONLY.
+NEVER include:
+- "for question 21, the answer is X"
+- "Options are A, B, C"
+- "So the answer is"
+- "I said X" (as answer confirmation)
+- Numbered question references
+- Tutor asking students to confirm answers
+
+The questions are answerable because the FACTS are discussed
+naturally in conversation. DO NOT step out of character.
+
+BAD (never generate):
+  Tutor: What did Nova identify as a major issue?
+  Nova: I said lack of effective communication.
+  Tutor: Right. For question 21, the answer is 'communication'.
+
+GOOD (always generate):
+  Nova: I think one major issue is the lack of communication.
+  Isabella: I agree. And there's also the issue of short-term targets.
+  [Natural discussion continues without Q&A recap]
+"""
+
+
+def _inject_section3_rule():
+    """Append rule to Section 3 prompts."""
+    return SECTION3_NO_RECAP_RULE
