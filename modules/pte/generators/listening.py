@@ -43,11 +43,7 @@ DEEPGRAM_LISTENING_VOICES = [
     'aura-2-orion-en', # US male
     'aura-2-luna-en', # US female
     'aura-2-arcas-en', # US male
-    # US female
-    # US male
     'aura-2-athena-en', # UK female
-    # UK male
-    # Irish male
 ]
 
 # ─── EDGE TTS ──────────────────────────────────────────────────────────
