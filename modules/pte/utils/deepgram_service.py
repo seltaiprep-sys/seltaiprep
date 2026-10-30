@@ -30,10 +30,8 @@ VALID_DEEPGRAM_VOICES = {
     'aura-angus-en', 'aura-helios-en', 'aura-zeus-en', 'aura-orpheus-en',
 
     # ── Aura-2 (newer generation — supports 'speed') ──────────────
-    'aura-2-asteria-en', 'aura-2-luna-en', 'aura-2-stella-en',
-    'aura-2-athena-en', 'aura-2-hera-en',
-    'aura-2-orion-en', 'aura-2-arcas-en', 'aura-2-perseus-en',
-    'aura-2-angus-en', 'aura-2-helios-en', 'aura-2-zeus-en', 'aura-2-orpheus-en',
+    'aura-2-asteria-en', 'aura-2-luna-en', 'aura-2-athena-en', 'aura-2-hera-en',
+    'aura-2-orion-en', 'aura-2-arcas-en', 'aura-2-zeus-en', 'aura-2-orpheus-en',
     'aura-2-pandora-en', 'aura-2-apollo-en',
     'aura-2-thalia-en', 'aura-2-andromeda-en',
     'aura-2-helena-en', 'aura-2-aurora-en',

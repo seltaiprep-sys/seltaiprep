@@ -18,9 +18,9 @@ DEEPGRAM_TTS_TIMEOUT = int(os.environ.get('DEEPGRAM_TTS_TIMEOUT', '30'))
 DEEPGRAM_STT_TIMEOUT = int(os.environ.get('DEEPGRAM_STT_TIMEOUT', '30'))
 
 AURA2_VOICES = [
-    "aura-2-luna-en", "aura-2-stella-en", "aura-2-athena-en",
+    "aura-2-luna-en", "aura-2-athena-en",
     "aura-2-hera-en", "aura-2-orion-en", "aura-2-arcas-en",
-    "aura-2-perseus-en", "aura-2-angus-en", "aura-2-orpheus-en",
+    "aura-2-orpheus-en",
 ]
 
 AURA1_VOICES = [

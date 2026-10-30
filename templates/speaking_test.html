@@ -932,7 +932,16 @@
             <div class="question-text" id="question-text">Waiting for examiner…</div>
         </div>
 
-        <div class="live-transcript" id="live-transcript">
+        <!-- __REAL_MODE_PATCH_V2__ -->
+<div id="mode-toggle" style="text-align:center;margin:12px 0;">
+  <button id="btn-real-mode" onclick="startRealMode()"
+    style="padding:10px 20px;font-size:15px;font-weight:700;
+    background:#ff5722;color:#fff;border:none;border-radius:8px;cursor:pointer;">
+    Real Mode (Dynamic Follow-up)
+  </button>
+  <span id="real-mode-status" style="margin-left:12px;font-size:13px;color:#666;"></span>
+</div>
+<div class="live-transcript" id="live-transcript">
             <div class="lt-head"><span class="dot"></span>You are speaking</div>
             <div id="live-transcript-text">Listening…</div>
         </div>
@@ -2803,7 +2812,81 @@
         }
     }
 
-    function commitAnswer(transcript) {
+    // __REAL_MODE_PATCH_V2__
+let realModeActive = false, realSessionId = null, realTestActive = false;
+
+async function speakExaminerDynamic(text) {
+  return new Promise(resolve => {
+    try {
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = 'en-GB'; u.rate = 0.95;
+      const vs = speechSynthesis.getVoices();
+      const b = vs.find(v => v.lang==='en-GB' && /male|daniel|george/i.test(v.name))
+             || vs.find(v => v.lang==='en-GB');
+      if (b) u.voice = b;
+      u.onend = resolve; u.onerror = resolve;
+      speechSynthesis.speak(u);
+    } catch(e) { resolve(); }
+  });
+}
+
+async function startRealMode() {
+  try {
+    const r = await fetch('/speaking/free/start', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','X-CSRF-Token':getCsrfToken()},
+      body: JSON.stringify({user_id: (window.state && state.userId) || 1, difficulty:'medium'})
+    });
+    const d = await r.json();
+    realSessionId = d.session_id || (d.session && d.session.session_id);
+    if (!realSessionId) { alert('No session_id: ' + JSON.stringify(d)); return; }
+    realModeActive = true; realTestActive = true;
+    const st = document.getElementById('real-mode-status');
+    const bt = document.getElementById('btn-real-mode');
+    if (st) st.textContent = 'Real Mode active';
+    if (bt) bt.style.background = '#4caf50';
+    const q = d.greeting || d.first_question || (d.session && d.session.greeting) ||
+              "Good morning. My name is David. Can you tell me your full name, please?";
+    if (window.state) { state.currentQuestion = {id:'real_0', part:1, text:q, expectsResponse:true}; state.currentPart = 1; }
+    await speakExaminerDynamic(q);
+    if (typeof recordAnswer === 'function') await recordAnswer();
+  } catch(e) { console.error(e); alert('Real Mode failed: ' + e.message); realModeActive = false; }
+}
+
+async function nextRealQuestion(transcript) {
+  try {
+    const aR = await fetch('/speaking/free/ack', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-CSRF-Token':getCsrfToken()},
+      body: JSON.stringify({session_id: realSessionId, transcript})
+    });
+    const aD = await aR.json();
+    const nR = await fetch('/speaking/free/respond', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-CSRF-Token':getCsrfToken()},
+      body: JSON.stringify({session_id: realSessionId, transcript})
+    });
+    const nD = await nR.json();
+    let t = '';
+    if (aD.ack) t += aD.ack + '. ';
+    if (aD.probe) t += aD.probe;
+    else if (nD.next_question || nD.question) {
+      t += (nD.next_question || nD.question);
+      if (window.state) state.currentPart = nD.part || state.currentPart;
+    } else if (nD.phase_complete || nD.is_complete) {
+      t += "Thank you. That concludes the speaking test.";
+      realTestActive = false;
+    } else t += "Let's move on. Tell me more about that.";
+    if (window.state) state.currentQuestion = {id:'real_'+Date.now(), part: state.currentPart||1, text:t, expectsResponse:true};
+    await speakExaminerDynamic(t);
+    if (realTestActive && typeof recordAnswer === 'function') await recordAnswer();
+  } catch(e) { console.error('nextRealQuestion:', e); }
+}
+
+function commitAnswer(transcript) {
+  if (realModeActive) { nextRealQuestion(transcript); return; }
+
         stopSilenceDetection();
         stopSilenceMonitor();
 

@@ -781,3 +781,32 @@ __all__ = [
     'PHASE_CONFIG',
     'WARNINGS',
 ]
+
+# ===== DYNAMIC BACKCHANNEL + PROBE (patch v2) =====
+import random as _dyn_random
+_BACKCHANNELS = ["mm-hmm","right","OK","I see","interesting","good","alright","got it","yes","sure"]
+_PROBES_SHORT = ["Could you tell me a bit more about that?",
+                 "Why do you think so?",
+                 "Can you give me an example?",
+                 "What else can you tell me?",
+                 "How do you feel about that?"]
+_PROBES_VAGUE = ["What do you mean exactly?",
+                 "Could you explain that in more detail?",
+                 "Can you elaborate on that?"]
+_PART_MIN = {1: 8, 2: 15, 3: 12}
+
+def acknowledge_response(engine, session_id, transcript):
+    session = getattr(engine, '_sessions', {}).get(session_id)
+    if not session:
+        return {"success": False, "error": "session not found"}
+    transcript = (transcript or "").strip()
+    wc = len(transcript.split())
+    part = int(session.get("current_part", 1) or 1)
+    min_w = _PART_MIN.get(part, 10)
+    ack = _dyn_random.choice(_BACKCHANNELS)
+    probe = None
+    if 0 < wc < min_w * 1.5:
+        probe = _dyn_random.choice(_PROBES_SHORT)
+    if 0 < wc < min_w:
+        probe = _dyn_random.choice(_PROBES_SHORT + _PROBES_VAGUE)
+    return {"success": True, "ack": ack, "probe": probe, "word_count": wc, "part": part}

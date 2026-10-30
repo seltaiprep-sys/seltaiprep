@@ -181,3 +181,26 @@ fill_full_profile.py
 *.scratch.py
 scratch_*.py
 tmp_*.py
+# --- Local DB + journals ---
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+data/
+
+# --- Backups ---
+backup_*/
+*.bak_*
+*.bak2_*
+*.backup_*
+
+# --- One-off debug scripts ---
+diag_parse.py
+extract_parse.py
+extract_s1.py
+search_broad.py
+search_paths.py
+show_audio_scripts.py
+clear_all_listening.py
+clear_listening_db.py

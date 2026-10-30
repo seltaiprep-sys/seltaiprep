@@ -3,7 +3,7 @@
    Provides offline caching + fast loads
    ═══════════════════════════════════════════════════════════ */
 
-const CACHE_VERSION = 'seltaprep-v1';
+const CACHE_VERSION = 'seltaprep-v2';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const PAGES_CACHE = `${CACHE_VERSION}-pages`;
 const IMAGES_CACHE = `${CACHE_VERSION}-images`;
@@ -62,6 +62,14 @@ self.addEventListener('fetch', event => {
     // Skip non-GET requests
     if (request.method !== 'GET') return;
 
+    // ─── Skip audio/video — network-only (fixes range/stream conflicts) ───
+    if (/\.(mp3|wav|ogg|m4a|aac|flac|opus|weba|mp4|webm)$/i.test(url.pathname) ||
+        request.headers.get('Range') ||
+        url.pathname.includes('/audio/') ||
+        url.pathname.includes('/stream/')) {
+        return;  // Let browser handle directly — no caching
+    }
+
     // Skip API requests (always fresh)
     if (url.pathname.startsWith('/api/')) {
         return; // Let network handle it
@@ -85,7 +93,11 @@ self.addEventListener('fetch', event => {
             caches.match(request).then(cached => {
                 if (cached) return cached;
                 return fetch(request).then(response => {
-                    if (!response || response.status !== 200) return response;
+                    if (!response || response.status !== 200 ||
+                        response.type === 'opaque' ||
+                        response.headers.get('Content-Range')) {
+                        return response;
+                    }
                     const responseClone = response.clone();
                     caches.open(STATIC_CACHE).then(cache => {
                         cache.put(request, responseClone);
@@ -103,7 +115,11 @@ self.addEventListener('fetch', event => {
             caches.match(request).then(cached => {
                 if (cached) return cached;
                 return fetch(request).then(response => {
-                    if (!response || response.status !== 200) return response;
+                    if (!response || response.status !== 200 ||
+                        response.type === 'opaque' ||
+                        response.headers.get('Content-Range')) {
+                        return response;
+                    }
                     const responseClone = response.clone();
                     caches.open(IMAGES_CACHE).then(cache => {
                         cache.put(request, responseClone);
@@ -119,7 +135,11 @@ self.addEventListener('fetch', event => {
     event.respondWith(
         fetch(request)
             .then(response => {
-                if (!response || response.status !== 200) return response;
+                if (!response || response.status !== 200 ||
+                        response.type === 'opaque' ||
+                        response.headers.get('Content-Range')) {
+                        return response;
+                    }
                 const responseClone = response.clone();
                 caches.open(PAGES_CACHE).then(cache => {
                     cache.put(request, responseClone);

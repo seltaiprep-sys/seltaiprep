@@ -1672,6 +1672,20 @@ Return ONLY valid JSON:
             def free_state_route(session_id):
                 return jsonify(_free_engine.get_session_state(session_id))
 
+
+            @bp.route('/speaking/free/ack', methods=['POST'])
+            def free_ack_route():
+                data = request.json or {}
+                sid = data.get('session_id')
+                tr = data.get('transcript', '')
+                if not sid:
+                    return jsonify({'success': False, 'error': 'session_id required'}), 400
+                try:
+                    from .free_conversation import acknowledge_response
+                    return jsonify(acknowledge_response(_free_engine, sid, tr))
+                except Exception as e:
+                    return jsonify({'success': False, 'error': str(e)}), 500
+
             @bp.route('/speaking/free/end', methods=['POST'])
             def free_end_route():
                 data = request.json or {}

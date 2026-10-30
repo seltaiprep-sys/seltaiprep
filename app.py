@@ -809,8 +809,13 @@ def _clean_script_for_tts(script: str) -> str:
     # Remove other special chars that TTS mispronounces
     script = re.sub(r'[*#~`^&<>{}|\\]', ' ', script)
     
-    # Multiple spaces → single
-    script = re.sub(r'\s+', ' ', script)
+    # FIX v9.5: Collapse spaces/tabs ONLY — preserve newlines!
+    # Newlines are REQUIRED for _parse_script label detection.
+    script = re.sub(r'[ \t]+', ' ', script)
+    # Strip per-line trailing/leading spaces
+    script = '\n'.join(line.strip() for line in script.split('\n'))
+    # Remove excessive blank lines (3+ → 1)
+    script = re.sub(r'\n{3,}', '\n\n', script)
     
     return script.strip()
 
