@@ -3443,5 +3443,40 @@ function commitAnswer(transcript) {
 </script>
 <script src="/static/js/sw-register.js"></script>
 <script src="/static/js/push-notifications.js"></script>
+// __EXAMINER_V3_PATCH__
+(function() {
+    function ensureTranscriptVisible() {
+        const box = document.getElementById('live-transcript');
+        if (!box) return;
+        box.style.setProperty('display', 'block', 'important');
+        box.style.setProperty('visibility', 'visible', 'important');
+        box.style.setProperty('opacity', '1', 'important');
+        box.classList.add('show');
+    }
+    window.__ensureTranscriptVisible = ensureTranscriptVisible;
+
+    // Wrap recordAnswer to guarantee visibility
+    function wrap() {
+        const _orig = window.recordAnswer;
+        if (typeof _orig === 'function' && !_orig.__v3wrapped) {
+            const wrapped = async function() {
+                ensureTranscriptVisible();
+                return await _orig.apply(this, arguments);
+            };
+            wrapped.__v3wrapped = true;
+            window.recordAnswer = wrapped;
+        }
+    }
+    wrap();
+    setInterval(wrap, 500);
+
+    document.addEventListener('DOMContentLoaded', () => {
+        ensureTranscriptVisible();
+        new MutationObserver(ensureTranscriptVisible).observe(
+            document.body, { attributes: true, attributeFilter: ['class'] }
+        );
+    });
+})();
+
 </body>
 </html>

@@ -1657,5 +1657,110 @@
 </script>
 <script src="/static/js/sw-register.js"></script>
 <script src="/static/js/push-notifications.js"></script>
+
+// __PTE_TRANSCRIPT_PATCH__ — Real-time transcript in PTE Speaking
+(function() {
+  let _pteRecognition = null;
+  let _pteFinal = '';
+  let _pteInterim = '';
+  let _pteActive = false;
+
+  function _showBox() {
+    const box = document.getElementById('live-transcript-container');
+    if (!box) return;
+    box.style.setProperty('display', 'block', 'important');
+    box.style.setProperty('visibility', 'visible', 'important');
+    box.style.setProperty('opacity', '1', 'important');
+  }
+
+  function _setText(t) {
+    const el = document.getElementById('live-transcript-text');
+    if (el) el.textContent = t || 'Listening…';
+    _showBox();
+  }
+
+  function _startWebSpeech() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) {
+      _setText('🎤 Mic active (transcript requires Chrome/Edge)');
+      return;
+    }
+    _pteFinal = ''; _pteInterim = '';
+    _pteRecognition = new SR();
+    _pteRecognition.lang = 'en-US';
+    _pteRecognition.continuous = true;
+    _pteRecognition.interimResults = true;
+    _pteRecognition.maxAlternatives = 1;
+
+    _pteRecognition.onresult = (event) => {
+      _pteInterim = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const t = event.results[i][0].transcript;
+        if (event.results[i].isFinal) _pteFinal += t + ' ';
+        else _pteInterim += t;
+      }
+      const shown = (_pteFinal + _pteInterim).trim();
+      _setText(shown || 'Listening…');
+    };
+    _pteRecognition.onerror = (e) => {
+      console.warn('PTE SR error:', e.error);
+      if (e.error === 'no-speech' || e.error === 'aborted') return;
+      if (e.error === 'not-allowed') _setText('⚠️ Mic permission blocked');
+      else if (e.error === 'network') _setText('⚠️ Network error');
+    };
+    _pteRecognition.onend = () => {
+      if (_pteActive) { try { _pteRecognition.start(); } catch(e){} }
+    };
+    try { _pteRecognition.start(); } catch(e) { console.warn(e); }
+    _setText('🎤 Listening…');
+  }
+
+  function _stopWebSpeech() {
+    _pteActive = false;
+    if (_pteRecognition) { try { _pteRecognition.stop(); } catch(e){} }
+    _pteRecognition = null;
+  }
+
+  // Wrap the existing startLiveTranscription if it exists
+  function _wrapStart() {
+    if (typeof window.startLiveTranscription === 'function' && !window.startLiveTranscription.__patched) {
+      const orig = window.startLiveTranscription;
+      const patched = function(stream) {
+        _pteActive = true;
+        _showBox();
+        _startWebSpeech();
+        try { orig.call(this, stream); } catch(e) { console.warn('WS orig failed:', e); }
+      };
+      patched.__patched = true;
+      window.startLiveTranscription = patched;
+    }
+  }
+
+  function _wrapStop() {
+    if (typeof window.stopLiveTranscription === 'function' && !window.stopLiveTranscription.__patched) {
+      const orig = window.stopLiveTranscription;
+      const patched = function() {
+        _stopWebSpeech();
+        const final = (_pteFinal + ' ' + _pteInterim).trim();
+        if (final && window.liveFinalTranscript !== undefined) {
+          window.liveFinalTranscript = final;
+        }
+        try { orig.call(this); } catch(e){}
+      };
+      patched.__patched = true;
+      window.stopLiveTranscription = patched;
+    }
+  }
+
+  _wrapStart();
+  _wrapStop();
+
+  // Retry wrapping periodically (in case functions are redefined)
+  setInterval(() => { _wrapStart(); _wrapStop(); }, 1000);
+
+  // Show box on DOM ready
+  document.addEventListener('DOMContentLoaded', _showBox);
+})();
+
 </body>
 </html>

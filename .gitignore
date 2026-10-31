@@ -204,3 +204,9 @@ search_paths.py
 show_audio_scripts.py
 clear_all_listening.py
 clear_listening_db.py
+
+# --- New backup patterns (v3/v5 patches) ---
+*.bak3_*
+*.bak4_*
+*.bak5_*
+*.bak_pte_*

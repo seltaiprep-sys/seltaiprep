@@ -68,6 +68,73 @@ def fill_examiner_placeholders(data, name: str = None):
 # Constants
 # ============================================================
 
+
+
+# ===== FIX v3c: Complete helpers (idempotent) =====
+import random as _ex_rng
+import json as _ex_json
+import pathlib as _ex_pathlib
+
+ROOT_DIR = _ex_pathlib.Path(__file__).resolve().parent.parent.parent.parent
+
+EXAMINER_NAMES = [
+    "David", "James", "Michael", "Thomas", "Daniel", "Oliver", "William", "Henry",
+    "Sarah", "Emma", "Rachel", "Laura", "Sophie", "Charlotte", "Olivia", "Emily",
+]
+
+_EXAMINER_PLACEHOLDERS = [
+    "[Examiner Name]", "[Examiner's Name]", "[Examiner]",
+    "[EXAMINER NAME]", "[EXAMINER'S NAME]", "[EXAMINER]",
+    "[Name]", "[name]",
+]
+
+def _replace_examiner_placeholders(obj, name=None):
+    if name is None:
+        name = _ex_rng.choice(EXAMINER_NAMES)
+    if isinstance(obj, str):
+        s = obj
+        for p in _EXAMINER_PLACEHOLDERS:
+            s = s.replace(p, name)
+        return s
+    if isinstance(obj, list):
+        return [_replace_examiner_placeholders(x, name) for x in obj]
+    if isinstance(obj, dict):
+        return {k: _replace_examiner_placeholders(v, name) for k, v in obj.items()}
+    return obj
+
+def fill_examiner_placeholders(obj, name=None):
+    return _replace_examiner_placeholders(obj, name)
+
+_RECENT_TOPICS_FILE = None
+
+def _recent_topics_path():
+    global _RECENT_TOPICS_FILE
+    if _RECENT_TOPICS_FILE is None:
+        d = ROOT_DIR / "static" / "audio_cache" / "speaking"
+        try:
+            d.mkdir(parents=True, exist_ok=True)
+        except Exception:
+            d = _ex_pathlib.Path("/tmp")
+        _RECENT_TOPICS_FILE = d / ".recent_topics.json"
+    return _RECENT_TOPICS_FILE
+
+def _load_recent_topics():
+    try:
+        p = _recent_topics_path()
+        if p.exists():
+            return _ex_json.loads(p.read_text(encoding='utf-8'))[-10:]
+    except Exception:
+        pass
+    return []
+
+def _save_recent_topics(items):
+    try:
+        _recent_topics_path().write_text(_ex_json.dumps(items[-10:]), encoding='utf-8')
+    except Exception:
+        pass
+
+
+
 PART1_TOPIC_POOL = [
     "hometown", "home", "family", "work", "study", "travel",
     "food", "technology", "hobbies", "music", "sports",
@@ -309,13 +376,23 @@ class SpeakingTest:
     # ============================================================
 
     def _pick_topic(self, pool: List[str]) -> str:
-        """Pick a topic, avoiding ones used in the last 3 calls."""
-        available = [t for t in pool if t not in self._recent_topics[-3:]]
+        """Pick a topic, avoiding recently-used ones (persists across instances)."""
+        try:
+            recent = _load_recent_topics()
+            if recent:
+                self._recent_topics = recent[-8:]
+        except Exception:
+            pass
+        available = [t for t in pool if t not in self._recent_topics[-6:]]
         if not available:
             available = pool
         choice = random.choice(available)
         self._recent_topics.append(choice)
-        self._recent_topics = self._recent_topics[-5:]
+        self._recent_topics = self._recent_topics[-8:]
+        try:
+            _save_recent_topics(self._recent_topics)
+        except Exception:
+            pass
         return choice
 
     # ============================================================
@@ -357,6 +434,8 @@ class SpeakingTest:
                 result['total_questions'] = _count_questions(result)
                 result['ai_generated'] = True
                 result['difficulty'] = difficulty
+                result = _replace_examiner_placeholders(result)
+
                 result['part1_topic'] = selected_topic
                 result['success'] = True
 
