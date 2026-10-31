@@ -210,3 +210,12 @@ clear_listening_db.py
 *.bak4_*
 *.bak5_*
 *.bak_pte_*
+
+# --- UKVI debug/init scripts (one-off) ---
+diag_ukvi.py
+init_ukvi_local.py
+migrate_ukvi_local.py
+migrate_ukvi_pg.py
+migrate_ukvi_visa.py
+fix_ukvi_remarks_v2.py
+fix_ukvi_visa_fields.py

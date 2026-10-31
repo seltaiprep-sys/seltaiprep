@@ -9913,6 +9913,59 @@ if _B2B_AVAILABLE:
 
 
     logger.info("B2B UKVI routes registered")
+
+    # ═══════════════════════════════════════════════════════
+    # Student Visa Info (Remarks modal)
+    # ═══════════════════════════════════════════════════════
+    @app.route('/ukvi/b2b/students/<int:student_id>/visa-info', methods=['GET', 'POST'])
+    @login_required
+    def ukvi_b2b_student_visa_info(student_id):
+        from modules.ukvi.models import UKVIB2BStudent
+        from datetime import datetime as _dt
+        from flask import request, jsonify
+
+        partner_id = session.get('ukvi_b2b_partner_id') or session.get('b2b_partner_id')
+        q = UKVIB2BStudent.query.filter_by(id=student_id)
+        if partner_id:
+            q = q.filter_by(partner_id=partner_id)
+        student = q.first()
+        if not student:
+            return jsonify({'success': False, 'error': 'Student not found'}), 404
+
+        def _d(s):
+            try:
+                return _dt.strptime(s, '%Y-%m-%d').date() if s else None
+            except Exception:
+                return None
+
+        if request.method == 'GET':
+            return jsonify({
+                'success': True,
+                'data': {
+                    'visa_status': student.visa_status,
+                    'visa_approved_date': student.visa_approved_date.isoformat() if student.visa_approved_date else '',
+                    'departure_date': student.departure_date.isoformat() if student.departure_date else '',
+                    'visa_university': student.visa_university,
+                    'visa_amount': student.visa_amount,
+                    'total_amount': student.total_amount,
+                    'remarks': student.remarks,
+                }
+            })
+
+        # POST
+        try:
+            student.visa_status = (request.form.get('visa_status') or '').strip() or None
+            student.visa_approved_date = _d(request.form.get('visa_approved_date', ''))
+            student.departure_date = _d(request.form.get('departure_date', ''))
+            student.visa_university = (request.form.get('visa_university') or '').strip() or None
+            student.visa_amount = (request.form.get('visa_amount') or '').strip() or None
+            student.total_amount = (request.form.get('total_amount') or '').strip() or None
+            student.remarks = (request.form.get('remarks') or '').strip() or None
+            db.session.commit()
+            return jsonify({'success': True})
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'success': False, 'error': str(e)}), 500
 else:
     logger.warning("B2B UKVI routes NOT registered (models import failed)")
 

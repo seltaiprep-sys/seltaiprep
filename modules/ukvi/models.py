@@ -569,6 +569,15 @@ class UKVIB2BStudent(db.Model):
     ielts_score = db.Column(db.String(20))
     tuition_fee = db.Column(db.String(50))
     living_cost = db.Column(db.String(50))
+
+    # ── Visa & Remarks (institute fills after visa process) ──
+    visa_status = db.Column(db.String(50))        # accepted/rejected/pending/not_applied
+    visa_approved_date = db.Column(db.Date)
+    departure_date = db.Column(db.Date)
+    visa_university = db.Column(db.String(300))
+    visa_amount = db.Column(db.String(100))
+    total_amount = db.Column(db.String(100))
+    remarks = db.Column(db.Text)
     sponsor_name = db.Column(db.String(200))
     sponsor_income = db.Column(db.String(50))
     sponsor_savings = db.Column(db.String(50))

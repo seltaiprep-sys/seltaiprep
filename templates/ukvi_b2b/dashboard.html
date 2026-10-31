@@ -65,10 +65,19 @@
                 <td><strong>{{ s.full_name }}</strong></td>
                 <td>{{ s.scheduled_date }} {{ s.scheduled_time.strftime('%H:%M') }}</td>
                 <td><span class="badge badge-{{ s.window_status }}">{{ s.window_status }}</span></td>
-                <td>
-                    <a href="{{ url_for('ukvi_b2b_student_detail', student_id=s.id) }}"
-                       class="btn btn-sm btn-outline">View</a>
-                </td>
+<td>
+                <a href="{{ url_for('ukvi_b2b_student_detail', student_id=s.id) }}"
+                   class="btn btn-sm btn-outline">View</a>
+                {% set _dash_filled = s.visa_status or s.remarks or s.visa_university %}
+                <button type="button"
+                        class="btn btn-sm {% if _dash_filled %}btn-success{% else %}btn-outline{% endif %}"
+                        onclick="openRemarksModalDash({{ s.id }}, '{{ s.full_name|e }}')"
+                        title="{% if _dash_filled %}Edit Visa & Remarks{% else %}Add Visa & Remarks{% endif %}"
+                        style="margin-left:4px;">
+                    {% if _dash_filled %}📝✅ Visa Info{% else %}📝 Remarks{% endif %}
+                </button>
+            </td>
+
             </tr>
         {% endfor %}
         </tbody>
@@ -83,4 +92,133 @@
     </div>
     {% endif %}
 </div>
+
+<!-- ═══ DASHBOARD REMARKS MODAL ═══ -->
+<div id="dashRemarksModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;padding:20px;">
+    <div style="background:#fff;border-radius:12px;max-width:640px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 10px 40px rgba(0,0,0,0.3);">
+        <div style="padding:20px 24px;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;">
+            <h3 style="margin:0;font-size:18px;">📝 Remarks — <span id="dash-remarks-name"></span></h3>
+            <button type="button" onclick="closeDashRemarks()" style="background:none;border:none;font-size:24px;cursor:pointer;color:#6b7280;line-height:1;">&times;</button>
+        </div>
+        <form id="dashRemarksForm" style="padding:20px 24px;">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+                <div>
+                    <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:4px;">Visa Status</label>
+                    <select name="visa_status" id="dash-visa-status" class="form-control">
+                        <option value="">— Select —</option>
+                        <option value="accepted">✅ Accepted</option>
+                        <option value="rejected">❌ Rejected</option>
+                        <option value="pending">⏳ Pending</option>
+                        <option value="not_applied">— Not Applied</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:4px;">Approved Date</label>
+                    <input type="date" name="visa_approved_date" id="dash-approved-date" class="form-control">
+                </div>
+                <div>
+                    <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:4px;">Departure Date</label>
+                    <input type="date" name="departure_date" id="dash-departure-date" class="form-control">
+                </div>
+                <div>
+                    <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:4px;">University (visa)</label>
+                    <input type="text" name="visa_university" id="dash-university" class="form-control" placeholder="University of East London">
+                </div>
+                <div>
+                    <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:4px;">Visa Amount</label>
+                    <input type="text" name="visa_amount" id="dash-visa-amount" class="form-control" placeholder="NPR 1,50,000">
+                </div>
+                <div>
+                    <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:4px;">Total Amount</label>
+                    <input type="text" name="total_amount" id="dash-total-amount" class="form-control" placeholder="NPR 15,00,000">
+                </div>
+            </div>
+            <div style="margin-top:14px;">
+                <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:4px;">Remarks / Notes</label>
+                <textarea name="remarks" id="dash-remarks-text" class="form-control" rows="3" placeholder="Any notes..."></textarea>
+            </div>
+            <div id="dash-remarks-error" style="display:none;margin-top:12px;padding:10px;background:#fef2f2;color:#991b1b;border-radius:6px;font-size:13px;"></div>
+            <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;">
+                <button type="button" onclick="closeDashRemarks()" class="btn btn-outline">Cancel</button>
+                <button type="submit" class="btn btn-primary" id="dash-save-btn">💾 Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+var _dashCurrentStudentId = null;
+
+function openRemarksModalDash(studentId, studentName) {
+    _dashCurrentStudentId = studentId;
+    document.getElementById('dash-remarks-name').textContent = studentName || ('Student #' + studentId);
+    document.getElementById('dash-remarks-error').style.display = 'none';
+
+    ['visa-status','approved-date','departure-date','university','visa-amount','total-amount','remarks-text'].forEach(function(k) {
+        var el = document.getElementById('dash-' + k);
+        if (el) el.value = '';
+    });
+
+    fetch('/ukvi/b2b/students/' + studentId + '/visa-info', {
+        headers: { 'X-CSRF-Token': '{{ csrf_token }}' }
+    }).then(function(r) { return r.json(); }).then(function(d) {
+        if (d.success && d.data) {
+            var x = d.data;
+            document.getElementById('dash-visa-status').value = x.visa_status || '';
+            document.getElementById('dash-approved-date').value = x.visa_approved_date || '';
+            document.getElementById('dash-departure-date').value = x.departure_date || '';
+            document.getElementById('dash-university').value = x.visa_university || '';
+            document.getElementById('dash-visa-amount').value = x.visa_amount || '';
+            document.getElementById('dash-total-amount').value = x.total_amount || '';
+            document.getElementById('dash-remarks-text').value = x.remarks || '';
+        }
+    }).catch(function() {});
+
+    document.getElementById('dashRemarksModal').style.display = 'flex';
+}
+
+function closeDashRemarks() {
+    document.getElementById('dashRemarksModal').style.display = 'none';
+}
+
+document.getElementById('dashRemarksForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    var sid = _dashCurrentStudentId;
+    if (!sid) return;
+    var errEl = document.getElementById('dash-remarks-error');
+    var btn = document.getElementById('dash-save-btn');
+    btn.disabled = true; btn.textContent = '💾 Saving...';
+    errEl.style.display = 'none';
+
+    var fd = new FormData(this);
+    fetch('/ukvi/b2b/students/' + sid + '/visa-info', {
+        method: 'POST',
+        headers: { 'X-CSRF-Token': '{{ csrf_token }}' },
+        body: fd
+    }).then(function(r) { return r.json(); }).then(function(d) {
+        btn.disabled = false; btn.textContent = '💾 Save';
+        if (d.success) {
+            closeDashRemarks();
+            window.location.reload();
+        } else {
+            errEl.textContent = d.error || 'Save failed';
+            errEl.style.display = 'block';
+        }
+    }).catch(function() {
+        btn.disabled = false; btn.textContent = '💾 Save';
+        errEl.textContent = 'Network error';
+        errEl.style.display = 'block';
+    });
+});
+
+document.getElementById('dashRemarksModal').addEventListener('click', function(e) {
+    if (e.target === this) closeDashRemarks();
+});
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeDashRemarks();
+});
+</script>
+
 {% endblock %}
