@@ -1,6 +1,23 @@
 {% extends 'ukvi_b2b/base.html' %}
 {% block title %}{{ student.full_name }}{% endblock %}
 {% block content %}
+
+{% if not student.email %}
+<div style="margin-bottom:14px;padding:12px 16px;background:#fef3c7;border:2px solid #f59e0b;border-radius:10px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+    <div style="font-size:22px;">⚠️</div>
+    <div style="flex:1;min-width:200px;">
+        <strong style="color:#92400e;font-size:13.5px;">Student email missing</strong>
+        <div style="color:#78350f;font-size:12px;margin-top:3px;">
+            Without an email, the student will NOT receive automated notifications. 
+            <a href="#" onclick="document.getElementById('toggle-profile-edit').click(); return false;" 
+               style="color:#1e40af;text-decoration:underline;font-weight:600;">
+               Add email in profile below ↓
+            </a>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <div class="card">
     <div style="display: flex; justify-content: space-between; align-items: start; flex-wrap: wrap; gap: 10px;">
         <div>
@@ -210,6 +227,38 @@
                 <label style="font-size: 12px;">Home Country</label>
                 <input type="text" name="home_country" class="form-control" value="{{ student.home_country or 'Nepal' }}" placeholder="Nepal">
             </div>
+            <!-- ═══ 4 NEW UKVI INTERVIEW FIELDS ═══ -->
+            <div class="form-group">
+                <label style="font-size: 12px;">Sponsor Relationship</label>
+                <select name="sponsor_relationship" class="form-control">
+                    <option value="">— Select —</option>
+                    <option value="father"  {% if student.sponsor_relationship == 'father' %}selected{% endif %}>Father</option>
+                    <option value="mother"  {% if student.sponsor_relationship == 'mother' %}selected{% endif %}>Mother</option>
+                    <option value="uncle"   {% if student.sponsor_relationship == 'uncle' %}selected{% endif %}>Uncle</option>
+                    <option value="aunt"    {% if student.sponsor_relationship == 'aunt' %}selected{% endif %}>Aunt</option>
+                    <option value="sibling" {% if student.sponsor_relationship == 'sibling' %}selected{% endif %}>Sibling</option>
+                    <option value="self"    {% if student.sponsor_relationship == 'self' %}selected{% endif %}>Self</option>
+                    <option value="other"   {% if student.sponsor_relationship == 'other' %}selected{% endif %}>Other</option>
+                </select>
+            </div>
+            <div class="form-group" style="grid-column: 1 / -1;">
+                <label style="font-size: 12px;">Career Plan (after study)</label>
+                <textarea name="career_plan" class="form-control" rows="2"
+                          placeholder="e.g., Return to Nepal and work as Data Scientist at XYZ Company">{{ student.career_plan or '' }}</textarea>
+            </div>
+            <div class="form-group" style="grid-column: 1 / -1;">
+                <label style="font-size: 12px;">Work Experience</label>
+                <input type="text" name="work_experience" class="form-control"
+                       value="{{ student.work_experience or '' }}"
+                       placeholder="e.g., 2 years as Software Developer at ABC Company">
+            </div>
+            <div class="form-group" style="grid-column: 1 / -1;">
+                <label style="font-size: 12px;">Previous Education</label>
+                <input type="text" name="previous_education" class="form-control"
+                       value="{{ student.previous_education or '' }}"
+                       placeholder="e.g., BSc Computer Science, Tribhuvan University, 2020">
+            </div>
+
             <div class="form-group">
                 <label style="font-size: 12px;">Tuition Fee</label>
                 <input type="text" name="tuition_fee" class="form-control" value="{{ student.tuition_fee or '' }}" placeholder="£15,000">
@@ -332,48 +381,543 @@
 </div>
 {% endif %}
 
-<a href="{{ url_for('ukvi_b2b_students') }}" class="btn btn-outline">← Back to Students</a>
-<form method="POST"
-      action="{{ url_for('ukvi_b2b_student_delete', student_id=student.id) }}"
-      onsubmit="return confirm('Delete &quot;{{ student.full_name }}&quot;? This cannot be undone. Credit will be refunded if test not completed.');"
-      style="display:inline; margin-left: 10px;">
-    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
-    <button type="submit"
-            style="background:#dc2626; color:white; border:none; padding:8px 16px; border-radius:6px; cursor:pointer; font-size:13px; font-weight: 600;"
-            id="delete-student-detail">🗑️ Delete Student</button>
-</form>
 
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- UKVI CRM — Documents / CAS / Timeline / Payments       -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<style>
+.crm-tabs { display:flex;gap:4px;margin-bottom:12px;border-bottom:2px solid #e5e7eb; }
+.crm-tab { padding:10px 16px;cursor:pointer;font-size:13px;font-weight:600;color:#6b7280;border:none;background:none;border-bottom:3px solid transparent;margin-bottom:-2px; }
+.crm-tab.active { color:#4f46e5;border-bottom-color:#4f46e5; }
+.crm-panel { display:none; }
+.crm-panel.active { display:block; }
+.crm-badge { display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700; }
+.crm-badge.pending { background:#fef3c7;color:#92400e; }
+.crm-badge.verified,.crm-badge.paid { background:#d1fae5;color:#065f46; }
+.crm-badge.rejected { background:#fee2e2;color:#991b1b; }
+.crm-badge.not_applied { background:#f3f4f6;color:#6b7280; }
+.crm-badge.issued { background:#dbeafe;color:#1e40af; }
+.crm-badge.expired { background:#fee2e2;color:#991b1b; }
+.crm-badge.used { background:#e0e7ff;color:#3730a3; }
+.doc-row,.timeline-row,.pay-row { display:flex;align-items:center;gap:10px;padding:10px;border-bottom:1px solid #f3f4f6;font-size:13px; }
+.doc-row:last-child,.timeline-row:last-child,.pay-row:last-child { border-bottom:none; }
+.crm-input { padding:8px 10px;border:1.5px solid #e5e7eb;border-radius:6px;font-size:13px;font-family:inherit; }
+.crm-btn { padding:7px 14px;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600; }
+.crm-btn-primary { background:#4f46e5;color:white; }
+.crm-btn-danger { background:#dc2626;color:white; }
+.crm-btn-success { background:#16a34a;color:white; }
+.crm-btn-outline { background:white;color:#4f46e5;border:1.5px solid #4f46e5; }
+.crm-btn-sm { padding:5px 10px;font-size:11px; }
+.crm-empty { padding:20px;text-align:center;color:#9ca3af;font-size:13px; }
 
-{% block extra_js %}
+.tl-big-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+.tl-big-btn:active { transform: translateY(0); }
+
+</style>
+
+<div class="card">
+    <h3 style="margin-bottom:14px;">📋 UKVI Application Manager</h3>
+    <div class="crm-tabs">
+        <button class="crm-tab active" onclick="crmTab('docs')">📎 Documents (<span id="crm-doc-count">{{ student.documents.count() if student.documents else 0 }}</span>)</button>
+        <button class="crm-tab" onclick="crmTab('cas')">🎫 CAS</button>
+        <button class="crm-tab" onclick="crmTab('timeline')">🗓️ Timeline</button>
+        <button class="crm-tab" onclick="crmTab('payments')">💳 Payments</button>
+    </div>
+
+    <!-- ═══ DOCUMENTS ═══ -->
+    <div id="crm-panel-docs" class="crm-panel active">
+        <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+            <select id="doc-type" class="crm-input" style="flex:1;min-width:150px;">
+                <option value="passport">Passport</option>
+                <option value="ielts">IELTS Certificate</option>
+                <option value="offer_letter">Offer Letter</option>
+                <option value="cas_letter">CAS Letter</option>
+                <option value="bank_statement">Bank Statement</option>
+                <option value="tb_test">TB Test</option>
+                <option value="photo">Photo (35x45mm)</option>
+                <option value="academic">Academic Transcripts</option>
+                <option value="other">Other</option>
+            </select>
+            <input type="file" id="doc-file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" class="crm-input" style="flex:2;min-width:200px;">
+            <button onclick="uploadDoc()" class="crm-btn crm-btn-primary">📤 Upload</button>
+        </div>
+        <div id="doc-list">
+            {% if student.documents and student.documents.count() > 0 %}
+                {% for doc in student.documents.all() %}
+                <div class="doc-row">
+                    <div style="flex:1;">
+                        <strong>{{ doc.doc_type|upper }}</strong> — {{ doc.original_name }}<br>
+                        <small style="color:#6b7280;">{{ (doc.file_size / 1024)|round(1) }} KB · {{ doc.uploaded_at.strftime('%Y-%m-%d %H:%M') if doc.uploaded_at else '-' }}</small>
+                    </div>
+                    <span class="crm-badge {{ doc.status }}">{{ doc.status }}</span>
+                    <a href="{{ url_for('ukvi_b2b_doc_view', sid=student.id, doc_id=doc.id) }}" target="_blank" class="crm-btn crm-btn-outline crm-btn-sm">👁️ View</a>
+                    {% if doc.status != 'verified' %}
+                    <button onclick="verifyDoc({{ doc.id }}, 'verified')" class="crm-btn crm-btn-success crm-btn-sm">✓</button>
+                    {% endif %}
+                    <button onclick="deleteDoc({{ doc.id }})" class="crm-btn crm-btn-danger crm-btn-sm">🗑</button>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="crm-empty">No documents uploaded yet.</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- ═══ CAS ═══ -->
+    <div id="crm-panel-cas" class="crm-panel">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div>
+                <label style="font-size:12px;font-weight:600;">CAS Number</label>
+                <input type="text" id="cas-number" class="crm-input" style="width:100%;" value="{{ student.cas_number or '' }}" placeholder="E4G2X9K1P7Q3W5Y8">
+            </div>
+            <div>
+                <label style="font-size:12px;font-weight:600;">Status</label>
+                <select id="cas-status" class="crm-input" style="width:100%;">
+                    <option value="" {% if not student.cas_status %}selected{% endif %}>— Select —</option>
+                    <option value="not_applied" {% if student.cas_status=='not_applied' %}selected{% endif %}>Not Applied</option>
+                    <option value="issued" {% if student.cas_status=='issued' %}selected{% endif %}>Issued</option>
+                    <option value="used" {% if student.cas_status=='used' %}selected{% endif %}>Used</option>
+                    <option value="expired" {% if student.cas_status=='expired' %}selected{% endif %}>Expired</option>
+                </select>
+            </div>
+            <div>
+                <label style="font-size:12px;font-weight:600;">Issue Date</label>
+                <input type="date" id="cas-issue" class="crm-input" style="width:100%;" value="{{ student.cas_issue_date.strftime('%Y-%m-%d') if student.cas_issue_date else '' }}">
+            </div>
+            <div>
+                <label style="font-size:12px;font-weight:600;">Expiry Date</label>
+                <input type="date" id="cas-expiry" class="crm-input" style="width:100%;" value="{{ student.cas_expiry.strftime('%Y-%m-%d') if student.cas_expiry else '' }}">
+            </div>
+        </div>
+        {% if student.cas_expiry %}
+            {% set days = (student.cas_expiry - student.created_at.date()).days if student.created_at else 0 %}
+            <div style="margin-top:12px;padding:10px;border-radius:6px;background:#fef3c7;font-size:12px;color:#92400e;">
+                ⚠️ CAS expires on {{ student.cas_expiry.strftime('%Y-%m-%d') }}
+            </div>
+        {% endif %}
+        <button onclick="saveCAS()" class="crm-btn crm-btn-primary" style="margin-top:12px;">💾 Save CAS</button>
+    </div>
+
+    <!-- ═══ TIMELINE ═══ -->
+    <div id="crm-panel-timeline" class="crm-panel">
+        <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+            <select id="tl-stage" class="crm-input" style="flex:1;min-width:130px;">
+                <option value="documents">Documents</option>
+                <option value="cas">CAS Issued</option>
+                <option value="ihs">IHS Paid</option>
+                <option value="visa_fee">Visa Fee Paid</option>
+                <option value="application">Application Submitted</option>
+                <option value="biometrics">Biometrics</option>
+                <option value="interview">Interview</option>
+                <option value="decision">Decision Received</option>
+                <option value="visa_issued">Visa Issued</option>
+                <option value="brp">BRP Collection</option>
+                <option value="other">Other</option>
+            </select>
+            <input type="text" id="tl-title" class="crm-input" placeholder="Title (e.g., CAS received)" style="flex:2;min-width:180px;">
+            <input type="date" id="tl-date" class="crm-input" style="min-width:130px;">
+            <button onclick="addTimeline()" class="crm-btn crm-btn-primary">➕ Add</button>
+        </div>
+        <div id="timeline-list">
+
+<div style="margin-bottom:14px;padding:12px 14px;background:#eff6ff;border-left:4px solid #3b82f6;border-radius:6px;font-size:12.5px;color:#1e40af;line-height:1.6;">
+    💡 <strong>How to use Timeline:</strong>
+    Each step must be <strong>marked complete</strong> to count in progress.
+    <br>
+    ⏳ <strong>Pending</strong> = not done yet → click <strong>MARK COMPLETE</strong>
+    <br>
+    ✅ <strong>Completed</strong> = done → progress bar बढ्छ
+</div>
+            {% if student.timeline_events and student.timeline_events.count() > 0 %}
+                {% for e in student.timeline_events.order_by('event_date') %}
+                <div class="timeline-row">
+                    <button onclick="toggleTimeline({{ e.id }})" class="crm-btn crm-btn-sm {% if e.is_completed %}crm-btn-success{% else %}crm-btn-outline{% endif %}" style="min-width:32px;">{% if e.is_completed %}✓{% else %}○{% endif %}</button>
+                    <div style="flex:1;">
+                        <strong>{{ e.title }}</strong> <span style="color:#9ca3af;font-size:11px;">[{{ e.stage }}]</span><br>
+                        <small style="color:#6b7280;">{{ e.event_date.strftime('%Y-%m-%d') if e.event_date else 'No date' }}</small>
+                    </div>
+                    <button onclick="deleteTimeline({{ e.id }})" class="crm-btn crm-btn-danger crm-btn-sm">🗑</button>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="crm-empty">No timeline events yet. Add the first one above.</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- ═══ PAYMENTS ═══ -->
+    <div id="crm-panel-payments" class="crm-panel">
+        <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+            <select id="pay-type" class="crm-input" style="flex:1;min-width:130px;">
+                <option value="visa_fee">Visa Fee</option>
+                <option value="ihs">IHS Surcharge</option>
+                <option value="tuition">Tuition</option>
+                <option value="accommodation">Accommodation</option>
+                <option value="flight">Flight</option>
+                <option value="tb_test">TB Test</option>
+                <option value="consultancy">Consultancy Fee</option>
+                <option value="other">Other</option>
+            </select>
+            <input type="text" id="pay-amount" class="crm-input" placeholder="Amount (e.g. 1500)" style="min-width:100px;">
+            <select id="pay-currency" class="crm-input" style="min-width:70px;">
+                <option value="GBP">£</option>
+                <option value="NPR">NPR</option>
+                <option value="USD">$</option>
+            </select>
+            <input type="text" id="pay-desc" class="crm-input" placeholder="Description" style="flex:1;min-width:150px;">
+            <button onclick="addPayment()" class="crm-btn crm-btn-primary">➕ Add</button>
+        </div>
+        <div id="payment-list">
+            {% set total_paid = namespace(v=0) %}
+            {% if student.payments and student.payments.count() > 0 %}
+                {% for p in student.payments.all() %}
+                <div class="pay-row">
+                    <div style="flex:1;">
+                        <strong>{{ p.payment_type|replace('_',' ')|title }}</strong> — {{ p.description or '' }}<br>
+                        <small style="color:#6b7280;">{{ p.currency }} {{ p.amount }}{% if p.payment_date %} · {{ p.payment_date.strftime('%Y-%m-%d') }}{% endif %}</small>
+                    </div>
+                    <span class="crm-badge {{ p.status }}">{{ p.status }}</span>
+                    {% if p.status != 'paid' %}
+                    <button onclick="markPaid({{ p.id }})" class="crm-btn crm-btn-success crm-btn-sm">💵 Mark Paid</button>
+                    {% endif %}
+                    <button onclick="deletePayment({{ p.id }})" class="crm-btn crm-btn-danger crm-btn-sm">🗑</button>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="crm-empty">No payments recorded yet.</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
 <script>
-function copyLink() {
-    const link = document.getElementById('testLink').textContent;
-    navigator.clipboard.writeText(link).then(() => {
-        showToast('✅ Test link copied!');
+var _SID = {{ student.id }};
+var _CSRF = '{{ csrf_token }}';
+
+function crmTab(name) {
+    document.querySelectorAll('.crm-tab').forEach(function(t){ t.classList.remove('active'); });
+    document.querySelectorAll('.crm-panel').forEach(function(p){ p.classList.remove('active'); });
+    event.target.classList.add('active');
+    document.getElementById('crm-panel-' + name).classList.add('active');
+}
+
+function _post(url, body) {
+    return fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': _CSRF },
+        body: body ? JSON.stringify(body) : '{}'
+    }).then(function(r){ return r.json(); });
+}
+
+// ─── Documents ───
+function uploadDoc() {
+    var file = document.getElementById('doc-file').files[0];
+    if (!file) { alert('Choose a file'); return; }
+    var fd = new FormData();
+    fd.append('file', file);
+    fd.append('doc_type', document.getElementById('doc-type').value);
+    fetch('/ukvi/b2b/students/' + _SID + '/documents/upload', {
+        method: 'POST',
+        headers: { 'X-CSRF-Token': _CSRF },
+        body: fd
+    }).then(function(r){ return r.json(); }).then(function(d){
+        if (d.success) location.reload();
+        else alert(d.error || 'Upload failed');
+    });
+}
+function verifyDoc(id, status) {
+    _post('/ukvi/b2b/students/' + _SID + '/documents/' + id + '/verify', {status: status})
+        .then(function(d){ if (d.success) location.reload(); });
+}
+function deleteDoc(id) {
+    if (!confirm('Delete this document?')) return;
+    _post('/ukvi/b2b/students/' + _SID + '/documents/' + id + '/delete')
+        .then(function(d){ if (d.success) location.reload(); });
+}
+
+// ─── CAS ───
+function saveCAS() {
+    _post('/ukvi/b2b/students/' + _SID + '/cas/update', {
+        cas_number: document.getElementById('cas-number').value,
+        cas_status: document.getElementById('cas-status').value,
+        cas_issue_date: document.getElementById('cas-issue').value,
+        cas_expiry: document.getElementById('cas-expiry').value,
+    }).then(function(d){
+        if (d.success) { alert('✅ CAS saved'); location.reload(); }
+        else alert(d.error || 'Save failed');
     });
 }
 
-function copyCredentials() {
-    const link = document.getElementById('testLink').textContent;
-    const username = "{{ ukvi_user.username if ukvi_user else 'N/A' }}";
-    const text = 'UKVI Test Access\n\n' +
-                 'Link: ' + link + '\n' +
-                 'Username: ' + username + '\n' +
-                 'Password: [your password]';
-    navigator.clipboard.writeText(text).then(() => {
-        showToast('✅ Link + credentials copied!');
-    });
+// ─── Timeline ───
+function addTimeline() {
+    var title = document.getElementById('tl-title').value.trim();
+    if (!title) { alert('Enter title'); return; }
+    _post('/ukvi/b2b/students/' + _SID + '/timeline/add', {
+        stage: document.getElementById('tl-stage').value,
+        title: title,
+        event_date: document.getElementById('tl-date').value,
+    }).then(function(d){ if (d.success) location.reload(); else alert(d.error || 'Failed'); });
+}
+function toggleTimeline(id) {
+    _post('/ukvi/b2b/students/' + _SID + '/timeline/' + id + '/toggle').then(function(d){ if (d.success) location.reload(); });
+}
+function deleteTimeline(id) {
+    if (!confirm('Delete this event?')) return;
+    _post('/ukvi/b2b/students/' + _SID + '/timeline/' + id + '/delete').then(function(d){ if (d.success) location.reload(); });
 }
 
-function showToast(msg) {
-    const toast = document.createElement('div');
-    toast.textContent = msg;
-    toast.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#059669;color:white;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:600;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,0.2);';
-    document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 2500);
+// ─── Payments ───
+function addPayment() {
+    var amt = document.getElementById('pay-amount').value.trim();
+    if (!amt) { alert('Enter amount'); return; }
+    _post('/ukvi/b2b/students/' + _SID + '/payments/add', {
+        payment_type: document.getElementById('pay-type').value,
+        amount: amt,
+        currency: document.getElementById('pay-currency').value,
+        description: document.getElementById('pay-desc').value,
+    }).then(function(d){ if (d.success) location.reload(); else alert(d.error || 'Failed'); });
+}
+function markPaid(id) {
+    _post('/ukvi/b2b/students/' + _SID + '/payments/' + id + '/status', {status: 'paid'})
+        .then(function(d){ if (d.success) location.reload(); });
+}
+function deletePayment(id) {
+    if (!confirm('Delete this payment?')) return;
+    _post('/ukvi/b2b/students/' + _SID + '/payments/' + id + '/delete')
+        .then(function(d){ if (d.success) location.reload(); });
 }
 </script>
 
+
+<!-- STUDENT TRACKING LINK -->
+<div class="card" style="background:#f0f9ff;border:2px solid #0ea5e9;">
+    <h3 style="margin-bottom:12px;color:#0369a1;">📱 Student Tracking Link</h3>
+    <p style="font-size:13px;color:#6b7280;margin-bottom:12px;">Share this link so student can track progress.</p>
+    <div style="background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:10px;margin-bottom:10px;">
+        <code id="trackLink" style="font-size:12px;color:#0369a1;word-break:break-all;">{{ request.url_root.rstrip('/') }}/ukvi/track/{{ student.public_track_token or student.test_token }}</code>
+    
+
+<!-- ═══ Password Protection UI with Strength Meter ═══ -->
+<div style="margin-top:14px;padding:14px;background:#fffbeb;border:2px solid #f59e0b;border-radius:8px;">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+        <span style="font-size:20px;">🔒</span>
+        <strong style="font-size:13px;color:#92400e;">Track Portal Password</strong>
+        <span id="pw-status" style="margin-left:auto;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;background:#f3f4f6;color:#6b7280;">Loading…</span>
+    </div>
+    <p style="font-size:12px;color:#78350f;margin-bottom:10px;line-height:1.5;">
+        Students must enter this password to view their track portal.
+        Use a <strong>strong password</strong> with uppercase, lowercase, numbers, and symbols.
+    </p>
+    <div id="pw-message" style="display:none;padding:8px 12px;border-radius:6px;font-size:12px;margin-bottom:10px;"></div>
+    
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <input type="text" id="pw-username" placeholder="Username" readonly
+               style="padding:8px 12px;border:1.5px solid #e5e7eb;border-radius:6px;font-size:12px;background:#f9fafb;min-width:140px;">
+    </div>
+    
+    <div style="margin-top:10px;">
+        <input type="password" id="pw-new" placeholder="New password"
+               style="width:100%;padding:10px 12px;border:1.5px solid #e5e7eb;border-radius:6px;font-size:13px;font-family:monospace;">
+        
+        <!-- Strength bar -->
+        <div style="margin-top:8px;">
+            <div style="display:flex;justify-content:space-between;font-size:10.5px;color:#6b7280;margin-bottom:3px;">
+                <span>Strength:</span>
+                <span id="pw-strength-label">—</span>
+            </div>
+            <div style="background:#e5e7eb;height:6px;border-radius:3px;overflow:hidden;">
+                <div id="pw-strength-bar" style="height:100%;width:0%;background:#dc2626;transition:all 0.3s;"></div>
+            </div>
+        </div>
+        
+        <!-- Requirements checklist -->
+        <div style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:11px;">
+            <div id="req-len" style="color:#dc2626;">✗ 8+ characters</div>
+            <div id="req-upper" style="color:#dc2626;">✗ Uppercase (A-Z)</div>
+            <div id="req-lower" style="color:#dc2626;">✗ Lowercase (a-z)</div>
+            <div id="req-num" style="color:#dc2626;">✗ Number (0-9)</div>
+            <div id="req-special" style="color:#dc2626;">✗ Special (!@#$...)</div>
+            <div id="req-common" style="color:#6b7280;">○ No common words</div>
+        </div>
+    </div>
+    
+    <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <button type="button" onclick="generateStrongPw()" 
+                style="padding:8px 12px;background:#f0f9ff;color:#0369a1;border:1.5px solid #0ea5e9;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">
+            🎲 Generate Strong
+        </button>
+        <button type="button" onclick="setTrackPassword()" id="pw-btn"
+                style="padding:8px 16px;background:#4f46e5;color:white;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;">
+            🔑 Set Password
+        </button>
+    </div>
+</div>
+
+<script>
+(function(){
+    var _trackSid = {{ student.id }};
+    var _trackCsrf = '{{ csrf_token }}';
+    var _lastGenerated = [];
+
+    function checkPassword(pw) {
+        var reqs = {
+            len: pw.length >= 8,
+            upper: /[A-Z]/.test(pw),
+            lower: /[a-z]/.test(pw),
+            num: /[0-9]/.test(pw),
+            special: /[!@#$%^&*(),.?":{}|<>_+=\[\]\\/;`~-]/.test(pw),
+            notcommon: pw.length > 0 && !['password','123456','qwerty','admin','letmein','welcome','abc123','test','student'].some(function(c){return pw.toLowerCase().indexOf(c) >= 0;}),
+        };
+        var score = 0;
+        if (reqs.len) score++;
+        if (pw.length >= 12) score++;
+        if (reqs.upper) score++;
+        if (reqs.lower) score++;
+        if (reqs.num) score++;
+        if (reqs.special) score++;
+        if (!reqs.notcommon) score = Math.max(0, score - 2);
+        
+        // Update checkboxes
+        ['len','upper','lower','num','special'].forEach(function(k){
+            var el = document.getElementById('req-' + k);
+            if (reqs[k]) {
+                el.style.color = '#16a34a';
+                el.textContent = el.textContent.replace('✗', '✓');
+            } else {
+                el.style.color = '#dc2626';
+                el.textContent = el.textContent.replace('✓', '✗');
+            }
+        });
+        var commonEl = document.getElementById('req-common');
+        if (reqs.notcommon) {
+            commonEl.style.color = '#16a34a';
+            commonEl.textContent = '✓ No common words';
+        } else {
+            commonEl.style.color = '#dc2626';
+            commonEl.textContent = '✗ Contains common word';
+        }
+        
+        // Strength bar
+        var pct = Math.min(100, (score / 7) * 100);
+        var label = 'Very weak';
+        var color = '#dc2626';
+        if (score >= 7) { label = 'Very strong'; color = '#16a34a'; }
+        else if (score >= 6) { label = 'Strong'; color = '#22c55e'; }
+        else if (score >= 4) { label = 'Medium'; color = '#f59e0b'; }
+        else if (score >= 2) { label = 'Weak'; color = '#ef4444'; }
+        
+        var bar = document.getElementById('pw-strength-bar');
+        bar.style.width = pct + '%';
+        bar.style.background = color;
+        document.getElementById('pw-strength-label').textContent = label;
+        document.getElementById('pw-strength-label').style.color = color;
+        
+        // Return whether valid
+        var allReq = reqs.len && reqs.upper && reqs.lower && reqs.num && reqs.special && reqs.notcommon;
+        return allReq;
+    }
+
+    // Attach input listener
+    document.getElementById('pw-new').addEventListener('input', function() {
+        checkPassword(this.value);
+    });
+
+    // Load status
+    function loadStatus() {
+        fetch('/ukvi/b2b/students/' + _trackSid + '/track-password-status')
+            .then(function(r){ return r.json(); })
+            .then(function(d){
+                var st = document.getElementById('pw-status');
+                var un = document.getElementById('pw-username');
+                if (d.has_password) {
+                    st.textContent = '✅ Set';
+                    st.style.background = '#d1fae5';
+                    st.style.color = '#065f46';
+                } else {
+                    st.textContent = '⚠️ Not set';
+                    st.style.background = '#fef3c7';
+                    st.style.color = '#92400e';
+                }
+                if (d.username) un.value = d.username;
+            }).catch(function(){});
+    }
+
+    // Generate strong password
+    window.generateStrongPw = function() {
+        fetch('/ukvi/b2b/password-suggestions')
+            .then(function(r){ return r.json(); })
+            .then(function(d){
+                if (d.suggestions && d.suggestions.length > 0) {
+                    var pw = d.suggestions[0];
+                    _lastGenerated = d.suggestions;
+                    var input = document.getElementById('pw-new');
+                    input.value = pw;
+                    // Make visible briefly
+                    input.type = 'text';
+                    setTimeout(function(){ input.type = 'password'; }, 3000);
+                    checkPassword(pw);
+                    var msg = document.getElementById('pw-message');
+                    msg.style.display = 'block';
+                    msg.style.background = '#eff6ff';
+                    msg.style.color = '#1e40af';
+                    msg.textContent = '🎲 Generated: ' + pw + ' (copy this!)';
+                }
+            }).catch(function(){});
+    };
+
+    // Set password
+    window.setTrackPassword = function() {
+        var pw = document.getElementById('pw-new').value.trim();
+        var msg = document.getElementById('pw-message');
+        
+        if (!checkPassword(pw)) {
+            msg.style.display = 'block';
+            msg.style.background = '#fef2f2';
+            msg.style.color = '#991b1b';
+            msg.textContent = '❌ Password does not meet all requirements';
+            return;
+        }
+        
+        var btn = document.getElementById('pw-btn');
+        btn.disabled = true;
+        btn.textContent = '⏳ Saving…';
+        
+        fetch('/ukvi/b2b/students/' + _trackSid + '/set-track-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': _trackCsrf },
+            body: JSON.stringify({ password: pw })
+        }).then(function(r){ return r.json(); }).then(function(d){
+            btn.disabled = false;
+            btn.textContent = '🔑 Set Password';
+            msg.style.display = 'block';
+            if (d.success) {
+                msg.style.background = '#f0fdf4';
+                msg.style.color = '#065f46';
+                msg.textContent = '✅ ' + d.message + ' — Password: ' + pw + ' (share with student)';
+                document.getElementById('pw-new').value = '';
+                loadStatus();
+            } else {
+                msg.style.background = '#fef2f2';
+                msg.style.color = '#991b1b';
+                msg.textContent = '❌ ' + (d.error || 'Failed');
+            }
+        }).catch(function(){
+            btn.disabled = false;
+            btn.textContent = '🔑 Set Password';
+            msg.style.display = 'block';
+            msg.style.background = '#fef2f2';
+            msg.style.color = '#991b1b';
+            msg.textContent = '❌ Network error';
+        });
+    };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', loadStatus);
+    } else {
+        loadStatus();
+    }
+})();
+</script>
 <!-- ═══ B2B UI ENHANCEMENTS v1 ═══ -->
 <input type="hidden" id="b2b-expiry-remaining" value="{{ student.expiry_seconds_remaining|default('', true) }}">
 <input type="hidden" id="b2b-window-state" value="{{ student.expiry_window_state|default('', true) }}">
@@ -646,6 +1190,119 @@ function showToast(msg) {
 </script>
 {% endif %}
 <!-- END B2B_RESULT_LINK_V1 -->
+
+
+<!-- NOTIFICATIONS CARD -->
+<div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
+        <h3 style="margin:0;">📬 Messages & Notifications</h3>
+        {% if whatsapp_link is defined %}
+        <a href="{{ whatsapp_link(student, 'Hello ' + student.full_name + ', update on your application:') }}" target="_blank" class="btn btn-sm" style="background:#25D366;color:#fff;border:none;">📱 Send WhatsApp</a>
+        {% endif %}
+    </div>
+    {% if notif_list is defined and notif_list %}
+        <div style="max-height:400px;overflow-y:auto;">
+            {% for n in notif_list %}
+            <div style="padding:10px;border-bottom:1px solid #f3f4f6;display:flex;gap:10px;">
+                <div style="font-size:20px;">{% if n.channel=='email' %}📧{% elif n.channel=='whatsapp' %}📱{% else %}🔔{% endif %}</div>
+                <div style="flex:1;min-width:0;">
+                    <div style="font-weight:600;font-size:13px;">{{ n.title }}</div>
+                    <div style="font-size:12px;color:#6b7280;white-space:pre-wrap;">{{ n.body[:200] if n.body else '' }}{% if n.body and n.body|length > 200 %}...{% endif %}</div>
+                    <div style="font-size:11px;color:#9ca3af;margin-top:4px;">{{ n.created_at.strftime('%b %d, %H:%M') if n.created_at else '-' }} · <span style="color:{% if n.status=='sent' %}#16a34a{% elif n.status=='failed' %}#dc2626{% else %}#6b7280{% endif %}">{{ n.status }}</span></div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p style="color:#9ca3af;text-align:center;padding:20px;font-size:13px;">No notifications yet. They'll appear here when events occur.</p>
+    {% endif %}
+</div>
+
+
+<!-- ═══ Login Attempts Card ═══ -->
+<div class="card" id="login-attempts-card" style="display:none;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
+        <h3 style="margin:0;">🔐 Login Activity</h3>
+        <button type="button" onclick="loadLoginAttempts()"
+                style="padding:6px 12px;background:#f0f9ff;color:#0369a1;border:1.5px solid #0ea5e9;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">
+            🔄 Refresh
+        </button>
+    </div>
+    <div id="attempts-stats" style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap;"></div>
+    <div id="attempts-list" style="max-height:400px;overflow-y:auto;">
+        <p style="color:#9ca3af;text-align:center;padding:20px;">Loading...</p>
+    </div>
+    <p style="font-size:11px;color:#6b7280;margin-top:12px;padding-top:12px;border-top:1px solid #f3f4f6;">
+        💡 Shows last 20 login attempts. Login from a suspicious IP → consider resetting password.
+    </p>
+</div>
+
+<script>
+(function(){
+    var _attemptSid = {{ student.id }};
+
+    window.loadLoginAttempts = function() {
+        var card = document.getElementById('login-attempts-card');
+        var list = document.getElementById('attempts-list');
+        var stats = document.getElementById('attempts-stats');
+        card.style.display = 'block';
+
+        fetch('/ukvi/b2b/students/' + _attemptSid + '/login-attempts')
+            .then(function(r){ return r.json(); })
+            .then(function(d){
+                if (!d.success) {
+                    list.innerHTML = '<p style="color:#dc2626;text-align:center;padding:20px;">Error loading</p>';
+                    return;
+                }
+                // Stats
+                var failed = d.attempts.filter(function(a){ return a.type !== 'success'; }).length;
+                stats.innerHTML =
+                    '<span style="padding:6px 12px;background:#f3f4f6;border-radius:12px;font-size:12px;font-weight:600;">' +
+                    '📊 Total: ' + d.total + '</span>' +
+                    (failed > 0 ?
+                        '<span style="padding:6px 12px;background:#fef2f2;color:#991b1b;border-radius:12px;font-size:12px;font-weight:600;">' +
+                        '⚠️ Failed (recent): ' + failed + '</span>' : '');
+
+                // List
+                if (d.attempts.length === 0) {
+                    list.innerHTML = '<p style="color:#9ca3af;text-align:center;padding:20px;">No login attempts yet.</p>';
+                    return;
+                }
+                var html = '';
+                d.attempts.forEach(function(a){
+                    var icon, bg, color;
+                    if (a.type === 'success') { icon = '✅'; bg = '#f0fdf4'; color = '#065f46'; }
+                    else if (a.type === 'failed') { icon = '❌'; bg = '#fef2f2'; color = '#991b1b'; }
+                    else if (a.type === 'locked') { icon = '🚫'; bg = '#fee2e2'; color = '#7f1d1d'; }
+                    else { icon = '⛔'; bg = '#f3f4f6'; color = '#374151'; }
+
+                    html += '<div style="padding:10px 12px;margin-bottom:8px;background:' + bg + ';border-radius:8px;display:flex;gap:10px;align-items:flex-start;font-size:12px;">';
+                    html += '<div style="font-size:18px;">' + icon + '</div>';
+                    html += '<div style="flex:1;min-width:0;">';
+                    html += '<div style="font-weight:700;color:' + color + ';">' + a.type.toUpperCase() + '</div>';
+                    html += '<div style="color:#6b7280;margin-top:2px;">IP: ' + a.ip + ' · ' + a.time_ago + '</div>';
+                    if (a.attempts_left !== null && a.attempts_left !== undefined && a.type === 'failed') {
+                        html += '<div style="color:#92400e;font-size:11px;margin-top:2px;">Attempts left: ' + a.attempts_left + '</div>';
+                    }
+                    html += '</div>';
+                    html += '<div style="font-size:11px;color:#9ca3af;white-space:nowrap;">' + a.time + '</div>';
+                    html += '</div>';
+                });
+                list.innerHTML = html;
+            })
+            .catch(function(e){
+                list.innerHTML = '<p style="color:#dc2626;text-align:center;padding:20px;">Network error</p>';
+            });
+    };
+
+    // Auto-load when page is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', window.loadLoginAttempts);
+    } else {
+        setTimeout(window.loadLoginAttempts, 300);
+    }
+})();
+</script>
 
 {% endblock %}
 

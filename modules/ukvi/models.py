@@ -332,6 +332,16 @@ class UKVIB2BPartner(db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(255), nullable=False)
     phone = db.Column(db.String(20))
+
+    # Email config
+    smtp_host = db.Column(db.String(200))
+    smtp_port = db.Column(db.Integer, default=587)
+    smtp_user = db.Column(db.String(200))
+    smtp_pass = db.Column(db.String(300))
+    from_email = db.Column(db.String(200))
+    from_name = db.Column(db.String(200))
+    email_verified = db.Column(db.Boolean, default=False)
+    email_last_test = db.Column(db.DateTime)
     address = db.Column(db.Text)
 
     # Credit system (1 credit = 1 test = Rs 100)
@@ -469,6 +479,7 @@ class UKVIB2BStudent(db.Model):
     test_token = db.Column(
         db.String(64), unique=True, nullable=False, index=True
     )
+    public_track_token = db.Column(db.String(64), unique=True, index=True)
     token_created_at = db.Column(
         db.DateTime, default=lambda: datetime.now(timezone.utc)
     )
@@ -581,6 +592,18 @@ class UKVIB2BStudent(db.Model):
     sponsor_name = db.Column(db.String(200))
     sponsor_income = db.Column(db.String(50))
     sponsor_savings = db.Column(db.String(50))
+
+    # ── CAS Tracking ──
+    cas_number = db.Column(db.String(50))
+    cas_issue_date = db.Column(db.Date)
+    cas_expiry = db.Column(db.Date)
+    cas_status = db.Column(db.String(30))  # not_applied/issued/used/expired
+
+    # ── Additional UKVI interview fields ──
+    sponsor_relationship = db.Column(db.String(50))
+    career_plan = db.Column(db.Text)
+    work_experience = db.Column(db.String(300))
+    previous_education = db.Column(db.String(300))
     home_country = db.Column(db.String(100), default="Nepal")
     profile_completed = db.Column(db.Boolean, default=False, nullable=False)
 
@@ -616,3 +639,110 @@ class UKVIB2BTransaction(db.Model):
 
     def __repr__(self):
         return f'<Txn {self.type} {self.credits_change:+d} → {self.balance_after}>'
+
+
+# ═══════════════════════════════════════════════════════════
+# UKVI CRM — Documents / Timeline / Payments / CAS
+# ═══════════════════════════════════════════════════════════
+
+class UKVIB2BDocument(db.Model):
+    """Student document uploads (passport, IELTS, bank statements, etc.)"""
+    __tablename__ = 'ukvi_b2b_documents'
+
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(
+        db.Integer,
+        db.ForeignKey('ukvi_b2b_students.id', ondelete='CASCADE'),
+        nullable=False, index=True,
+    )
+    doc_type = db.Column(db.String(50), nullable=False)
+    original_name = db.Column(db.String(300))
+    filename = db.Column(db.String(300), nullable=False)
+    file_size = db.Column(db.Integer, default=0)
+    status = db.Column(db.String(20), default='pending')  # pending/verified/rejected
+    notes = db.Column(db.Text)
+    uploaded_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    student = db.relationship('UKVIB2BStudent', backref=db.backref(
+        'documents', cascade='all, delete-orphan', lazy='dynamic'))
+
+
+class UKVIB2BTimelineEvent(db.Model):
+    """Visa application timeline — 8 stages"""
+    __tablename__ = 'ukvi_b2b_timeline'
+
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(
+        db.Integer,
+        db.ForeignKey('ukvi_b2b_students.id', ondelete='CASCADE'),
+        nullable=False, index=True,
+    )
+    stage = db.Column(db.String(50), nullable=False)
+    title = db.Column(db.String(200), nullable=False)
+    event_date = db.Column(db.Date)
+    notes = db.Column(db.Text)
+    is_completed = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    student = db.relationship('UKVIB2BStudent', backref=db.backref(
+        'timeline_events', cascade='all, delete-orphan', lazy='dynamic'))
+
+
+class UKVIB2BPayment(db.Model):
+    """Payment tracking (IHS, visa fee, tuition, accommodation, etc.)"""
+    __tablename__ = 'ukvi_b2b_payments'
+
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(
+        db.Integer,
+        db.ForeignKey('ukvi_b2b_students.id', ondelete='CASCADE'),
+        nullable=False, index=True,
+    )
+    payment_type = db.Column(db.String(50), nullable=False)
+    description = db.Column(db.String(300))
+    amount = db.Column(db.String(50))
+    currency = db.Column(db.String(10), default='GBP')
+    status = db.Column(db.String(20), default='pending')  # pending/paid/refunded
+    payment_date = db.Column(db.Date)
+    reference = db.Column(db.String(100))
+    notes = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    student = db.relationship('UKVIB2BStudent', backref=db.backref(
+        'payments', cascade='all, delete-orphan', lazy='dynamic'))
+
+
+class UKVIB2BNotification(db.Model):
+    __tablename__ = 'ukvi_b2b_notifications'
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('ukvi_b2b_students.id', ondelete='CASCADE'), nullable=False, index=True)
+    event_type = db.Column(db.String(50), nullable=False)
+    channel = db.Column(db.String(20), default='in_app')
+    title = db.Column(db.String(200), nullable=False)
+    body = db.Column(db.Text)
+    status = db.Column(db.String(20), default='pending')
+    sent_at = db.Column(db.DateTime)
+    error = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    student = db.relationship('UKVIB2BStudent', backref=db.backref('notifications', cascade='all, delete-orphan', lazy='dynamic'))
+
+
+class UKVIB2BTrackLoginAttempt(db.Model):
+    """Audit log for track portal login attempts."""
+    __tablename__ = 'ukvi_b2b_track_login_attempts'
+
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(
+        db.Integer,
+        db.ForeignKey('ukvi_b2b_students.id', ondelete='CASCADE'),
+        nullable=False, index=True,
+    )
+    attempt_type = db.Column(db.String(20))  # 'success', 'failed', 'locked', 'blocked'
+    ip_address = db.Column(db.String(45))
+    user_agent = db.Column(db.String(300))
+    attempts_left = db.Column(db.Integer)
+    token_prefix = db.Column(db.String(20))  # for privacy (first 8 chars)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+
+    student = db.relationship('UKVIB2BStudent', backref=db.backref(
+        'track_login_attempts', cascade='all, delete-orphan', lazy='dynamic'))

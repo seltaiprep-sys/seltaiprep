@@ -1,0 +1,40 @@
+{% extends 'ukvi_b2b/base.html' %}
+{% block title %}Email Settings{% endblock %}
+{% block content %}
+<div style="max-width:720px;margin:0 auto;">
+<h2>📧 Email Settings</h2>
+<p style="color:#6b7280;font-size:13px;margin-bottom:20px;">Configure your institute's own SMTP so notifications come from YOUR name, not SeltaPrep.</p>
+{% with msgs = get_flashed_messages(with_categories=true) %}
+  {% for c, m in msgs %}<div style="padding:12px;border-radius:8px;margin-bottom:14px;font-size:13px;background:{% if c=='success' %}#f0fdf4;color:#065f46{% else %}#fef2f2;color:#991b1b{% endif %}">{{ m }}</div>{% endfor %}
+{% endwith %}
+{% if partner.email_verified %}<div style="padding:12px;background:#f0fdf4;color:#065f46;border-radius:8px;margin-bottom:14px;font-size:13px;">✅ Verified {{ partner.email_last_test.strftime('%b %d %H:%M') if partner.email_last_test else '' }}</div>{% endif %}
+<form method="POST" action="{{ url_for('ukvi_b2b_email_settings_save') }}">
+<input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+<div class="card">
+<h3>🔧 SMTP Configuration</h3>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px;">
+  <div class="form-group"><label>SMTP Host</label><input type="text" name="smtp_host" class="form-control" value="{{ partner.smtp_host or '' }}" placeholder="smtp.gmail.com"></div>
+  <div class="form-group"><label>Port</label><input type="number" name="smtp_port" class="form-control" value="{{ partner.smtp_port or 587 }}"></div>
+  <div class="form-group"><label>Username</label><input type="text" name="smtp_user" class="form-control" value="{{ partner.smtp_user or '' }}" placeholder="your-email@gmail.com"></div>
+  <div class="form-group"><label>Password / App Password</label><input type="password" name="smtp_pass" class="form-control" placeholder="{% if partner.smtp_pass %}•••• (leave blank to keep){% else %}App password{% endif %}"></div>
+  <div class="form-group"><label>From Email</label><input type="email" name="from_email" class="form-control" value="{{ partner.from_email or '' }}" placeholder="info@abc.com"></div>
+  <div class="form-group"><label>From Name</label><input type="text" name="from_name" class="form-control" value="{{ partner.from_name or partner.name or '' }}" placeholder="ABC Consultancy"></div>
+</div>
+<div style="margin-top:16px;padding:12px;background:#fef3c7;border-radius:8px;font-size:12px;color:#92400e;">
+💡 Gmail: <a href="https://myaccount.google.com/apppasswords" target="_blank">App Password</a> चाहिन्छ<br>
+💡 Outlook: smtp-mail.outlook.com port 587<br>
+💡 Leave blank → SeltaPrep fallback
+</div>
+<div style="margin-top:18px;display:flex;gap:10px;flex-wrap:wrap;">
+<button type="submit" class="btn btn-primary">💾 Save</button>
+<button type="button" onclick="test()" class="btn btn-outline" id="btn-test">📧 Send Test</button>
+<a href="{{ url_for('ukvi_b2b_dashboard') }}" class="btn btn-outline">← Back</a>
+</div>
+<div id="res" style="margin-top:12px;font-size:13px;"></div>
+</div>
+</form>
+</div>
+<script>
+function test(){var to=prompt('Test to:',"{{ partner.email or '' }}");if(!to)return;var b=document.getElementById('btn-test'),r=document.getElementById('res');b.disabled=true;b.textContent='⏳';r.innerHTML='';fetch('{{ url_for("ukvi_b2b_email_settings_test") }}',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':'{{ csrf_token }}'},body:JSON.stringify({to:to})}).then(x=>x.json()).then(d=>{b.disabled=false;b.textContent='📧 Send Test';r.innerHTML=d.success?'<div style="padding:10px;background:#f0fdf4;color:#065f46;border-radius:6px;">✅ '+d.message+'</div>':'<div style="padding:10px;background:#fef2f2;color:#991b1b;border-radius:6px;">❌ '+(d.error||'Failed')+'</div>'}).catch(e=>{b.disabled=false;b.textContent='📧 Send Test';r.innerHTML='<div style="color:#991b1b">Error: '+e.message+'</div>'})}
+</script>
+{% endblock %}

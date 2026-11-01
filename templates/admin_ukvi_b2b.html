@@ -365,7 +365,17 @@
                                placeholder="+977-98XXXXXXXX">
                     </div>
                 </div>
-                <button type="submit" class="btn btn-primary">
+                
+<hr style="margin:20px 0;border:none;border-top:2px solid #e5e7eb;">
+<h4 style="margin-bottom:12px;color:#4f46e5;">📧 Email Sending (Student Notifications)</h4>
+<div class="form-group" style="margin-bottom:12px;"><label>Send-From Email / Gmail</label><input type="email" name="from_email" class="form-control" placeholder="info@abcconsultancy.com"></div>
+<div class="form-group" style="margin-bottom:12px;"><label>Gmail App Password (16 chars)</label><input type="password" name="smtp_pass" class="form-control" placeholder="abcd1234efgh5678"><small style="color:#6b7280;font-size:11px;">Create at <a href="https://myaccount.google.com/apppasswords" target="_blank">myaccount.google.com/apppasswords</a></small></div>
+<div class="form-group" style="margin-bottom:12px;"><label>Display Name</label><input type="text" name="from_name" class="form-control" placeholder="ABC Consultancy"></div>
+<div class="form-group" style="margin-bottom:12px;"><label>SMTP Host</label><input type="text" name="smtp_host" class="form-control" value="smtp.gmail.com"></div>
+<div class="form-group" style="margin-bottom:12px;"><label>SMTP Port</label><input type="number" name="smtp_port" class="form-control" value="587"></div>
+<div class="form-group" style="margin-bottom:16px;"><label>SMTP Username</label><input type="text" name="smtp_user" class="form-control" placeholder="info@abcconsultancy.com"></div>
+<div style="background:#fef3c7;padding:10px;border-radius:6px;font-size:11.5px;color:#92400e;margin-bottom:16px;">💡 Gmail: App Password. Outlook: smtp-mail.outlook.com port 587.<br>💡 Leave blank → SeltaPrep fallback.</div>
+<button type="submit" class="btn btn-primary">
                     ✨ Create Partner
                 </button>
             </form>

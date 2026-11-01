@@ -1,6 +1,22 @@
 {% extends 'ukvi_b2b/base.html' %}
 {% block title %}Dashboard{% endblock %}
 {% block content %}
+
+{% if partner and not (partner.smtp_host and partner.smtp_user and partner.smtp_pass) %}
+<div style="margin-bottom:16px;padding:14px 18px;background:#fef3c7;border:2px solid #f59e0b;border-radius:10px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+    <div style="font-size:24px;">⚠️</div>
+    <div style="flex:1;min-width:200px;">
+        <strong style="color:#92400e;font-size:14px;">Email not configured</strong>
+        <div style="color:#78350f;font-size:12.5px;margin-top:2px;">
+            Students will NOT receive automated emails (doc verify, CAS, payment) until you add your Gmail.
+        </div>
+    </div>
+    <a href="{{ url_for('ukvi_b2b_email_setup_wizard') }}" class="btn btn-primary btn-sm" style="padding:8px 16px;">
+        🚀 Setup Now
+    </a>
+</div>
+{% endif %}
+
 <h2 style="margin-bottom: 20px;">Welcome, {{ partner.name }}</h2>
 
 <div class="stats-grid">

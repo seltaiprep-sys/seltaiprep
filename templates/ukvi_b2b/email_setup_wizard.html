@@ -1,0 +1,127 @@
+{% extends 'ukvi_b2b/base.html' %}
+{% block title %}Email Setup{% endblock %}
+{% block content %}
+<div style="max-width:680px;margin:40px auto;padding:0 16px;">
+
+    <div style="background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;padding:28px;border-radius:16px;margin-bottom:24px;">
+        <h1 style="margin:0;font-size:24px;">📧 Step 1: Setup Email for Notifications</h1>
+        <p style="margin:8px 0 0;opacity:.9;font-size:14px;">
+            Welcome, <strong>{{ partner.name }}</strong>! Configure your email so students receive automated messages
+            <b>from your institute's name</b>, not from SeltaPrep.
+        </p>
+    </div>
+
+    {% with msgs = get_flashed_messages(with_categories=true) %}
+        {% for c, m in msgs %}
+        <div style="padding:12px;border-radius:8px;margin-bottom:16px;font-size:13px;
+            background:{% if c=='success' %}#f0fdf4{% elif c=='warning' %}#fef3c7{% else %}#eff6ff{% endif %};
+            color:{% if c=='success' %}#065f46{% elif c=='warning' %}#92400e{% else %}#1e40af{% endif %};">
+            {{ m }}
+        </div>
+        {% endfor %}
+    {% endwith %}
+
+    <div class="card">
+        <h3 style="margin-bottom:16px;">🔑 Why do we need this?</h3>
+        <div style="font-size:13.5px;color:#374151;line-height:1.7;">
+            When you verify a document, send a CAS, or mark a payment as paid, we send an automated email to your student.
+            <br><br>
+            <strong>Instead of sending from SeltaPrep</strong>, we send from <strong>YOUR email</strong> — so the student sees:
+            <div style="margin:12px 0;padding:10px 14px;background:#f9fafb;border-left:4px solid #4f46e5;border-radius:6px;font-family:monospace;font-size:12px;">
+                From: <strong>{{ partner.name }} &lt;info@yourinstitute.com&gt;</strong><br>
+                To: student@example.com<br>
+                Subject: ✅ Your Passport has been verified
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3 style="margin-bottom:16px;">📮 Step 2: Enter your Gmail details</h3>
+
+        <div style="padding:14px;background:#fef3c7;border-left:4px solid #f59e0b;border-radius:6px;margin-bottom:20px;font-size:13px;color:#78350f;line-height:1.6;">
+            <strong>💡 How to get App Password (2 min):</strong><br>
+            1. Open <a href="https://myaccount.google.com/apppasswords" target="_blank" style="color:#1e40af;text-decoration:underline;">myaccount.google.com/apppasswords</a><br>
+            2. App: <code>Mail</code>, Device: <code>SeltaPrep</code><br>
+            3. Copy the 16-character password (e.g., <code>abcd1234efgh5678</code>)
+        </div>
+
+        <form method="POST">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+                <div class="form-group">
+                    <label>Your Email (Gmail / Outlook)</label>
+                    <input type="email" name="from_email" class="form-control" required
+                           value="{{ partner.from_email or partner.smtp_user or '' }}"
+                           placeholder="info@yourinstitute.com">
+                </div>
+                <div class="form-group">
+                    <label>App Password (16 chars)</label>
+                    <input type="password" name="smtp_pass" class="form-control" required
+                           placeholder="abcd1234efgh5678">
+                </div>
+            </div>
+
+            <details style="margin-top:16px;">
+                <summary style="cursor:pointer;font-size:12.5px;color:#6b7280;padding:8px 0;">
+                    ⚙️ Advanced — SMTP host & port (auto-filled for Gmail)
+                </summary>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:12px;">
+                    <div class="form-group">
+                        <label>SMTP Host</label>
+                        <input type="text" name="smtp_host" class="form-control" value="{{ partner.smtp_host or 'smtp.gmail.com' }}">
+                    </div>
+                    <div class="form-group">
+                        <label>Port</label>
+                        <input type="number" name="smtp_port" class="form-control" value="{{ partner.smtp_port or 587 }}">
+                    </div>
+                    <div class="form-group">
+                        <label>SMTP Username</label>
+                        <input type="text" name="smtp_user" class="form-control"
+                               value="{{ partner.smtp_user or partner.from_email or '' }}"
+                               placeholder="same as email above">
+                    </div>
+                    <div class="form-group">
+                        <label>Display Name</label>
+                        <input type="text" name="from_name" class="form-control"
+                               value="{{ partner.from_name or partner.name or '' }}"
+                               placeholder="{{ partner.name }}">
+                    </div>
+                </div>
+            </details>
+
+            <div style="margin-top:24px;display:flex;gap:10px;flex-wrap:wrap;justify-content:space-between;align-items:center;">
+                <button type="submit" name="send_test" value="1" class="btn btn-primary" style="flex:1;min-width:200px;padding:14px;">
+                    ✅ Save & Send Test Email
+                </button>
+                <button type="button" onclick="skipSetup()" class="btn btn-outline" style="padding:14px;">
+                    Skip for now
+                </button>
+            </div>
+        </form>
+
+        <div style="margin-top:14px;padding:10px;font-size:11.5px;color:#6b7280;text-align:center;">
+            🔒 Your password is stored securely. Only used to send emails on your behalf.
+            You can change it anytime from <strong>Email → Settings</strong>.
+        </div>
+    </div>
+
+    <div class="card" style="background:#f0f9ff;border:2px solid #0ea5e9;">
+        <h4 style="margin:0 0 8px;color:#0369a1;">📌 What happens next?</h4>
+        <ul style="margin:0;padding-left:20px;font-size:13px;color:#0c4a6e;line-height:1.8;">
+            <li>✅ Save credentials → DB (encrypted context)</li>
+            <li>✅ Send test email → verify it works</li>
+            <li>✅ Every auto-notification (doc verify, CAS, payment) → student inbox</li>
+            <li>✅ From: <strong>{{ partner.name }}</strong> &lt;your-email&gt;</li>
+        </ul>
+    </div>
+</div>
+
+<script>
+function skipSetup() {
+    if (confirm('Skip email setup? You can configure it later from Email → Settings.\n\nWithout this, students will NOT receive automated emails.')) {
+        window.location.href = '{{ url_for("ukvi_b2b_email_setup_wizard") }}?skip=1';
+    }
+}
+</script>
+{% endblock %}

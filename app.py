@@ -33,6 +33,10 @@ from apscheduler.schedulers.background import BackgroundScheduler
 import requests, hmac, hashlib, urllib.parse, qrcode
 from PIL import Image
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, flash, abort, send_file, send_from_directory, Response, stream_with_context
+try:
+    from flask_wtf.csrf import csrf_exempt
+except ImportError:
+    def csrf_exempt(f): return f
 from flask_sock import Sock
 import websocket as _ws_client
 import threading as _threading
@@ -3522,6 +3526,7 @@ def admin_delete_audio_file(filename):
 
 
 @app.route('/admin/login', methods=['GET', 'POST'])
+@limiter.limit("5 per minute;30 per hour")
 def admin_login():
     if request.method == 'POST':
         username = request.form.get('username')
@@ -8332,6 +8337,7 @@ if _B2B_AVAILABLE:
         return jsonify({"success": True, "available": False, "username": username, "suggestions": suggestions})
     
     @app.route('/ukvi/b2b/login', methods=['GET', 'POST'])
+    @limiter.limit("10 per minute;60 per hour")
     def ukvi_b2b_login():
         if session.get('ukvi_b2b_partner_id'):
             return redirect(url_for('ukvi_b2b_dashboard'))
@@ -8685,6 +8691,14 @@ if _B2B_AVAILABLE:
             student.sponsor_income = (request.form.get('sponsor_income') or '').strip() or None
             student.sponsor_savings = (request.form.get('sponsor_savings') or '').strip() or None
             student.home_country = (request.form.get('home_country') or 'Nepal').strip()
+
+            student.sponsor_relationship = (request.form.get('sponsor_relationship') or '').strip() or None
+
+            student.career_plan = (request.form.get('career_plan') or '').strip() or None
+
+            student.work_experience = (request.form.get('work_experience') or '').strip() or None
+
+            student.previous_education = (request.form.get('previous_education') or '').strip() or None
             student.profile_completed = bool(student.university and student.course)
             
             db.session.add(student)
@@ -8798,7 +8812,10 @@ if _B2B_AVAILABLE:
         except Exception as _e:
             logger.warning("Expiry compute failed: %s", _e)
 
-        return render_template('ukvi_b2b/student_detail.html',
+        from modules.ukvi.models import UKVIB2BNotification
+        notif_list = UKVIB2BNotification.query.filter_by(student_id=student.id).order_by(UKVIB2BNotification.created_at.desc()).limit(30).all()
+
+        return render_template('ukvi_b2b/student_detail.html', notif_list=notif_list, whatsapp_link=whatsapp_link,
             partner=partner, student=student,
             ukvi_user=ukvi_user,
             sessions=sessions_list, full_link=full_link,
@@ -9234,6 +9251,18 @@ if _B2B_AVAILABLE:
             if _hc:
 
                 student.home_country = _hc
+
+
+                student.sponsor_relationship = (request.form.get('sponsor_relationship') or '').strip() or None
+
+
+                student.career_plan = (request.form.get('career_plan') or '').strip() or None
+
+
+                student.work_experience = (request.form.get('work_experience') or '').strip() or None
+
+
+                student.previous_education = (request.form.get('previous_education') or '').strip() or None
 
             student.profile_completed = bool(student.university and student.course)
 
@@ -9783,6 +9812,12 @@ if _B2B_AVAILABLE:
     @admin_required
     @csrf_protect
     def admin_ukvi_b2b_create_partner():
+        # email_required_validation
+        _email = (request.form.get('email') or '').strip()
+        if not _email:
+            flash('Student email is required for automated notifications', 'danger')
+            return redirect(url_for('ukvi_b2b_add_student'))
+        
         name = (request.form.get('name') or '').strip()
         email = (request.form.get('email') or '').strip().lower()
         password = request.form.get('password') or ''
@@ -9912,13 +9947,1152 @@ if _B2B_AVAILABLE:
         return redirect(url_for('admin_ukvi_b2b'))
 
 
+
+
+# ═══════════════════════════════════════════════════════════
+# Student Tracking Portal (read-only, token-based)
+# ═══════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════
+# Track Login Rate Limiter — STANDALONE (no Flask-Limiter)
+# In-memory, per-token, thread-safe
+# ═══════════════════════════════════════════════════════════
+import threading as _rl_threading
+import time as _rl_time
+
+class _TrackLoginRateLimiter:
+    """Simple in-memory rate limiter for track login attempts.
+
+    Limits: 5 password attempts per 60 seconds per token.
+    After 5 failed attempts: locked for remaining seconds.
+    """
+    MAX_ATTEMPTS = 5
+    WINDOW_SECONDS = 60
+
+    def __init__(self):
+        self._lock = _rl_threading.Lock()
+        self._attempts = {}  # {token: {'count': N, 'first_at': T, 'locked_until': T}}
+
+    def _cleanup(self, now):
+        """Remove expired entries (housekeeping)."""
+        expired = []
+        for token, data in self._attempts.items():
+            last_activity = max(
+                data.get('first_at', 0),
+                data.get('locked_until', 0),
+            )
+            if now - last_activity > self.WINDOW_SECONDS * 3:
+                expired.append(token)
+        for token in expired:
+            self._attempts.pop(token, None)
+
+    def check_and_increment(self, token):
+        """Check if allowed. If yes, increment attempt counter.
+        Returns: (allowed: bool, remaining: int, lockout_seconds: int, attempts_left: int)
+        """
+        now = _rl_time.time()
+        with self._lock:
+            self._cleanup(now)
+
+            data = self._attempts.get(token, {
+                'count': 0,
+                'first_at': now,
+                'locked_until': 0,
+            })
+
+            # Check lockout
+            if data.get('locked_until', 0) > now:
+                wait = int(data['locked_until'] - now) + 1
+                return (False, wait, wait, 0)
+
+            # Reset window if 60s+ elapsed since first attempt
+            if now - data.get('first_at', 0) > self.WINDOW_SECONDS:
+                data = {'count': 0, 'first_at': now, 'locked_until': 0}
+
+            # Check if at limit
+            if data['count'] >= self.MAX_ATTEMPTS:
+                # Lockout
+                wait = max(1, int(self.WINDOW_SECONDS - (now - data['first_at'])))
+                data['locked_until'] = now + wait
+                self._attempts[token] = data
+                return (False, wait, wait, 0)
+
+            # Increment
+            data['count'] += 1
+            attempts_left = self.MAX_ATTEMPTS - data['count']
+
+            if data['count'] >= self.MAX_ATTEMPTS:
+                wait = max(1, int(self.WINDOW_SECONDS - (now - data['first_at'])))
+                data['locked_until'] = now + wait
+                self._attempts[token] = data
+                return (True, 0, wait, 0)  # Allowed (this is 5th attempt)
+
+            self._attempts[token] = data
+            return (True, 0, 0, attempts_left)
+
+    def reset(self, token):
+        """Clear attempts after successful login."""
+        with self._lock:
+            self._attempts.pop(token, None)
+
+    def get_status(self, token):
+        """Get current attempts status (for GET requests)."""
+        now = _rl_time.time()
+        with self._lock:
+            data = self._attempts.get(token)
+            if not data:
+                return (self.MAX_ATTEMPTS, 0)
+            if data.get('locked_until', 0) > now:
+                wait = int(data['locked_until'] - now) + 1
+                return (0, wait)
+            if now - data.get('first_at', 0) > self.WINDOW_SECONDS:
+                return (self.MAX_ATTEMPTS, 0)
+            remaining = max(0, self.MAX_ATTEMPTS - data['count'])
+            return (remaining, 0)
+
+
+_track_login_limiter = _TrackLoginRateLimiter()
+_track_login_limiter_ready = True
+
+
+# ═══════════════════════════════════════════════════════════
+# Student Tracking Portal — PASSWORD + LOGIN RATE LIMIT
+# ═══════════════════════════════════════════════════════════
+@app.route('/ukvi/track/<token>', methods=['GET', 'POST'])
+def ukvi_student_track(token):
+    from modules.ukvi.models import (
+        UKVIB2BStudent, UKVIB2BDocument, UKVIB2BTimelineEvent,
+        UKVIB2BPayment, UKVIUser, UKVIB2BTrackLoginAttempt,
+    )
+
+    if not token or len(token) < 10:
+        return render_template('ukvi_b2b/test_error.html',
+            error='Invalid link',
+            message='This tracking link is invalid.'), 404
+
+    student = UKVIB2BStudent.query.filter_by(public_track_token=token).first()
+    if not student:
+        student = UKVIB2BStudent.query.filter_by(test_token=token).first()
+    if not student:
+        return render_template('ukvi_b2b/test_error.html',
+            error='Link not found',
+            message='This link does not exist. Contact your institute.'), 404
+
+    session_key = f'_track_verified_{student.id}'
+    is_verified = session.get(session_key) is True
+
+    # Helper to log attempts
+    def _log_attempt(att_type, attempts_left_val=None):
+        try:
+            log = UKVIB2BTrackLoginAttempt(
+                student_id=student.id,
+                attempt_type=att_type,
+                ip_address=(request.remote_addr or '')[:45],
+                user_agent=(request.user_agent.string or '')[:300],
+                attempts_left=attempts_left_val,
+                token_prefix=(token[:8] if token else '')[:20],
+            )
+            db.session.add(log)
+            db.session.commit()
+        except Exception as _e:
+            logger.warning(f'Audit log failed: {_e}')
+            try:
+                db.session.rollback()
+            except Exception:
+                pass
+
+    if not is_verified:
+        if request.method == 'POST':
+            # ─── RATE LIMIT CHECK (before password check) ───
+            allowed, wait, lockout, attempts_left = _track_login_limiter.check_and_increment(token)
+
+            if not allowed:
+                # Locked out — do NOT check password
+                _log_attempt('blocked', 0)
+                return render_template('ukvi_b2b/track_login.html',
+                    student=student, token=token,
+                    error=f'Too many failed attempts. Try again in {wait} seconds.',
+                    rate_limited=True,
+                    lockout_seconds=wait), 429
+
+            password = (request.form.get('password') or '').strip()
+            ukvi_user = db.session.get(UKVIUser, student.ukvi_user_id) if student.ukvi_user_id else None
+
+            if ukvi_user and ukvi_user.check_password(password):
+                _log_attempt('success', 5)
+                # ─── SUCCESS ───
+                _track_login_limiter.reset(token)  # clear attempts
+                session[session_key] = True
+                session.permanent = True
+                return redirect(url_for('ukvi_student_track', token=token))
+            else:
+                # ─── FAILED ───
+                _log_attempt('failed', attempts_left)
+                if lockout > 0:
+                    # 5th failed attempt — lockout
+                    _log_attempt('locked', 0)
+                    return render_template('ukvi_b2b/track_login.html',
+                        student=student, token=token,
+                        error=f'Too many failed attempts. Try again in {lockout} seconds.',
+                        rate_limited=True,
+                        lockout_seconds=lockout), 429
+                return render_template('ukvi_b2b/track_login.html',
+                    student=student, token=token,
+                    error=f'Incorrect password. {attempts_left} attempt(s) left.',
+                    attempts_left=attempts_left), 401
+
+        # GET — show login form + attempts info
+        attempts_left, lockout = _track_login_limiter.get_status(token)
+        if lockout > 0:
+            return render_template('ukvi_b2b/track_login.html',
+                student=student, token=token,
+                error=f'Too many failed attempts. Try again in {lockout} seconds.',
+                rate_limited=True,
+                lockout_seconds=lockout), 429
+        return render_template('ukvi_b2b/track_login.html',
+            student=student, token=token, error=None,
+            attempts_left=attempts_left)
+
+    # ─── VERIFIED: SHOW TRACK PORTAL ───
+    docs = UKVIB2BDocument.query.filter_by(student_id=student.id).order_by(
+        UKVIB2BDocument.uploaded_at.desc()).all()
+    events = UKVIB2BTimelineEvent.query.filter_by(student_id=student.id).order_by(
+        UKVIB2BTimelineEvent.event_date.asc().nulls_last(),
+        UKVIB2BTimelineEvent.id.asc()).all()
+
+    HIDDEN_TYPES = {'consultancy', 'other'}
+    pays = UKVIB2BPayment.query.filter_by(student_id=student.id).filter(
+        ~UKVIB2BPayment.payment_type.in_(HIDDEN_TYPES)
+    ).order_by(UKVIB2BPayment.created_at.desc()).all()
+
+    for p in pays: p.notes = None
+    for e in events: e.notes = None
+
+    total_stages = 8
+    completed = sum(1 for e in events if e.is_completed)
+    pct = min(100, int((completed / total_stages) * 100))
+    next_step = next((e for e in events if not e.is_completed), None)
+
+    return render_template('ukvi_b2b/student_track.html',
+        student=student, docs=docs, events=events, pays=pays,
+        progress_pct=pct, completed_stages=completed,
+        total_stages=total_stages, next_step=next_step)
+@app.route('/ukvi/track/<token>/logout', methods=['POST'])
+def ukvi_student_track_logout(token):
+    """Clear verified session."""
+    from modules.ukvi.models import UKVIB2BStudent
+    student = UKVIB2BStudent.query.filter_by(public_track_token=token).first()
+    if not student:
+        student = UKVIB2BStudent.query.filter_by(test_token=token).first()
+    if student:
+        session.pop(f'_track_verified_{student.id}', None)
+    return redirect(url_for('ukvi_student_track', token=token))
+def ensure_track_token(student):
+    """Generate public_track_token if missing."""
+    import secrets as _sec
+    if not student.public_track_token:
+        for _ in range(5):
+            tok = _sec.token_urlsafe(24)
+            if not student.__class__.query.filter_by(public_track_token=tok).first():
+                student.public_track_token = tok
+                try: db.session.commit()
+                except Exception: db.session.rollback()
+                break
+    return student.public_track_token
+
+
+
+
+# ═══════════════════════════════════════════════════════════
+# Notification Service
+# ═══════════════════════════════════════════════════════════
+import smtplib as _smtplib
+from email.mime.text import MIMEText as _MIMEText
+from email.mime.multipart import MIMEMultipart as _MIMEMultipart
+
+
+def _send_email_with_config(to_email, subject, body_html, smtp_config):
+    if not smtp_config or not smtp_config.get('host'):
+        return (False, 'SMTP config missing')
+    try:
+        msg = _MIMEMultipart('alternative')
+        msg['Subject'] = subject
+        fe = smtp_config.get('from_email') or smtp_config.get('user')
+        fn = smtp_config.get('from_name') or 'SeltaPrep'
+        msg['From'] = f"{fn} <{fe}>"
+        msg['To'] = to_email
+        msg.attach(_MIMEText(body_html, 'html', 'utf-8'))
+        with _smtplib.SMTP(smtp_config['host'], int(smtp_config.get('port', 587)), timeout=15) as srv:
+            srv.starttls()
+            srv.login(smtp_config['user'], smtp_config['pass'])
+            srv.send_message(msg)
+        return (True, None)
+    except Exception as e:
+        return (False, str(e))
+
+
+def _partner_smtp_config(student):
+    import os as _os_local
+    partner = None
+    try:
+        from modules.ukvi.models import UKVIB2BPartner
+        partner = db.session.get(UKVIB2BPartner, student.partner_id) if student.partner_id else None
+    except Exception:
+        pass
+    if partner and partner.smtp_host and partner.smtp_user and partner.smtp_pass:
+        return ({'host': partner.smtp_host, 'port': partner.smtp_port or 587,
+                 'user': partner.smtp_user, 'pass': partner.smtp_pass,
+                 'from_email': partner.from_email or partner.smtp_user,
+                 'from_name': partner.from_name or partner.name or 'Institute'}, 'institute', partner)
+    host = _os_local.environ.get('SMTP_HOST')
+    if host:
+        return ({'host': host, 'port': int(_os_local.environ.get('SMTP_PORT', '587')),
+                 'user': _os_local.environ.get('SMTP_USER'), 'pass': _os_local.environ.get('SMTP_PASS'),
+                 'from_email': _os_local.environ.get('SMTP_FROM', _os_local.environ.get('SMTP_USER')),
+                 'from_name': (partner.name if partner else 'SeltaPrep')}, 'global', partner)
+    return (None, 'none', partner)
+
+
+def notify_student(student, event_type, title, body, send_email=True):
+    from modules.ukvi.models import UKVIB2BNotification
+    notif = UKVIB2BNotification(student_id=student.id, event_type=event_type,
+        channel='in_app', title=title[:200], body=body, status='sent',
+        sent_at=datetime.now(timezone.utc))
+    db.session.add(notif)
+    if send_email and student.email:
+        cfg, source, partner = _partner_smtp_config(student)
+        from_name = (cfg or {}).get('from_name', 'SeltaPrep')
+        html = f"""<div style="font-family:sans-serif;"><h2 style="color:#4f46e5;">{title}</h2>
+            <div style="background:#f9fafb;padding:16px;border-radius:8px;white-space:pre-wrap;">{body}</div></div>"""
+        ok, err = (False, 'No SMTP') if not cfg else _send_email_with_config(student.email, title, html, cfg)
+        db.session.add(UKVIB2BNotification(student_id=student.id, event_type=event_type,
+            channel='email', title=title[:200], body=body,
+            status='sent' if ok else 'failed',
+            sent_at=datetime.now(timezone.utc) if ok else None, error=err))
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+    return notif
+
+
+def whatsapp_link(student, message=''):
+    if not message:
+        message = f"Hello {student.full_name}, update on your application:"
+    phone = (student.phone or '').strip().replace(' ', '').replace('-', '')
+    if phone and not phone.startswith('+'):
+        if phone.startswith('977'):
+            phone = '+' + phone
+        elif len(phone) == 10:
+            phone = '+977' + phone
+    from urllib.parse import quote as _q
+    text = _q(message)
+    if phone:
+        return f"https://wa.me/{phone.lstrip('+')}?text={text}"
+    return f"https://wa.me/?text={text}"
+
+
+
+@app.route('/ukvi/b2b/email-settings')
+@login_required
+def ukvi_b2b_email_settings():
+    from modules.ukvi.models import UKVIB2BPartner
+    pid = session.get('ukvi_b2b_partner_id') or session.get('b2b_partner_id')
+    partner = db.session.get(UKVIB2BPartner, pid) if pid else None
+    if not partner:
+        flash('Not found', 'danger'); return redirect(url_for('ukvi_b2b_dashboard'))
+    return render_template('ukvi_b2b/email_settings.html', partner=partner)
+
+
+@app.route('/ukvi/b2b/email-settings/save', methods=['POST'])
+@login_required
+@csrf_exempt
+def ukvi_b2b_email_settings_save():
+    from modules.ukvi.models import UKVIB2BPartner
+    pid = session.get('ukvi_b2b_partner_id') or session.get('b2b_partner_id')
+    partner = db.session.get(UKVIB2BPartner, pid) if pid else None
+    if not partner:
+        flash('Not found', 'danger'); return redirect(url_for('ukvi_b2b_dashboard'))
+    partner.smtp_host = (request.form.get('smtp_host') or '').strip() or None
+    try: partner.smtp_port = int(request.form.get('smtp_port') or 587)
+    except: partner.smtp_port = 587
+    partner.smtp_user = (request.form.get('smtp_user') or '').strip() or None
+    np = (request.form.get('smtp_pass') or '').strip()
+    if np: partner.smtp_pass = np
+    partner.from_email = (request.form.get('from_email') or '').strip() or None
+    partner.from_name = (request.form.get('from_name') or '').strip() or None
+    db.session.commit()
+    flash('✅ Saved', 'success')
+    return redirect(url_for('ukvi_b2b_email_settings'))
+
+
+@app.route('/ukvi/b2b/email-settings/test', methods=['POST'])
+@login_required
+@csrf_exempt
+def ukvi_b2b_email_settings_test():
+    from modules.ukvi.models import UKVIB2BPartner
+    pid = session.get('ukvi_b2b_partner_id') or session.get('b2b_partner_id')
+    partner = db.session.get(UKVIB2BPartner, pid) if pid else None
+    if not partner: return jsonify({'success': False, 'error': 'Not found'}), 404
+    to = (request.json or {}).get('to', '').strip() or partner.email
+    if not to: return jsonify({'success': False, 'error': 'No email'}), 400
+    cfg = {'host': partner.smtp_host, 'port': partner.smtp_port or 587,
+           'user': partner.smtp_user, 'pass': partner.smtp_pass,
+           'from_email': partner.from_email or partner.smtp_user,
+           'from_name': partner.from_name or partner.name}
+    if not (cfg['host'] and cfg['user'] and cfg['pass']):
+        return jsonify({'success': False, 'error': 'SMTP not configured'}), 400
+    html = f"<h2>✅ Test from {cfg['from_name']}</h2><p>SMTP working!</p>"
+    ok, err = _send_email_with_config(to, f"✅ Test from {cfg['from_name']}", html, cfg)
+    if ok:
+        partner.email_verified = True
+        partner.email_last_test = datetime.now(timezone.utc)
+        db.session.commit()
+        return jsonify({'success': True, 'message': f'Sent to {to}'})
+    return jsonify({'success': False, 'error': err or 'Failed'}), 500
+
+
+
+# ═══════════════════════════════════════════════════════════
+# First-time Email Setup Wizard (institute self-service)
+# ═══════════════════════════════════════════════════════════
+@app.route('/ukvi/b2b/email-setup', methods=['GET', 'POST'])
+@login_required
+def ukvi_b2b_email_setup_wizard():
+    from modules.ukvi.models import UKVIB2BPartner
+    pid = session.get('ukvi_b2b_partner_id') or session.get('b2b_partner_id')
+    partner = db.session.get(UKVIB2BPartner, pid) if pid else None
+    if not partner:
+        flash('Institute not found', 'danger')
+        return redirect(url_for('ukvi_b2b_dashboard'))
+
+    if request.method == 'POST':
+        # Save SMTP config
+        partner.smtp_host = (request.form.get('smtp_host') or '').strip() or None
+        try: partner.smtp_port = int(request.form.get('smtp_port') or 587)
+        except: partner.smtp_port = 587
+        partner.smtp_user = (request.form.get('smtp_user') or '').strip() or None
+        new_pass = (request.form.get('smtp_pass') or '').strip()
+        if new_pass:
+            partner.smtp_pass = new_pass
+        partner.from_email = (request.form.get('from_email') or '').strip() or None
+        partner.from_name = (request.form.get('from_name') or '').strip() or None
+        db.session.commit()
+
+        # Test email if requested
+        if request.form.get('send_test') and partner.email:
+            cfg = {
+                'host': partner.smtp_host, 'port': partner.smtp_port or 587,
+                'user': partner.smtp_user, 'pass': partner.smtp_pass,
+                'from_email': partner.from_email or partner.smtp_user,
+                'from_name': partner.from_name or partner.name,
+            }
+            if cfg['host'] and cfg['user'] and cfg['pass']:
+                html = f"<h2>✅ Setup Successful</h2><p>Your email is configured correctly, <b>{cfg['from_name']}</b>.</p><p>Students will now receive automated messages from this address.</p>"
+                ok, err = _send_email_with_config(partner.email, f'✅ Email configured — {cfg["from_name"]}', html, cfg)
+                if ok:
+                    partner.email_verified = True
+                    partner.email_last_test = datetime.now(timezone.utc)
+                    db.session.commit()
+                    flash('✅ Setup complete! Test email sent to ' + partner.email, 'success')
+                    session['_email_setup_done'] = True
+                    return redirect(url_for('ukvi_b2b_dashboard'))
+                else:
+                    flash(f'⚠️ Saved but test failed: {err}', 'warning')
+            else:
+                flash('⚠️ Saved. Add email address to test.', 'warning')
+        else:
+            flash('✅ Email settings saved', 'success')
+        session['_email_setup_done'] = True
+        return redirect(url_for('ukvi_b2b_dashboard'))
+
+    # Skip for now
+    skip = request.args.get('skip')
+    if skip:
+        session['_email_setup_skipped'] = True
+        flash('You can configure email later from the Email nav menu.', 'info')
+        return redirect(url_for('ukvi_b2b_dashboard'))
+
+    return render_template('ukvi_b2b/email_setup_wizard.html', partner=partner)
+
+
+@app.route('/ukvi/b2b/email-setup/skip', methods=['POST'])
+@login_required
+def ukvi_b2b_email_setup_skip():
+    session['_email_setup_skipped'] = True
+    flash('Reminder: You can configure email anytime from Email → Settings', 'info')
+    return redirect(url_for('ukvi_b2b_dashboard'))
+
+
+# First-time check: redirect to wizard if not configured
+@app.before_request
+def _ukvi_b2b_first_login_check():
+    # Skip static, auth, logout, email routes
+    skip_prefixes = ('/static', '/ukvi/b2b/email-setup', '/ukvi/b2b/email-settings',
+                     '/ukvi/b2b/login', '/logout', '/favicon')
+    if request.path.startswith(skip_prefixes):
+        return None
+    if request.endpoint in ('static', 'login', 'logout', 'ukvi_b2b_logout'):
+        return None
+
+    # Only if partner logged in
+    pid = session.get('ukvi_b2b_partner_id') or session.get('b2b_partner_id')
+    if not pid:
+        return None
+
+    # Skip if user chose to skip this session
+    if session.get('_email_setup_skipped') or session.get('_email_setup_done'):
+        return None
+
+    # Check if SMTP configured
+    try:
+        from modules.ukvi.models import UKVIB2BPartner
+        partner = db.session.get(UKVIB2BPartner, pid)
+        if not partner:
+            return None
+        if partner.smtp_host and partner.smtp_user and partner.smtp_pass:
+            session['_email_setup_done'] = True
+            return None
+    except Exception:
+        return None
+
+    # Not configured — redirect to wizard (once)
+    if request.path != '/ukvi/b2b/email-setup':
+        return redirect(url_for('ukvi_b2b_email_setup_wizard'))
+
+
+
+
+# ═══════════════════════════════════════════════════════════
+# Set/Reset tracking portal password (for student detail page)
+# ═══════════════════════════════════════════════════════════
+@app.route('/ukvi/b2b/students/<int:student_id>/set-track-password', methods=['POST'])
+def ukvi_b2b_set_track_password(student_id):
+    from modules.ukvi.models import UKVIB2BStudent, UKVIUser
+
+    partner_id = session.get('ukvi_b2b_partner_id') or session.get('b2b_partner_id')
+    if not partner_id:
+        return jsonify({'success': False, 'error': 'Not logged in'}), 401
+
+    student = UKVIB2BStudent.query.filter_by(
+        id=student_id, partner_id=partner_id
+    ).first()
+    if not student:
+        return jsonify({'success': False, 'error': 'Student not found'}), 404
+
+    data = request.json or {}
+    new_password = (data.get('password') or '').strip()
+
+    is_valid, errors, score, level = validate_password_strength(new_password)
+    if not is_valid:
+        return jsonify({
+            'success': False,
+            'error': 'Password does not meet requirements: ' + '; '.join(errors),
+            'errors': errors,
+            'score': score,
+            'level': level,
+        }), 400
+
+    # Get or create UKVIUser linked to this student
+    ukvi_user = None
+    if student.ukvi_user_id:
+        ukvi_user = db.session.get(UKVIUser, student.ukvi_user_id)
+
+    if not ukvi_user:
+        # Create UKVIUser if missing
+        base_username = re.sub(r'[^a-z0-9]', '', student.full_name.lower())[:15] or 'student'
+        username = base_username
+        counter = 1
+        while UKVIUser.query.filter_by(username=username).first():
+            username = f"{base_username}{counter}"
+            counter += 1
+
+        ukvi_user = UKVIUser(
+            username=username,
+            full_name=student.full_name,
+            email=student.email,
+        )
+        ukvi_user.set_password(new_password)
+        db.session.add(ukvi_user)
+        db.session.flush()
+        student.ukvi_user_id = ukvi_user.id
+    else:
+        ukvi_user.set_password(new_password)
+
+    try:
+        db.session.commit()
+        return jsonify({
+            'success': True,
+            'username': ukvi_user.username,
+            'message': f'Password set for {student.full_name}',
+        })
+    except Exception as e:
+        db.session.rollback()
+        logger.exception(f'Set track password failed: {e}')
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/ukvi/b2b/students/<int:student_id>/track-password-status')
+def ukvi_b2b_track_password_status(student_id):
+    """Return whether student has a track password configured."""
+    from modules.ukvi.models import UKVIB2BStudent, UKVIUser
+
+    partner_id = session.get('ukvi_b2b_partner_id') or session.get('b2b_partner_id')
+    if not partner_id:
+        return jsonify({'has_password': False})
+
+    student = UKVIB2BStudent.query.filter_by(
+        id=student_id, partner_id=partner_id
+    ).first()
+    if not student:
+        return jsonify({'has_password': False})
+
+    has_pw = False
+    username = None
+    if student.ukvi_user_id:
+        u = db.session.get(UKVIUser, student.ukvi_user_id)
+        if u and u.password_hash:
+            has_pw = True
+            username = u.username
+    return jsonify({'has_password': has_pw, 'username': username})
+
+
+
+
+# ═══════════════════════════════════════════════════════════
+# Password Complexity Validator
+# ═══════════════════════════════════════════════════════════
+import re as _pw_re
+
+_SPECIAL_CHARS = "!@#$%^&*(),.?\":{}|<>_-+=[]\\/;'`~"
+_SPECIAL_REGEX = "[" + "".join(re.escape(c) for c in _SPECIAL_CHARS) + "]"
+
+
+def validate_password_strength(password):
+    """Validate password complexity.
+    Returns: (is_valid: bool, errors: list, score: int, level: str)
+    """
+    if not password:
+        return (False, ["Password is required"], 0, "none")
+
+    errors = []
+    score = 0
+
+    # 1. Length
+    if len(password) < 8:
+        errors.append("At least 8 characters")
+    else:
+        score += 1
+        if len(password) >= 12:
+            score += 1
+
+    # 2. Uppercase
+    if not _pw_re.search(r"[A-Z]", password):
+        errors.append("At least 1 uppercase letter (A-Z)")
+    else:
+        score += 1
+
+    # 3. Lowercase
+    if not _pw_re.search(r"[a-z]", password):
+        errors.append("At least 1 lowercase letter (a-z)")
+    else:
+        score += 1
+
+    # 4. Number
+    if not _pw_re.search(r"[0-9]", password):
+        errors.append("At least 1 number (0-9)")
+    else:
+        score += 1
+
+    # 5. Special character
+    if not _pw_re.search(_SPECIAL_REGEX, password):
+        errors.append("At least 1 special character")
+    else:
+        score += 1
+
+    # 6. Common words
+    common = ["password", "123456", "qwerty", "admin", "letmein", "welcome",
+              "abc123", "test", "student", "institute"]
+    if any(c in password.lower() for c in common):
+        errors.append("Cannot contain common words")
+        score = max(0, score - 1)
+
+    # 7. Repeated
+    if _pw_re.search(r"(.)\1{2,}", password):
+        errors.append("No 3+ repeated characters")
+        score = max(0, score - 1)
+
+    # 8. Sequential
+    for seq in ["abcd", "1234", "qwerty", "asdf"]:
+        if seq in password.lower():
+            errors.append("No sequential patterns")
+            score = max(0, score - 1)
+            break
+
+    if score >= 6:
+        level = "strong"
+    elif score >= 4:
+        level = "medium"
+    elif score >= 2:
+        level = "weak"
+    else:
+        level = "very_weak"
+
+    is_valid = (score >= 5 and len(errors) == 0)
+    return (is_valid, errors, score, level)
+
+
+def generate_password_suggestions():
+    """Generate strong password examples."""
+    import secrets as _sec
+    import string as _str
+    upper = _str.ascii_uppercase
+    lower = _str.ascii_lowercase
+    digits = _str.digits
+    special = "!@#$%^&*"
+    all_chars = upper + lower + digits + special
+    suggestions = []
+    for _ in range(3):
+        pwd = (
+            _sec.choice(upper) +
+            _sec.choice(lower) +
+            _sec.choice(digits) +
+            _sec.choice(special) +
+            "".join(_sec.choice(all_chars) for _ in range(8))
+        )
+        pwd_list = list(pwd)
+        _sec.SystemRandom().shuffle(pwd_list)
+        suggestions.append("".join(pwd_list))
+    return suggestions
+
+
+
+@app.route('/ukvi/b2b/password-suggestions')
+def ukvi_password_suggestions():
+    return jsonify({'suggestions': generate_password_suggestions()})
+
+
+
+# ═══════════════════════════════════════════════════════════
+# Password Complexity Enforcement (before_request)
+# Applies to ALL registration/password-change POST endpoints
+# ═══════════════════════════════════════════════════════════
+_PASSWORD_PROTECTED_ENDPOINTS = {
+    'admin_create_user',
+        'admin_ielts_pool_caps_reset',
+        'admin_ielts_pool_reset',
+        'admin_ielts_user_progress_reset',
+        'admin_pte_pool_caps_reset',
+        'admin_reset_password',
+        'admin_ukvi_b2b_create_partner',
+        'admin_ukvi_b2b_reset_partner_password',
+        'admin_ukvi_pool_reset',
+        'change_password',
+        'forgot_password',
+        'forgot_password_send_otp',
+        'forgot_password_verify_otp',
+        'ielts_change_password',
+        'ielts_full_test_reset_speaking',
+        'ielts_register',
+        'ielts_reset_password',
+        'ielts_signup',
+        'ielts_user_register',
+        'profile_change_password',
+        'pte_change_password',
+        'pte_register',
+        'pte_reset_password',
+        'pte_signup',
+        'pte_user_register',
+        'register',
+        'reset_password',
+        'signup',
+        'ukvi_b2b_create_partner',
+        'ukvi_b2b_reset_partner_password',
+        'ukvi_b2b_reset_student_password',
+        'ukvi_b2b_set_track_password',
+        'ukvi_change_password',
+        'ukvi_register',
+        'ukvi_reset_password',
+        'ukvi_signup',
+        'ukvi_user_register',
+        'update_password'
+}
+
+# Allow bypassing in special cases (e.g., admin migration scripts)
+_PASSWORD_BYPASS_HEADER = 'X-Password-Bypass'
+
+
+@app.before_request
+def _enforce_password_complexity():
+    """Enforce strong passwords on all registration/password routes."""
+    if request.method != 'POST':
+        return None
+
+    # Skip static / track password (already handled in route)
+    endpoint = (request.endpoint or '').lower()
+    if not endpoint:
+        return None
+    
+    # Skip if not in protected list
+    if endpoint not in {e.lower() for e in _PASSWORD_PROTECTED_ENDPOINTS}:
+        return None
+
+    # Skip if bypass header present (for trusted internal operations)
+    if request.headers.get(_PASSWORD_BYPASS_HEADER) == 'trusted':
+        return None
+
+    # Extract password from form or JSON
+    password = ''
+    if request.form:
+        password = (
+            request.form.get('password') or
+            request.form.get('new_password') or
+            request.form.get('password1') or
+            request.form.get('pwd') or
+            ''
+        )
+    if not password and request.is_json:
+        data = request.get_json(silent=True) or {}
+        password = data.get('password') or data.get('new_password') or ''
+
+    if isinstance(password, str):
+        password = password.strip()
+
+    # Skip if no password (e.g., profile update without password)
+    if not password:
+        return None
+
+    # Validate
+    try:
+        is_valid, errors, score, level = validate_password_strength(password)
+    except Exception as e:
+        logger.warning(f'Password validation error: {e}')
+        return None
+
+    if is_valid:
+        return None
+
+    # Password too weak — return appropriate response format
+    msg = 'Password too weak: ' + '; '.join(errors)
+
+    # Detect AJAX/JSON request
+    wants_json = (
+        request.is_json or
+        request.headers.get('Accept', '').startswith('application/json') or
+        request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+    )
+
+    if wants_json:
+        return jsonify({
+            'success': False,
+            'error': msg,
+            'errors': errors,
+            'score': score,
+            'level': level,
+        }), 400
+
+    # Form submission — flash + redirect back
+    try:
+        flash(msg, 'danger')
+    except Exception:
+        pass
+    return redirect(request.referrer or request.url)
+
+
     logger.info("B2B UKVI routes registered")
+
+# ─── Log Sanitizer (redact sensitive data from all logs) ───
+try:
+    from modules.log_sanitizer import install_log_sanitizer as _install_ls
+    _install_ls(app)
+    logger.info("Log sanitizer installed")
+except Exception as _ls_err:
+    logger.warning(f"Log sanitizer failed: {_ls_err}")
+
+
+# ═══════════════════════════════════════════════════════════
+# UKVI B2B CRM Routes — Documents / Timeline / Payments / CAS
+# ═══════════════════════════════════════════════════════════
+try:
+    from modules.ukvi.models import (
+        UKVIB2BDocument, UKVIB2BTimelineEvent, UKVIB2BPayment,
+    )
+    import os as _os
+    from werkzeug.utils import secure_filename as _safe_filename
+    from datetime import date as _date
+
+    UKVI_DOC_DIR = _os.path.join('static', 'ukvi_documents')
+    _os.makedirs(UKVI_DOC_DIR, exist_ok=True)
+
+    def _verify_student(student_id):
+        """Return student if it belongs to current partner, else None."""
+        from modules.ukvi.models import UKVIB2BStudent
+        pid = session.get('ukvi_b2b_partner_id') or session.get('b2b_partner_id')
+        q = UKVIB2BStudent.query.filter_by(id=student_id)
+        if pid:
+            q = q.filter_by(partner_id=pid)
+        return q.first()
+
+    # ─── DOCUMENTS ───
+    @app.route('/ukvi/b2b/students/<int:sid>/documents/upload', methods=['POST'])
+    @csrf_exempt
+    def ukvi_b2b_doc_upload(sid):
+        student = _verify_student(sid)
+        if not student:
+            return jsonify({'success': False, 'error': 'Not found'}), 404
+        if 'file' not in request.files:
+            return jsonify({'success': False, 'error': 'No file'}), 400
+        f = request.files['file']
+        if not f or not f.filename:
+            return jsonify({'success': False, 'error': 'Empty file'}), 400
+        doc_type = (request.form.get('doc_type') or 'other').strip()[:50]
+        safe = _safe_filename(f.filename) or 'file'
+        ext = _os.path.splitext(safe)[1].lower()
+        allowed = {'.pdf', '.jpg', '.jpeg', '.png', '.doc', '.docx'}
+        if ext not in allowed:
+            return jsonify({'success': False, 'error': f'Extension {ext} not allowed'}), 400
+        student_dir = _os.path.join(UKVI_DOC_DIR, str(sid))
+        _os.makedirs(student_dir, exist_ok=True)
+        fname = f"{doc_type}_{int(datetime.now().timestamp())}{ext}"
+        fpath = _os.path.join(student_dir, fname)
+        f.save(fpath)
+        doc = UKVIB2BDocument(
+            student_id=sid, doc_type=doc_type,
+            original_name=safe, filename=fname,
+            file_size=_os.path.getsize(fpath), status='pending',
+        )
+        db.session.add(doc); db.session.commit()
+        return jsonify({'success': True, 'doc_id': doc.id})
+
+    @app.route('/ukvi/b2b/students/<int:sid>/documents/<int:doc_id>/verify', methods=['POST'])
+    @csrf_exempt
+    def ukvi_b2b_doc_verify(sid, doc_id):
+        if not _verify_student(sid):
+            return jsonify({'success': False}), 404
+        doc = UKVIB2BDocument.query.filter_by(id=doc_id, student_id=sid).first()
+        if not doc:
+            return jsonify({'success': False}), 404
+        new_status = (request.json or {}).get('status', 'verified')
+        if new_status not in ('pending', 'verified', 'rejected'):
+            new_status = 'verified'
+        doc.status = new_status
+        db.session.commit()
+        # Auto-notify student
+        try:
+            student = UKVIB2BStudent.query.filter_by(id=sid).first()
+            if student and new_status in ('verified', 'rejected'):
+                _doc_names = {'passport':'Passport','ielts':'IELTS Certificate',
+                              'offer_letter':'Offer Letter','cas_letter':'CAS Letter',
+                              'bank_statement':'Bank Statement','tb_test':'TB Test',
+                              'photo':'Photo','academic':'Academic Transcripts'}
+                _dname = _doc_names.get(doc.doc_type, doc.doc_type.title())
+                if new_status == 'verified':
+                    notify_student(student, 'doc_verified',
+                        f'✅ {_dname} Verified',
+                        f'Your {_dname} has been verified. Progress updated on your tracking link.')
+                else:
+                    notify_student(student, 'doc_rejected',
+                        f'⚠️ {_dname} Rejected',
+                        f'Your {_dname} could not be verified. Please contact your institute to re-upload.')
+        except Exception as _e:
+            logger.warning(f'Auto-notify failed (doc): {_e}')
+        return jsonify({'success': True, 'status': new_status})
+
+    @app.route('/ukvi/b2b/students/<int:sid>/documents/<int:doc_id>/delete', methods=['POST'])
+    @csrf_exempt
+    def ukvi_b2b_doc_delete(sid, doc_id):
+        if not _verify_student(sid):
+            return jsonify({'success': False}), 404
+        doc = UKVIB2BDocument.query.filter_by(id=doc_id, student_id=sid).first()
+        if not doc:
+            return jsonify({'success': False}), 404
+        fpath = _os.path.join(UKVI_DOC_DIR, str(sid), doc.filename)
+        if _os.path.exists(fpath):
+            try: _os.remove(fpath)
+            except: pass
+        db.session.delete(doc); db.session.commit()
+        return jsonify({'success': True})
+
+    @app.route('/ukvi/b2b/students/<int:sid>/documents/<int:doc_id>/view')
+    def ukvi_b2b_doc_view(sid, doc_id):
+        from flask import send_from_directory, abort
+        if not _verify_student(sid):
+            return 'Not found', 404
+        doc = UKVIB2BDocument.query.filter_by(id=doc_id, student_id=sid).first()
+        if not doc:
+            return 'Not found', 404
+        # Verify file exists on disk
+        file_dir = _os.path.join(UKVI_DOC_DIR, str(sid))
+        file_path = _os.path.join(file_dir, doc.filename)
+        if not _os.path.exists(file_path):
+            logger.error(f'[Doc View] File missing on disk: {file_path}')
+            return f'<h2>File Not Found</h2><p>The uploaded file <b>{doc.original_name}</b> is missing from server storage. Please re-upload.</p>', 404
+        try:
+            return send_from_directory(
+                file_dir,
+                doc.filename,
+                as_attachment=False,
+                download_name=doc.original_name or doc.filename,
+            )
+        except Exception as e:
+            logger.exception(f'[Doc View] Error: {e}')
+            return f'<h2>Error</h2><p>{e}</p>', 500
+
+    # ─── TIMELINE ───
+    @app.route('/ukvi/b2b/students/<int:sid>/timeline/add', methods=['POST'])
+    @csrf_exempt
+    def ukvi_b2b_timeline_add(sid):
+        if not _verify_student(sid):
+            return jsonify({'success': False}), 404
+        data = request.json or {}
+        stage = (data.get('stage') or 'other').strip()[:50]
+        title = (data.get('title') or '').strip()[:200]
+        if not title:
+            return jsonify({'success': False, 'error': 'Title required'}), 400
+        evt = UKVIB2BTimelineEvent(
+            student_id=sid, stage=stage, title=title,
+            event_date=_date.fromisoformat(data['event_date']) if data.get('event_date') else None,
+            notes=(data.get('notes') or '').strip() or None,
+            is_completed=bool(data.get('is_completed', False)),
+        )
+        db.session.add(evt); db.session.commit()
+        # Auto-notify on timeline update
+        try:
+            _stu = UKVIB2BStudent.query.filter_by(id=sid).first()
+            if _stu:
+                notify_student(_stu, 'timeline_update',
+                    f'📌 {title}',
+                    f'New update on your application:\n\n{title}\n\nCheck your tracking link for full progress.')
+        except Exception as _e:
+            logger.warning(f'Auto-notify failed (timeline): {_e}')
+        return jsonify({'success': True, 'event_id': evt.id})
+
+    @app.route('/ukvi/b2b/students/<int:sid>/timeline/<int:eid>/toggle', methods=['POST'])
+    @csrf_exempt
+    def ukvi_b2b_timeline_toggle(sid, eid):
+        if not _verify_student(sid):
+            return jsonify({'success': False}), 404
+        evt = UKVIB2BTimelineEvent.query.filter_by(id=eid, student_id=sid).first()
+        if not evt:
+            return jsonify({'success': False}), 404
+        evt.is_completed = not evt.is_completed
+        if evt.is_completed and not evt.event_date:
+            evt.event_date = _date.today()
+        db.session.commit()
+        return jsonify({'success': True, 'is_completed': evt.is_completed})
+
+    @app.route('/ukvi/b2b/students/<int:sid>/timeline/<int:eid>/delete', methods=['POST'])
+    @csrf_exempt
+    def ukvi_b2b_timeline_delete(sid, eid):
+        if not _verify_student(sid):
+            return jsonify({'success': False}), 404
+        evt = UKVIB2BTimelineEvent.query.filter_by(id=eid, student_id=sid).first()
+        if not evt:
+            return jsonify({'success': False}), 404
+        db.session.delete(evt); db.session.commit()
+        return jsonify({'success': True})
+
+    # ─── PAYMENTS ───
+    @app.route('/ukvi/b2b/students/<int:sid>/payments/add', methods=['POST'])
+    @csrf_exempt
+    def ukvi_b2b_payment_add(sid):
+        if not _verify_student(sid):
+            return jsonify({'success': False}), 404
+        data = request.json or {}
+        ptype = (data.get('payment_type') or 'other').strip()[:50]
+        amt = (data.get('amount') or '').strip()[:50]
+        if not ptype or not amt:
+            return jsonify({'success': False, 'error': 'Type and amount required'}), 400
+        status = data.get('status', 'pending')
+        if status not in ('pending', 'paid', 'refunded'):
+            status = 'pending'
+        pay = UKVIB2BPayment(
+            student_id=sid, payment_type=ptype,
+            description=(data.get('description') or '').strip()[:300] or None,
+            amount=amt, currency=(data.get('currency') or 'GBP').upper()[:10],
+            status=status,
+            payment_date=_date.fromisoformat(data['payment_date']) if data.get('payment_date') else None,
+            reference=(data.get('reference') or '').strip()[:100] or None,
+            notes=(data.get('notes') or '').strip() or None,
+        )
+        db.session.add(pay); db.session.commit()
+        return jsonify({'success': True, 'payment_id': pay.id})
+
+    @app.route('/ukvi/b2b/students/<int:sid>/payments/<int:pid>/status', methods=['POST'])
+    @csrf_exempt
+    def ukvi_b2b_payment_status(sid, pid):
+        if not _verify_student(sid):
+            return jsonify({'success': False}), 404
+        pay = UKVIB2BPayment.query.filter_by(id=pid, student_id=sid).first()
+        if not pay:
+            return jsonify({'success': False}), 404
+        new_status = (request.json or {}).get('status', 'paid')
+        if new_status not in ('pending', 'paid', 'refunded'):
+            new_status = 'paid'
+        pay.status = new_status
+        if new_status == 'paid' and not pay.payment_date:
+            pay.payment_date = _date.today()
+        db.session.commit()
+        # Auto-notify on payment paid
+        try:
+            if new_status == 'paid':
+                _stu = UKVIB2BStudent.query.filter_by(id=sid).first()
+                if _stu:
+                    _ptype = pay.payment_type.replace('_', ' ').title()
+                    notify_student(_stu, 'payment_received',
+                        f'💳 Payment Received — {pay.currency} {pay.amount}',
+                        f'Your payment has been recorded:\n\n{_ptype}: {pay.currency} {pay.amount}\n\nThank you!')
+        except Exception as _e:
+            logger.warning(f'Auto-notify failed (payment): {_e}')
+        return jsonify({'success': True})
+
+    @app.route('/ukvi/b2b/students/<int:sid>/payments/<int:pid>/delete', methods=['POST'])
+    @csrf_exempt
+    def ukvi_b2b_payment_delete(sid, pid):
+        if not _verify_student(sid):
+            return jsonify({'success': False}), 404
+        pay = UKVIB2BPayment.query.filter_by(id=pid, student_id=sid).first()
+        if not pay:
+            return jsonify({'success': False}), 404
+        db.session.delete(pay); db.session.commit()
+        return jsonify({'success': True})
+
+    # ─── CAS ───
+    @app.route('/ukvi/b2b/students/<int:sid>/cas/update', methods=['POST'])
+    @csrf_exempt
+    def ukvi_b2b_cas_update(sid):
+        student = _verify_student(sid)
+        if not student:
+            return jsonify({'success': False}), 404
+        data = request.json or {}
+        def _pd(s):
+            try: return _date.fromisoformat(s) if s else None
+            except: return None
+        student.cas_number = (data.get('cas_number') or '').strip()[:50] or None
+        student.cas_issue_date = _pd(data.get('cas_issue_date'))
+        student.cas_expiry = _pd(data.get('cas_expiry'))
+        student.cas_status = (data.get('cas_status') or '').strip()[:30] or None
+        db.session.commit()
+        # Auto-notify on CAS issued
+        try:
+            if student.cas_status == 'issued' and student.cas_number:
+                _exp = f"\nExpiry: {student.cas_expiry.strftime('%b %d, %Y')}" if student.cas_expiry else ''
+                notify_student(student, 'cas_issued',
+                    '🎫 CAS Received!',
+                    f'Great news! Your CAS has been issued.\n\nCAS: {student.cas_number}{_exp}\n\nYou can now apply for your UK visa.')
+        except Exception as _e:
+            logger.warning(f'Auto-notify failed (CAS): {_e}')
+        return jsonify({'success': True})
+
+    logger.info('UKVI CRM routes registered (documents/timeline/payments/cas)')
+except Exception as _e:
+    logger.warning(f'UKVI CRM routes NOT registered: {_e}')
 
     # ═══════════════════════════════════════════════════════
     # Student Visa Info (Remarks modal)
     # ═══════════════════════════════════════════════════════
     @app.route('/ukvi/b2b/students/<int:student_id>/visa-info', methods=['GET', 'POST'])
     @login_required
+    @csrf_exempt
     def ukvi_b2b_student_visa_info(student_id):
         from modules.ukvi.models import UKVIB2BStudent
         from datetime import datetime as _dt
@@ -9966,8 +11140,6 @@ if _B2B_AVAILABLE:
         except Exception as e:
             db.session.rollback()
             return jsonify({'success': False, 'error': str(e)}), 500
-else:
-    logger.warning("B2B UKVI routes NOT registered (models import failed)")
 
 
 

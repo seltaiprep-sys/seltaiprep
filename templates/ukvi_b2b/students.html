@@ -1,6 +1,20 @@
 {% extends 'ukvi_b2b/base.html' %}
 {% block title %}Students{% endblock %}
 {% block content %}
+
+{% set missing_email = students|rejectattr('email')|list|length %}
+{% if missing_email > 0 %}
+<div style="margin-bottom:16px;padding:14px 16px;background:#fef3c7;border:2px solid #f59e0b;border-radius:10px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+    <div style="font-size:24px;">📧</div>
+    <div style="flex:1;min-width:200px;">
+        <strong style="color:#92400e;font-size:13.5px;">{{ missing_email }} student(s) missing email</strong>
+        <div style="color:#78350f;font-size:12px;margin-top:3px;">
+            These students will NOT receive automated notifications until you add their email.
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
     <h2>Students ({{ students|length }})</h2>
     <a href="{{ url_for('ukvi_b2b_add_student') }}" class="btn btn-primary">
