@@ -130,3 +130,45 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 </div>
 </body>
 </html>
+
+
+<!-- [UX PATCH] Track next-step friendly display -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var labels = {
+        'documents':   '📎 Documents Submitted',
+        'application': '📝 Application Submitted',
+        'cas':         '🎫 CAS Issued',
+        'visa_fee':    '💳 Visa Fee Paid',
+        'ihs':         '💰 IHS Paid',
+        'biometrics':  '🔐 Biometrics',
+        'interview':   '🎤 Interview',
+        'decision':    '✅ Decision Received',
+        'visa_issued': '🛂 Visa Issued',
+        'brp':         '📬 BRP Collection'
+    };
+    var hints = {
+        'documents':   'Upload your IELTS, passport, and other documents to your institute.',
+        'application': 'Your institute will submit your application to the university.',
+        'cas':         'Wait for your university to issue CAS. Your institute will update it here.',
+        'visa_fee':    'Pay the UK visa fee and submit the receipt to your institute.',
+        'ihs':         'Pay the Immigration Health Surcharge (IHS).',
+        'biometrics':  'Book and attend your biometrics appointment at the visa center.',
+        'interview':   'Attend your credibility interview (if required).',
+        'decision':    'Wait for UKVI decision on your visa application.',
+        'visa_issued': 'Collect your visa and plan your travel to the UK.',
+        'brp':         'Collect your BRP card after arriving in the UK.'
+    };
+
+    var body = document.body.innerHTML;
+    var matched = body.match(/(➡️?\s*Next\s*Step[^<]*<[^>]*>[^<]*(?:<[^>]*>)?\s*)([a-z_]+)/i);
+    if (matched && labels[matched[2].toLowerCase()]) {
+        var code = matched[2].toLowerCase();
+        var friendly = labels[code];
+        var hint = hints[code] || '';
+        var replacement = matched[1] + friendly +
+            (hint ? '<div style="margin-top:6px;font-size:12px;color:#6b7280;font-style:italic;">💡 ' + hint + '</div>' : '');
+        document.body.innerHTML = body.replace(matched[0], replacement);
+    }
+});
+</script>

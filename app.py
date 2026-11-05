@@ -8292,8 +8292,15 @@ if _B2B_AVAILABLE:
 
             # ═══ Only student session (no partner) → block ═══
             elif _student_id and not pid:
-                flash('Please complete or exit your student test first.', 'warning')
-                return redirect(url_for('ukvi_test_page'))
+                # Clear stale student session — partner re-login गर्न दिन
+                for _k in ('_b2b_student_id', '_b2b_profile',
+                           '_b2b_skip_profile', '_b2b_test_verified'):
+                    session.pop(_k, None)
+                for _k in list(session.keys()):
+                    if _k.startswith('b2b_verified_'):
+                        session.pop(_k, None)
+                flash('Student session cleared. Please login to access institute dashboard.', 'info')
+                return redirect(url_for('ukvi_b2b_login'))
 
             if not pid:
                 flash('Please login to access institute dashboard', 'warning')
@@ -8396,6 +8403,7 @@ if _B2B_AVAILABLE:
     @app.route('/ukvi/b2b/dashboard')
     @_b2b_partner_required
     def ukvi_b2b_dashboard():
+        from modules.ukvi.models import UKVIB2BNotification
         partner = _get_b2b_partner()
         total_students = partner.students.count()
         completed = partner.students.filter(
@@ -8405,9 +8413,34 @@ if _B2B_AVAILABLE:
             UKVIB2BStudent.token_used == False).count()
         recent = partner.students.order_by(
             UKVIB2BStudent.created_at.desc()).limit(5).all()
+
+        # 📧 Recent emails sent to this partner's students
+        try:
+            email_log = db.session.query(
+                UKVIB2BNotification, UKVIB2BStudent
+            ).join(
+                UKVIB2BStudent,
+                UKVIB2BNotification.student_id == UKVIB2BStudent.id
+            ).filter(
+                UKVIB2BStudent.partner_id == partner.id,
+                UKVIB2BNotification.channel == 'email'
+            ).order_by(
+                UKVIB2BNotification.id.desc()
+            ).limit(20).all()
+        except Exception as _e:
+            logger.warning(f'Email log query failed: {_e}')
+            email_log = []
+
+        # Summary counts
+        email_sent_count = sum(1 for n, s in email_log if n.status == 'sent')
+        email_failed_count = sum(1 for n, s in email_log if n.status == 'failed')
+
         return render_template('ukvi_b2b/dashboard.html',
             partner=partner, total_students=total_students,
-            completed=completed, pending=pending, recent=recent)
+            completed=completed, pending=pending, recent=recent,
+            email_log=email_log,
+            email_sent_count=email_sent_count,
+            email_failed_count=email_failed_count)
 
     @app.route('/ukvi/b2b/credits')
     @_b2b_partner_required
@@ -8703,6 +8736,10 @@ if _B2B_AVAILABLE:
             
             db.session.add(student)
             db.session.flush()
+
+            # Auto-generate public_track_token for new student
+            if not student.public_track_token:
+                student.public_track_token = _b2b_secrets.token_urlsafe(24)
             
             db.session.add(UKVIB2BTransaction(
                 partner_id=partner.id, type='student_added',
@@ -8733,6 +8770,7 @@ if _B2B_AVAILABLE:
                     _msg = Message(
                         subject="Your UKVI Mock Test Link",
                         recipients=[student.email],
+                        bcc=[partner.email] if partner and getattr(partner, 'email', None) else None,
                         body=(
                             f"Hello {student.full_name},\n\n"
                             f"Your UKVI interview test is scheduled for:\n"
@@ -9443,6 +9481,27 @@ if _B2B_AVAILABLE:
         student.test_token = _b2b_secrets.token_urlsafe(32)
         student.token_created_at = datetime.now(timezone.utc)
         db.session.commit()
+        # 🆕 Auto-email new test link to student + BCC partner
+        if student.email:
+            try:
+                _h = request.host_url.rstrip('/')
+                _link = _h + student.test_url
+                _track = _h + '/ukvi/track/' + (student.public_track_token or student.test_token)
+                _usr = db.session.get(UKVIUser, student.ukvi_user_id) if student.ukvi_user_id else None
+                _body = (
+                    f"Hello {student.full_name},\n\n"
+                    f"Your UKVI test link has been regenerated. Please use the NEW link below:\n\n"
+                    f"New Test Link:\n{_link}\n\n"
+                    f"Username: {_usr.username if _usr else 'N/A'}\n"
+                    f"Password: (use your existing password)\n\n"
+                    f"Track your progress:\n{_track}\n\n"
+                    f"Note: The previous test link no longer works.\n\n"
+                    f"— {partner.name}"
+                )
+                notify_student(student, 'test_link_regenerated',
+                    '🔄 New Test Link Generated', _body, send_email=True)
+            except Exception as _e:
+                logger.warning(f'Regenerate email failed: {_e}')
         flash('New link generated', 'success')
         return redirect(url_for('ukvi_b2b_student_detail', student_id=student_id))
 
@@ -10171,11 +10230,15 @@ def ukvi_student_track(token):
     completed = sum(1 for e in events if e.is_completed)
     pct = min(100, int((completed / total_stages) * 100))
     next_step = next((e for e in events if not e.is_completed), None)
+    _ns_stage = getattr(next_step, 'stage', '') if next_step else ''
+    next_step_icon  = stage_icon_filter(_ns_stage) if _ns_stage else ''
+    next_step_label = stage_label_filter(_ns_stage) if _ns_stage else ''
 
     return render_template('ukvi_b2b/student_track.html',
         student=student, docs=docs, events=events, pays=pays,
         progress_pct=pct, completed_stages=completed,
-        total_stages=total_stages, next_step=next_step)
+        total_stages=total_stages, next_step=next_step,
+        next_step_icon=next_step_icon, next_step_label=next_step_label)
 @app.route('/ukvi/track/<token>/logout', methods=['POST'])
 def ukvi_student_track_logout(token):
     """Clear verified session."""
@@ -10210,7 +10273,7 @@ from email.mime.text import MIMEText as _MIMEText
 from email.mime.multipart import MIMEMultipart as _MIMEMultipart
 
 
-def _send_email_with_config(to_email, subject, body_html, smtp_config):
+def _send_email_with_config(to_email, subject, body_html, smtp_config, bcc=None):
     if not smtp_config or not smtp_config.get('host'):
         return (False, 'SMTP config missing')
     try:
@@ -10220,11 +10283,17 @@ def _send_email_with_config(to_email, subject, body_html, smtp_config):
         fn = smtp_config.get('from_name') or 'SeltaPrep'
         msg['From'] = f"{fn} <{fe}>"
         msg['To'] = to_email
+        _rcpts = [to_email]
+        if bcc:
+            if isinstance(bcc, str):
+                _rcpts.append(bcc)
+            else:
+                _rcpts.extend([b for b in bcc if b and b != to_email])
         msg.attach(_MIMEText(body_html, 'html', 'utf-8'))
         with _smtplib.SMTP(smtp_config['host'], int(smtp_config.get('port', 587)), timeout=15) as srv:
             srv.starttls()
             srv.login(smtp_config['user'], smtp_config['pass'])
-            srv.send_message(msg)
+            srv.send_message(msg, to_addrs=_rcpts)
         return (True, None)
     except Exception as e:
         return (False, str(e))
@@ -10261,9 +10330,35 @@ def notify_student(student, event_type, title, body, send_email=True):
     if send_email and student.email:
         cfg, source, partner = _partner_smtp_config(student)
         from_name = (cfg or {}).get('from_name', 'SeltaPrep')
+        _prog_html = ''
+        try:
+            from modules.ukvi.models import UKVIB2BTimelineEvent as _TL
+            _total = 8
+            _done = _TL.query.filter_by(student_id=student.id, is_completed=True).count()
+            _pct = min(100, int((_done / _total) * 100))
+            _filled = int(round(_pct / 12.5))
+            _bar = '\u2588' * _filled + '\u2591' * (8 - _filled)
+            try:
+                _base = request.host_url.rstrip('/')
+            except Exception:
+                _base = ''
+            _track_url = _base + '/ukvi/track/' + (student.public_track_token or student.test_token or '')
+            _pname = (partner.name if partner and getattr(partner, 'name', None) else 'Your Institute')
+            _prog_html = (
+                f'<div style="margin-top:20px;padding:16px;background:#eff6ff;border-radius:8px;border-left:4px solid #4f46e5;">'
+                f'<h3 style="margin:0 0 10px;color:#1e40af;font-size:15px;">\U0001F4CA Application Progress: {_pct}%</h3>'
+                f'<p style="margin:0 0 10px;color:#1e40af;font-size:16px;font-family:monospace;letter-spacing:2px;">{_bar} {_done}/{_total}</p>'
+                f'<a href="{_track_url}" style="display:inline-block;background:#4f46e5;color:#fff;padding:8px 16px;border-radius:6px;text-decoration:none;font-size:13px;">\U0001F4F1 View Full Progress</a>'
+                f'</div>'
+                f'<hr style="margin:24px 0;border:none;border-top:1px solid #e5e7eb;">'
+                f'<div style="font-size:12px;color:#6b7280;"><p style="margin:0;">Institute: <strong>{_pname}</strong></p></div>'
+            )
+        except Exception as _pe:
+            logger.warning(f'Progress HTML build failed: {_pe}')
         html = f"""<div style="font-family:sans-serif;"><h2 style="color:#4f46e5;">{title}</h2>
-            <div style="background:#f9fafb;padding:16px;border-radius:8px;white-space:pre-wrap;">{body}</div></div>"""
-        ok, err = (False, 'No SMTP') if not cfg else _send_email_with_config(student.email, title, html, cfg)
+            <div style="background:#f9fafb;padding:16px;border-radius:8px;white-space:pre-wrap;">{body}</div>{_prog_html}</div>"""
+        _bcc_email = (partner.email if partner and getattr(partner, 'email', None) else None)
+        ok, err = (False, 'No SMTP') if not cfg else _send_email_with_config(student.email, title, html, cfg, bcc=_bcc_email)
         db.session.add(UKVIB2BNotification(student_id=student.id, event_type=event_type,
             channel='email', title=title[:200], body=body,
             status='sent' if ok else 'failed',
@@ -11776,3 +11871,31 @@ if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     debug = os.environ.get('FLASK_ENV') == 'development'
     app.run(host='0.0.0.0', port=port, debug=debug)
+
+# ═══════════════════════════════════════════════════════════
+# UX Helpers — Stage icons and labels for templates
+# ═══════════════════════════════════════════════════════════
+_STAGE_META = {
+    'documents':    {'icon': '📎', 'label': 'Documents'},
+    'application':  {'icon': '📝', 'label': 'Application Submitted'},
+    'cas':          {'icon': '🎫', 'label': 'CAS Issued'},
+    'visa_fee':     {'icon': '💳', 'label': 'Visa Fee Paid'},
+    'ihs':          {'icon': '💰', 'label': 'IHS Paid'},
+    'biometrics':   {'icon': '🔐', 'label': 'Biometrics'},
+    'interview':    {'icon': '🎤', 'label': 'Interview'},
+    'decision':     {'icon': '✅', 'label': 'Decision Received'},
+    'visa_issued':  {'icon': '🛂', 'label': 'Visa Issued'},
+    'brp':          {'icon': '📬', 'label': 'BRP Collection'},
+    'other':        {'icon': '📌', 'label': 'Other'},
+}
+
+def _stage_meta(code):
+    return _STAGE_META.get((code or '').lower(), {'icon': '📌', 'label': (code or 'Other').title()})
+
+@app.template_filter('stage_icon')
+def stage_icon_filter(code):
+    return _stage_meta(code)['icon']
+
+@app.template_filter('stage_label')
+def stage_label_filter(code):
+    return _stage_meta(code)['label']

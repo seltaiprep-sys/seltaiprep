@@ -1,6 +1,5 @@
 {% extends 'ukvi_b2b/base.html' %}
-{% block title %}{{ student.full_name }}{% endblock %}
-{% block content %}
+{% block title %}{{ student.full_name }}{% block content %}
 
 {% if not student.email %}
 <div style="margin-bottom:14px;padding:12px 16px;background:#fef3c7;border:2px solid #f59e0b;border-radius:10px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
@@ -500,6 +499,10 @@
 
     <!-- ═══ TIMELINE ═══ -->
     <div id="crm-panel-timeline" class="crm-panel">
+        <div style="margin-bottom:12px;padding:10px 14px;background:#eff6ff;border-left:4px solid #3b82f6;border-radius:6px;font-size:12.5px;color:#1e40af;line-height:1.6;">
+            💡 <strong>How to add a step:</strong> ① Choose stage &nbsp;→&nbsp; ② Write title &nbsp;→&nbsp; ③ Set date &nbsp;→&nbsp; ④ Click <strong>➕ Add</strong>
+            <br>✓ Mark complete (○→✓) = progress +1 stage
+        </div>
         <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
             <select id="tl-stage" class="crm-input" style="flex:1;min-width:130px;">
                 <option value="documents">Documents</option>
@@ -533,14 +536,39 @@
                 <div class="timeline-row">
                     <button onclick="toggleTimeline({{ e.id }})" class="crm-btn crm-btn-sm {% if e.is_completed %}crm-btn-success{% else %}crm-btn-outline{% endif %}" style="min-width:32px;">{% if e.is_completed %}✓{% else %}○{% endif %}</button>
                     <div style="flex:1;">
-                        <strong>{{ e.title }}</strong> <span style="color:#9ca3af;font-size:11px;">[{{ e.stage }}]</span><br>
+                        <strong>{{ e.title }}</strong> <span style="color:#6b7280;font-size:11.5px;background:#f3f4f6;padding:2px 8px;border-radius:10px;margin-left:6px;">{% set _sl = {
+    'documents':   'Documents',
+    'application': 'Application Submitted',
+    'cas':         'CAS Issued',
+    'visa_fee':    'Visa Fee Paid',
+    'ihs':         'IHS Paid',
+    'biometrics':  'Biometrics',
+    'interview':   'Interview',
+    'decision':    'Decision Received',
+    'visa_issued': 'Visa Issued',
+    'brp':         'BRP Collection',
+    'other':       'Other'
+} %}{{ _sl.get(e.stage|lower, e.stage|title) }}</span><br>
                         <small style="color:#6b7280;">{{ e.event_date.strftime('%Y-%m-%d') if e.event_date else 'No date' }}</small>
                     </div>
                     <button onclick="deleteTimeline({{ e.id }})" class="crm-btn crm-btn-danger crm-btn-sm">🗑</button>
                 </div>
                 {% endfor %}
             {% else %}
-                <div class="crm-empty">No timeline events yet. Add the first one above.</div>
+                <div class="crm-empty" style="padding:20px;background:#f9fafb;border-radius:8px;text-align:left;line-height:1.7;">
+    <p style="margin:0 0 10px;font-size:14px;color:#374151;"><strong>📋 No progress steps yet</strong></p>
+    <p style="margin:0 0 10px;font-size:12.5px;color:#6b7280;">Add milestones as they happen. Suggested order:</p>
+    <ol style="margin:0;padding-left:22px;font-size:12.5px;color:#4b5563;">
+        <li>📎 <strong>Documents</strong> — Documents submitted</li>
+        <li>📝 <strong>Application Submitted</strong> — Application sent</li>
+        <li>🎫 <strong>CAS Issued</strong> — CAS received</li>
+        <li>💳 <strong>Visa Fee Paid</strong> — Visa fee paid</li>
+        <li>🔐 <strong>Biometrics</strong> — Biometrics enrolled</li>
+        <li>✅ <strong>Decision Received</strong> — Visa decision</li>
+        <li>🛂 <strong>Visa Issued</strong> — Visa granted</li>
+    </ol>
+    <p style="margin:12px 0 0;font-size:12px;color:#6b7280;">⏳ New = pending. Click <strong>○ → ✓</strong> to mark complete (+1 progress).</p>
+</div>
             {% endif %}
         </div>
     </div>
@@ -1302,6 +1330,95 @@ function deletePayment(id) {
         setTimeout(window.loadLoginAttempts, 300);
     }
 })();
+</script>
+
+
+<!-- [PATCHED] Global copy functions for test link + credentials -->
+<script>
+(function(){
+  'use strict';
+  function _legacyCopy(text) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.top = '-9999px';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    try { document.execCommand('copy'); } catch(e){ console.warn('copy failed', e); }
+    document.body.removeChild(ta);
+  }
+  function _copy(text) {
+    if (!text) return;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).catch(function(){ _legacyCopy(text); });
+    } else {
+      _legacyCopy(text);
+    }
+  }
+  window.copyLink = function() {
+    var el = document.getElementById('testLink');
+    if (el) _copy(el.textContent.trim());
+  };
+  window.copyCredentials = function() {
+    var link = '{{ full_link }}';
+    var uname = '{{ ukvi_user.username if ukvi_user else "" }}';
+    var msg = 'Test Link: ' + link + '\nUsername: ' + uname + '\nPassword: [your password]';
+    _copy(msg);
+  };
+  window.copyTrackLink = function() {
+    var el = document.getElementById('trackLink');
+    if (el) _copy(el.textContent.trim());
+  };
+})();
+</script>
+
+
+<!-- [UX PATCH] Tab subtitles + roadmap card -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var tabMap = {
+        'Documents': '📎 Upload IELTS, Passport, Bank — click ✓ to verify',
+        'CAS':       '🎫 CAS number, status, issue & expiry dates',
+        'Timeline':  '🗓️ Mark milestones — each ✓ counts +1 progress',
+        'Payments':  '💳 Record visa fee, IHS, tuition, flights'
+    };
+    document.querySelectorAll('.crm-tab, .tab-btn, [data-panel], [onclick*="showPanel"], [onclick*="openPanel"]').forEach(function(t) {
+        if (t.dataset.uxEnhanced) return;
+        var txt = (t.textContent || '').trim();
+        for (var key in tabMap) {
+            if (txt.indexOf(key) >= 0) {
+                t.dataset.uxEnhanced = '1';
+                t.innerHTML = '<div style="text-align:left;line-height:1.4;"><strong>' + t.innerHTML + '</strong>' +
+                              '<div style="font-size:11px;font-weight:normal;opacity:0.75;margin-top:2px;">' + tabMap[key] + '</div></div>';
+                break;
+            }
+        }
+    });
+
+    if (!document.getElementById('ux-roadmap')) {
+        var anchor = document.querySelector('.crm-panel');
+        if (anchor && anchor.parentNode) {
+            var rm = document.createElement('div');
+            rm.id = 'ux-roadmap';
+            rm.style.cssText = 'margin-bottom:16px;padding:14px 18px;background:linear-gradient(135deg,#eff6ff,#f0f9ff);border:2px solid #93c5fd;border-radius:10px;';
+            var steps = [
+                ['①','📎','Documents'],['②','📝','Application'],
+                ['③','🎫','CAS'],['④','💳','Visa Fee'],
+                ['⑤','💰','IHS'],['⑥','🔐','Biometrics'],
+                ['⑦','✅','Decision'],['⑧','🛂','Visa Issued']
+            ];
+            var pills = steps.map(function(s){
+                return '<span style="padding:4px 10px;background:#dbeafe;border-radius:12px;color:#1e40af;font-size:11.5px;">' + s[0] + ' ' + s[1] + ' ' + s[2] + '</span>';
+            }).join('');
+            rm.innerHTML = '<h3 style="margin:0 0 10px;color:#1e40af;font-size:14px;">📋 UKVI Journey — 8 stages</h3>' +
+                '<div style="display:flex;flex-wrap:wrap;gap:6px;">' + pills + '</div>' +
+                '<p style="margin:10px 0 0;font-size:11.5px;color:#1e40af;opacity:0.8;">Each completed Timeline step advances progress (max 8/8).</p>';
+            anchor.parentNode.insertBefore(rm, anchor);
+        }
+    }
+});
 </script>
 
 {% endblock %}

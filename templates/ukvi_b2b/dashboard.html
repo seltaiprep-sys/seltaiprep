@@ -237,4 +237,68 @@ document.addEventListener('keydown', function(e) {
 });
 </script>
 
+
+{% if email_log is defined and email_log %}
+<div class="card" style="margin-top:20px;background:#f9fafb;border:2px solid #8b5cf6;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+        <h3 style="margin:0;color:#6b21a8;">📧 Recent Emails Sent to Students</h3>
+        <div style="font-size:13px;">
+            <span style="background:#d1fae5;color:#065f46;padding:4px 10px;border-radius:12px;margin-right:6px;">
+                ✅ {{ email_sent_count }} sent
+            </span>
+            {% if email_failed_count > 0 %}
+            <span style="background:#fee2e2;color:#991b1b;padding:4px 10px;border-radius:12px;">
+                ❌ {{ email_failed_count }} failed
+            </span>
+            {% endif %}
+        </div>
+    </div>
+    <div style="max-height:400px;overflow-y:auto;">
+        <table style="width:100%;font-size:13px;border-collapse:collapse;">
+            <thead>
+                <tr style="background:#ede9fe;text-align:left;">
+                    <th style="padding:8px;border-bottom:1px solid #ddd;">Status</th>
+                    <th style="padding:8px;border-bottom:1px solid #ddd;">Student</th>
+                    <th style="padding:8px;border-bottom:1px solid #ddd;">Email Subject</th>
+                    <th style="padding:8px;border-bottom:1px solid #ddd;">Sent At</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for notif, stu in email_log %}
+                <tr style="border-bottom:1px solid #f3f4f6;">
+                    <td style="padding:8px;">
+                        {% if notif.status == 'sent' %}
+                            <span style="color:#059669;">✅ Sent</span>
+                        {% else %}
+                            <span style="color:#dc2626;" title="{{ notif.error or '' }}">❌ Failed</span>
+                        {% endif %}
+                    </td>
+                    <td style="padding:8px;">
+                        <a href="{{ url_for('ukvi_b2b_student_detail', student_id=stu.id) }}"
+                           style="color:#4f46e5;text-decoration:none;">
+                            {{ stu.full_name }}
+                        </a>
+                    </td>
+                    <td style="padding:8px;">{{ notif.title }}</td>
+                    <td style="padding:8px;color:#6b7280;font-size:12px;">
+                        {% if notif.sent_at %}
+                            {{ notif.sent_at.strftime('%b %d, %H:%M') }}
+                        {% else %}
+                            <span style="color:#dc2626;">— (failed)</span>
+                            {% if notif.error %}
+                                <br><small style="color:#991b1b;">{{ notif.error[:60] }}</small>
+                            {% endif %}
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <p style="font-size:12px;color:#6b7280;margin-top:10px;text-align:center;">
+        Last 20 emails • <a href="{{ url_for('ukvi_b2b_students') }}">View all students →</a>
+    </p>
+</div>
+{% endif %}
+
 {% endblock %}
