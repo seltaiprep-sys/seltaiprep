@@ -759,7 +759,7 @@ textarea.form-control {
                     <div class="form-group" style="grid-column: 1 / -1;">
                 <label style="font-size: 12px;">Previous Education</label>
                 <input type="text" name="previous_education" class="form-control"
-                       value="{ student.previous_education or '' }"
+                       value=""
                        placeholder="e.g., BSc Computer Science, Tribhuvan University, 2020">
             
                     <div class="form-hint">Prior degree (e.g., BSc CS, Tribhuvan University, 2023)</div>
@@ -796,13 +796,13 @@ textarea.form-control {
                 <label style="font-size: 12px;">Sponsor Relationship <span class="required">*</span></label>
                 <select name="sponsor_relationship" class="form-control">
                     <option value="">— Select —</option>
-                    <option value="father"  {% if student.sponsor_relationship == 'father' %}selected{% endif %}>Father</option>
-                    <option value="mother"  {% if student.sponsor_relationship == 'mother' %}selected{% endif %}>Mother</option>
-                    <option value="uncle"   {% if student.sponsor_relationship == 'uncle' %}selected{% endif %}>Uncle</option>
-                    <option value="aunt"    {% if student.sponsor_relationship == 'aunt' %}selected{% endif %}>Aunt</option>
-                    <option value="sibling" {% if student.sponsor_relationship == 'sibling' %}selected{% endif %}>Sibling</option>
-                    <option value="self"    {% if student.sponsor_relationship == 'self' %}selected{% endif %}>Self</option>
-                    <option value="other"   {% if student.sponsor_relationship == 'other' %}selected{% endif %}>Other</option>
+                    <option value="father">Father</option>
+                    <option value="mother">Mother</option>
+                    <option value="uncle">Uncle</option>
+                    <option value="aunt">Aunt</option>
+                    <option value="sibling">Sibling</option>
+                    <option value="self">Self</option>
+                    <option value="other">Other</option>
                 </select>
             
                     <div class="form-hint">Relationship with the student</div>
@@ -831,7 +831,7 @@ textarea.form-control {
                     <div class="form-group" style="grid-column: 1 / -1;">
                 <label style="font-size: 12px;">Work Experience</label>
                 <input type="text" name="work_experience" class="form-control"
-                       value="{ student.work_experience or '' }"
+                       value=""
                        placeholder="e.g., 2 years as Software Developer at ABC Company">
             
                     <div class="form-hint">Current or past job (e.g., 2 years at ABC Company)</div>
@@ -840,7 +840,7 @@ textarea.form-control {
                     <div class="form-group" style="grid-column: 1 / -1;">
                 <label style="font-size: 12px;">Career Plan (after study)</label>
                 <textarea name="career_plan" class="form-control" rows="2"
-                          placeholder="e.g., Return to Nepal and work as Data Scientist at XYZ Company">{ student.career_plan or '' }</textarea>
+                          placeholder="e.g., Return to Nepal and work as Data Scientist at XYZ Company"></textarea>
             
                     <div class="form-hint">Plans after returning to Nepal</div>
                 </div>
