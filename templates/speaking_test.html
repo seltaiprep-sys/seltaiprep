@@ -816,6 +816,35 @@ body.exam-focus #live-transcript {
     display: block !important;
 }
 </style>
+
+<style id="mobile-fixes-v3">
+@media (max-width: 768px) {
+    .panel, .main-panel, .test-panel {
+        max-height: 65vh !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+    }
+    
+    .controls { gap: 6px !important; }
+    
+    button, .btn { 
+        min-height: 44px !important;
+        touch-action: manipulation !important;
+        -webkit-tap-highlight-color: transparent !important;
+    }
+    
+    input, textarea, select {
+        font-size: 16px !important;
+    }
+    
+    .header { padding: 6px 10px !important; }
+    .nav-links { gap: 8px !important; }
+    .nav-links .pill { font-size: 10px !important; padding: 4px 8px !important; }
+    
+    body { overflow-x: hidden !important; }
+}
+</style>
+
 </head>
 <body>
 
@@ -855,11 +884,13 @@ body.exam-focus #live-transcript {
         Total time: <strong>15 minutes</strong> (with +5 min grace if you need more).
     </p>
     <div class="rules">
-        <strong>📋 Smart Detection Rules:</strong><br>
-        • <strong>Mic mode:</strong> After you speak, <strong>3 sec silence</strong> moves to next question (Part 3: 5 sec)<br>
-        • <strong>Typing mode:</strong> After you type, <strong>15 sec idle</strong> moves to next question<br>
-        • <strong>Part 2:</strong> Full 2 minutes given (no auto-advance)<br>
-        • <strong>Minimum per Q:</strong> 15 seconds (no rushing)
+        <strong>📋 Real IELTS Experience:</strong><br>
+        • <strong>Examiner waits 14–16 seconds</strong> for your answer<br>
+        • <strong>Try every question</strong> — even a short answer helps<br>
+        • If you don't know, use <strong>"💭 I don't know"</strong> button<br>
+        • <strong>Repeated skips lower your band score</strong><br>
+        • Need time? Use <strong>🔁 Repeat</strong> to hear question again<br>
+        • <strong>Part 2:</strong> Full 2 minutes (no auto-advance)
     </div>
     <!-- 🆕 Mic test indicator -->
     <div class="mic-test" id="mic-test">
@@ -887,7 +918,11 @@ body.exam-focus #live-transcript {
 <!-- ===== AVATAR LOADER ===== -->
 <div class="avatar-loading" id="avatar-loading">
     <div class="spinner"></div>
-    <p>Loading examiner...</p>
+    <p style="font-size:14px;font-weight:700;color:#b3adff;">🎭 Preparing your examiner</p>
+    <p style="font-size:11px;color:#6b7280;margin-top:4px;">This may take a few seconds</p>
+    <div style="width:200px;height:4px;background:rgba(255,255,255,0.1);border-radius:4px;margin-top:10px;overflow:hidden;">
+        <div id="loading-bar" style="width:0%;height:100%;background:linear-gradient(90deg,#6c63ff,#22c55e);border-radius:4px;transition:width .3s;"></div>
+    </div>
 </div>
 
 <!-- ===== SUBSCRIPTION / ERROR BANNER ===== -->
@@ -898,6 +933,7 @@ body.exam-focus #live-transcript {
 
 <!-- ===== QUESTION OVERLAY ===== -->
 <div class="question-overlay" id="question-overlay">
+    <div class="answer-indicator" id="answer-indicator" style="display:none;margin-bottom:10px;padding:6px 14px;border-radius:20px;font-size:11px;font-weight:800;letter-spacing:.5px;text-align:center;"></div>
     <div class="category" id="overlay-category"></div>
     <div class="text" id="overlay-text"></div>
     <div class="cue-card" id="overlay-cue" style="display:none;"></div>
@@ -917,7 +953,7 @@ body.exam-focus #live-transcript {
         <div class="nav-links">
             <span class="pill" id="part-indicator">📋 Part 1</span>
             <span class="pill" id="source-pill" style="display:none;">📦 Pool</span>
-            <span class="pill amber" id="timer">⏱️ 15:00</span>
+            <span class="pill amber" id="timer" style="min-width:120px;text-align:center;">⏱️ 15:00</span>
             <!-- 🆕 Connection status -->
             <span class="conn-status" id="conn-status">
                 <span class="dot"></span>
@@ -933,6 +969,9 @@ body.exam-focus #live-transcript {
         <div class="sub-status">
             <span class="badge badge-part" id="status-badge">Ready</span>
             <span id="progress-text" style="opacity:.65;">Q 0 / 0</span>
+            <span class="badge badge-part" id="part-progress" style="background:rgba(255,176,32,0.16);color:#ffd68a;display:none;">
+                Part 1 of 3
+            </span>
         </div>
 
         <div class="progress-track">
@@ -986,7 +1025,8 @@ body.exam-focus #live-transcript {
             <button class="btn btn-skip-rec" id="skip-rec-btn" style="display:none;" onclick="skipRecording()">
                 ⏭️ Skip & Next
             </button>
-            <button class="btn btn-outline" id="repeat-btn">🔁 Repeat</button>
+            <button class="btn btn-outline" id="repeat-btn" title="Repeat question">🔁 Repeat</button>
+            <button class="btn btn-outline" id="dontknow-btn" title="I don't know" style="border-color:rgba(255,176,32,.5);color:#ffd68a;">💭 I don't know</button>
             <!-- 🆕 Pause + Review -->
             <button class="btn btn-pause" id="pause-btn" title="Pause test">⏸️</button>
             <button class="btn btn-outline" id="review-btn" title="Review answers">📋 Review</button>
@@ -1080,39 +1120,45 @@ body.exam-focus #live-transcript {
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
     const AVATAR_URLS = [
-        'https://models.readyplayer.me/64bfa15f0e72c63d7c3934a6.glb?quality=medium&meshLod=1',
-        'https://models.readyplayer.me/6185a4acfb622cf1cdc49348.glb?quality=medium&meshLod=1',
-        'https://models.readyplayer.me/64e5e9a2f5c5b3d8e8f4e8f5.glb?quality=medium&meshLod=1',
+        '/static/models/male_british.glb',
+        '/static/models/male_english.glb',
+        '/static/models/female_english.glb',
+        '/static/models/RobotExpressive.glb',  // fallback
     ];
 
     const container = document.getElementById('three-container');
     const loadingEl = document.getElementById('avatar-loading');
 
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(30, window.innerWidth / window.innerHeight, 0.1, 20);
-    camera.position.set(0, 1.52, 1.28);
-    camera.lookAt(0, 1.55, 0);
+    // [POSITION FIX] Fixed camera — stable across all avatars
+    // [FIX] Wider FOV + further distance — full upper body visible
+    const camera = new THREE.PerspectiveCamera(38, window.innerWidth / window.innerHeight, 0.1, 50);
+    camera.position.set(0, 1.5, 2.4);   // [TUNE] eye level = avatar center + 0.10
+    camera.lookAt(0, 0.55, 0);
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });  // [SHARP] GPU preference
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));  // [PERF]
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.15;
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.shadowMap.enabled = false;  // [PERF] disabled for smoother render
     container.appendChild(renderer.domElement);
 
+    // [POSITION FIX] Stable orbit controls — allow slight look-around, no big zoom
     const controls = new OrbitControls(camera, renderer.domElement);
-    controls.target.set(0, 1.55, 0);
+    controls.target.set(0, 1.52, 0);
     controls.enableDamping = true;
-    controls.dampingFactor = 0.06;
+    controls.dampingFactor = 0.08;
     controls.enablePan = false;
-    controls.minDistance = 0.75;
-    controls.maxDistance = 2.4;
-    controls.minPolarAngle = Math.PI * 0.25;
-    controls.maxPolarAngle = Math.PI * 0.62;
-    controls.rotateSpeed = 0.45;
+    controls.enableZoom = false;
+    controls.minDistance = 1.0;
+    controls.maxDistance = 5.0;
+    controls.minPolarAngle = Math.PI * 0.35;   // limited vertical
+    controls.maxPolarAngle = Math.PI * 0.55;
+    controls.minAzimuthAngle = -Math.PI * 0.15;  // limited horizontal (no full rotate)
+    controls.maxAzimuthAngle = Math.PI * 0.15;
+    controls.rotateSpeed = 0.3;
     controls.update();
 
     scene.add(new THREE.HemisphereLight(0xb8d4ff, 0x1a1f2a, 0.55));
@@ -1130,13 +1176,7 @@ body.exam-focus #live-transcript {
     rimLight.position.set(0, 2.0, -1.6);
     scene.add(rimLight);
 
-    const frontLight = new THREE.PointLight(0xffcc99, 0.45, 5);
-    frontLight.position.set(0, 1.6, 1.2);
-    scene.add(frontLight);
-
-    const glow = new THREE.PointLight(0x6c63ff, 1.4, 8);
-    glow.position.set(0, 1.4, -2.2);
-    scene.add(glow);
+    // [PERF] Removed extra lights (frontLight + glow) — 2 lights enough
 
     let avatar = null;
     let headMesh = null;
@@ -1153,7 +1193,7 @@ body.exam-focus #live-transcript {
     let blinkState = 0;
 
     const loader = new GLTFLoader();
-    let currentAvatarIdx = 0;
+    let currentAvatarIdx = Math.floor(Math.random() * Math.max(1, AVATAR_URLS.length - 1));  // random start, skip fallback
 
     function hideLoader() {
         loadingEl.classList.add('hidden');
@@ -1177,8 +1217,8 @@ body.exam-focus #live-transcript {
 
                 avatar.traverse((child) => {
                     if (child.isMesh) {
-                        child.castShadow = true;
-                        child.receiveShadow = true;
+                        child.castShadow = false;   // [PERF]
+                        child.receiveShadow = false;  // [PERF]
                         if (child.material) child.material.envMapIntensity = 0.85;
                         if (child.morphTargetDictionary && Object.keys(child.morphTargetDictionary).length > 0) {
                             headMesh = child;
@@ -1189,6 +1229,97 @@ body.exam-focus #live-transcript {
                 });
 
                 scene.add(avatar);
+
+                // [PATCH] Auto-fit camera + gender detect
+                // [FIX] Full diagnostic + safe scale + camera
+                try {
+                    // Reset transform first (in case GLB has weird origin)
+                    avatar.position.set(0, 0, 0);
+                    avatar.scale.setScalar(1);
+                    avatar.updateMatrixWorld(true);
+
+                    // BEFORE diagnostic
+                    const bbox0 = new THREE.Box3().setFromObject(avatar);
+                    const size0 = new THREE.Vector3();
+                    const center0 = new THREE.Vector3();
+                    bbox0.getSize(size0);
+                    bbox0.getCenter(center0);
+                    console.log('📐 BEFORE normalize:');
+                    console.log('   size:', size0.x.toFixed(2), 'x', size0.y.toFixed(2), 'x', size0.z.toFixed(2));
+                    console.log('   center:', center0.x.toFixed(2), center0.y.toFixed(2), center0.z.toFixed(2));
+                    console.log('   bbox min:', bbox0.min.x.toFixed(2), bbox0.min.y.toFixed(2), bbox0.min.z.toFixed(2));
+                    console.log('   bbox max:', bbox0.max.x.toFixed(2), bbox0.max.y.toFixed(2), bbox0.max.z.toFixed(2));
+
+                    // Scale to 1.75m
+                    const TARGET_H = 1.75;
+                    if (size0.y < 0.01) {
+                        console.warn('⚠️  Avatar height near 0 — using 1.0 scale');
+                    } else {
+                        const scale = TARGET_H / size0.y;
+                        avatar.scale.setScalar(scale);
+                        avatar.updateMatrixWorld(true);
+                        console.log(`📐 Scale applied: ${scale.toFixed(3)}x (1.75 / ${size0.y.toFixed(2)})`);
+                    }
+
+                    // AFTER scale — reposition feet at origin
+                    const bbox1 = new THREE.Box3().setFromObject(avatar);
+                    const size1 = new THREE.Vector3();
+                    const center1 = new THREE.Vector3();
+                    bbox1.getSize(size1);
+                    bbox1.getCenter(center1);
+                    console.log('📐 AFTER scale:');
+                    console.log('   size:', size1.x.toFixed(2), 'x', size1.y.toFixed(2), 'x', size1.z.toFixed(2));
+                    console.log('   center:', center1.x.toFixed(2), center1.y.toFixed(2), center1.z.toFixed(2));
+
+                    // Position: centered x, feet at y=0, z=0
+                    avatar.position.x = -center1.x;  // center X
+                    avatar.position.y = -bbox1.min.y;  // feet at ground
+                    avatar.position.z = -center1.z;  // center Z
+                    avatar.updateMatrixWorld(true);
+                    console.log('📍 Avatar positioned: x=' + avatar.position.x.toFixed(2) + ', y=' + avatar.position.y.toFixed(2) + ', z=' + avatar.position.z.toFixed(2));
+
+                    // FINAL bbox
+                    const bbox2 = new THREE.Box3().setFromObject(avatar);
+                    const size2 = new THREE.Vector3();
+                    bbox2.getSize(size2);
+                    console.log('📐 FINAL bbox: height=' + size2.y.toFixed(2) + 'm');
+
+                    // [FIX] Camera Y FIXED, only look-at Y adjusts
+                    // Lower LOOK_Y = avatar appears HIGHER on screen
+                    const CAMERA_Y = 1.5;    // fixed camera height
+                    const LOOK_Y = 0.55;     // ← CHANGE THIS for avatar position
+                    const camDist = 2.4;
+
+                    camera.position.set(0, CAMERA_Y, camDist);
+                    camera.lookAt(0, LOOK_Y, 0);
+                    camera.fov = 38;
+                    camera.updateProjectionMatrix();
+
+                    controls.target.set(0, LOOK_Y, 0);
+                    controls.update();
+
+                    // Calculate screen position
+                    const visH = 2 * camDist * Math.tan(camera.fov / 2 * Math.PI / 180);
+                    const pct = ((0.87 - LOOK_Y) / visH * 100).toFixed(1);
+                    console.log(`📸 Camera Y=${CAMERA_Y}, LOOK_Y=${LOOK_Y}, dist=${camDist}`);
+                    console.log(`   Avatar center appears ${pct}% ${0.87 > LOOK_Y ? 'ABOVE' : 'BELOW'} screen`);
+
+                    // Expose for debugging
+                    window.__THREE = { scene, camera, avatar, controls, renderer };
+                } catch (e) {
+                    console.error('❌ Avatar setup failed:', e);
+                    console.error(e.stack);
+                }
+
+                // Gender from filename — [FIX] window._avatarGender direct
+                const _fname = (url || '').toLowerCase();
+                if (_fname.includes('female')) {
+                    window._avatarGender = 'female';
+                } else if (_fname.includes('male')) {
+                    window._avatarGender = 'male';
+                }
+                console.log('🔊 Avatar gender set:', window._avatarGender);
+
                 hideLoader();
 
                 window._avatarControl = {
@@ -1203,8 +1334,10 @@ body.exam-focus #live-transcript {
             (progress) => {
                 if (progress.total) {
                     const pct = Math.round((progress.loaded / progress.total) * 100);
+                    const bar = document.getElementById('loading-bar');
+                    if (bar) bar.style.width = pct + '%';
                     const el = loadingEl.querySelector('p');
-                    if (el) el.textContent = `Loading examiner… ${pct}%`;
+                    if (el) el.textContent = `🎭 Preparing examiner… ${pct}%`;
                 }
             },
             (error) => {
@@ -1273,11 +1406,44 @@ body.exam-focus #live-transcript {
 
     loadAvatarWithFallback();
 
+    // [PATCH] Safe morph — aliases + silent skip
+    const _morphAliases = {
+        'jawOpen': ['jawOpen', 'JawOpen', 'mouthOpen', 'MouthOpen', 'viseme_aa', 'viseme_AA', 'A', 'aa'],
+        'mouthOpen': ['mouthOpen', 'MouthOpen', 'jawOpen', 'viseme_aa', 'A'],
+        'mouthSmile': ['mouthSmile', 'MouthSmile', 'viseme_I', 'I'],
+        'mouthSmileLeft': ['mouthSmileLeft', 'MouthSmileLeft', 'mouthSmile'],
+        'mouthSmileRight': ['mouthSmileRight', 'MouthSmileRight', 'mouthSmile'],
+        'mouthFunnel': ['mouthFunnel', 'MouthFunnel', 'viseme_O', 'viseme_U', 'O', 'U'],
+        'mouthPucker': ['mouthPucker', 'MouthPucker', 'viseme_U', 'U'],
+        'browInnerUp': ['browInnerUp', 'BrowInnerUp'],
+        'browDownLeft': ['browDownLeft', 'BrowDownLeft'],
+        'browDownRight': ['browDownRight', 'BrowDownRight'],
+        'eyeBlinkLeft': ['eyeBlinkLeft', 'EyeBlinkLeft', 'eyeBlink_L', 'blinkLeft'],
+        'eyeBlinkRight': ['eyeBlinkRight', 'EyeBlinkRight', 'eyeBlink_R', 'blinkRight'],
+        'eyeSquintLeft': ['eyeSquintLeft', 'EyeSquintLeft'],
+        'eyeSquintRight': ['eyeSquintRight', 'EyeSquintRight'],
+    };
+    let _morphWarned = {};
+
     function setMorph(name, value) {
         if (!headMesh || !morphDict) return;
-        const idx = morphDict[name];
-        if (idx === undefined) return;
-        headMesh.morphTargetInfluences[idx] = value;
+        const aliases = _morphAliases[name] || [name];
+        for (const alias of aliases) {
+            const idx = morphDict[alias];
+            if (idx !== undefined) {
+                headMesh.morphTargetInfluences[idx] = value;
+                if (!_morphWarned[name]) {
+                    _morphWarned[name] = true;
+                    console.log(`🎭 Morph '${name}' → '${alias}'`);
+                }
+                return;
+            }
+        }
+        // Missing morph — only warn once per morph name
+        if (!_morphWarned[name]) {
+            _morphWarned[name] = true;
+            console.log(`⚠️ Morph '${name}' not found (OK — avatar may not have lip-sync)`);
+        }
     }
 
     function setExpression(expr) {
@@ -1340,11 +1506,16 @@ body.exam-focus #live-transcript {
         } catch (e) {}
     }
 
+    let _frameCount = 0;
     function animate() {
         requestAnimationFrame(animate);
+        _frameCount++;
         const dt = clock.getDelta();
+        
+        // [PERF] Skip heavy work every other frame
+        const _doHeavyWork = (_frameCount % 2 === 0);
 
-        if (analyser && freqData && isSpeakingNow) {
+        if (analyser && freqData && isSpeakingNow && _doHeavyWork) {
             analyser.getByteFrequencyData(freqData);
             const n = freqData.length;
             let bass = 0, mid = 0;
@@ -1478,16 +1649,23 @@ body.exam-focus #live-transcript {
     const SPEAKING_BASE_SECONDS = 15 * 60;
     const GRACE_SECONDS = 5 * 60;
 
+    // [REAL IELTS] Real examiner waits 12-15s for answer
     const SILENCE_CONFIG = {
-        1: { silence: 6,  typing: 20 },
-        2: { silence: 0,  typing: 0 },
-        3: { silence: 8,  typing: 20 },
+        1: { silence: 14, typing: 25 },   // Part 1: 14s wait
+        2: { silence: 0,  typing: 0 },    // Part 2: full 2min
+        3: { silence: 16, typing: 30 },   // Part 3: 16s wait
     };
 
     const PART_DURATIONS = { 1: 30, 2: 120, 3: 45 };
     const STORAGE_KEY = 'ielts_speaking_autosave_v1';
 
     const state = {
+        // [REAL IELTS] Miss tracking (no fail, band impact)
+        consecutiveMisses: 0,
+        totalMisses: 0,
+        bandPenalty: 0,           // -0.5 per miss
+        dontKnowCount: 0,         // "I don't know" clicks
+        
         audioUrls: {},
         part1Data: null, part2Data: null, part3Data: null,
         questionQueue: [],
@@ -1672,10 +1850,25 @@ body.exam-focus #live-transcript {
         if (!wordCounter) return;
         const text = (answerInput.value || '').trim();
         const words = text ? text.split(/\s+/).filter(Boolean).length : 0;
-        wordCounter.textContent = words + (words === 1 ? ' word' : ' words');
+        
+        // [UI] Better word count with target
+        let display, cls = '';
+        if (words === 0) {
+            display = '0 words';
+        } else if (words < 20) {
+            display = `${words} words (aim 30+)`;
+            cls = 'low';
+        } else if (words < 50) {
+            display = `${words} words ✓`;
+            cls = 'good';
+        } else {
+            display = `${words} words ⭐`;
+            cls = 'good';
+        }
+        
+        wordCounter.textContent = display;
         wordCounter.classList.remove('good', 'low');
-        if (words >= 20) wordCounter.classList.add('good');
-        else if (words < 5 && words > 0) wordCounter.classList.add('low');
+        if (cls) wordCounter.classList.add(cls);
     }
 
     // ✅ FIX 1: _hasSpokenOrTyped removed
@@ -1960,12 +2153,40 @@ body.exam-focus #live-transcript {
         if (text && state.isAwaitingResponse) {
             setStatus(`⏭️ Auto-advancing (${reason})`, 'warn');
             commitAnswer(text);
-        } else {
-            setStatus(`⏭️ No answer — moving to next question`, 'warn');
-            state.isAwaitingResponse = false;
-            hideOverlay();
-            setTimeout(() => nextQuestion(), 500);
+            return;
         }
+
+        // [REAL IELTS] Soft miss tracking (no fail)
+        state.consecutiveMisses++;
+        state.totalMisses++;
+        state.bandPenalty += 0.5;
+        
+        console.log(`⚠️ Miss #${state.totalMisses} (consecutive: ${state.consecutiveMisses}) | Band penalty: -${state.bandPenalty}`);
+
+        // Progressive warnings (visual only, no fail)
+        let warningLevel = 'info';
+        let warningMsg = '';
+        
+        if (state.consecutiveMisses >= 3) {
+            warningLevel = 'err';
+            warningMsg = `⚠️ Question ${state.currentQNumber} skipped. Your band score is being affected. Please try to answer the next one.`;
+        } else if (state.consecutiveMisses === 2) {
+            warningLevel = 'warn';
+            warningMsg = `⚠️ Second skip. Try to answer the next question — even a short answer helps.`;
+        } else {
+            warningLevel = 'info';
+            warningMsg = `💭 Question skipped. If you don't know, try saying "I'm not sure but..." instead of silence.`;
+        }
+
+        setStatus(`⏭️ Skipped (band impact: -0.5)`, 'warn');
+        
+        showBanner(warningMsg, warningLevel, [
+            { label: 'Understood', className: 'btn-dismiss', onClick: hideBanner }
+        ]);
+
+        state.isAwaitingResponse = false;
+        hideOverlay();
+        setTimeout(() => nextQuestion(), 800);
     }
     window.autoAdvance = autoAdvance;
 
@@ -2124,6 +2345,10 @@ body.exam-focus #live-transcript {
         timerEl.classList.remove('warning', 'grace', 'paused');
         if (state.isPaused) {
             timerEl.classList.add('paused');
+        } else if (state.timeLeft <= 0) {
+            // [NATURAL] Show "concluding" not scary
+            timerEl.textContent = '🎓 Concluding…';
+            timerEl.classList.add('grace');
         } else if (state.graceUsed) {
             timerEl.classList.add('grace');
         } else if (state.timeLeft <= 60) {
@@ -2165,8 +2390,9 @@ body.exam-focus #live-transcript {
                 if (graceElapsed >= GRACE_SECONDS) {
                     clearInterval(state.timerInterval);
                     state.timerInterval = null;
-                    setStatus('⏰ Time is up — submitting now…', 'err');
-                    endTest('Time limit reached');
+                    console.log('⏰ Grace exhausted — natural ending after current question');
+                    setStatus('⏰ Concluding after this question…', 'warn');
+                    // Don't call endTest here — let nextQuestion() handle it
                 }
                 return;
             }
@@ -2177,18 +2403,25 @@ body.exam-focus #live-transcript {
                     state._graceStartedAt = Date.now();
                     state.timeLeft = GRACE_SECONDS;
                     updateTimer();
-                    setStatus('⏳ +5 minutes grace added — please finish', 'warn');
+                    setStatus('⏳ A few more seconds — please finish your thought', 'warn');
                     showBanner(
-                        '⏳ Grace extension: +5 minutes added because you were mid-answer.',
-                        'success',
+                        '⏳ Take your time — you have a few more seconds to complete your answer.',
+                        'info',
                         [{ label: 'OK', className: 'btn-dismiss', onClick: hideBanner }]
                     );
                     return;
                 }
+                
+                // [NATURAL] Time up — DON'T interrupt mid-question
+                // Wait for current question/answer cycle to complete
+                // naturalEnding will be triggered at next nextQuestion() call
+                console.log('⏰ Time elapsed — will conclude naturally after current question');
+                setStatus('⏰ Concluding after this question…', 'warn');
+                
+                // Stop timer but don't submit
                 clearInterval(state.timerInterval);
                 state.timerInterval = null;
-                setStatus('⏰ Time is up — submitting now…', 'err');
-                endTest('Time limit reached');
+                // Don't call endTest here — let nextQuestion() handle it
             }
         }, 1000);
 
@@ -2312,6 +2545,23 @@ body.exam-focus #live-transcript {
     let fullCaptionText = '';
 
     function showOverlay(category, text) {
+        // [UI] Show answer indicator
+        const indicator = document.getElementById('answer-indicator');
+        const currentQ = state.currentQuestion;
+        if (indicator && currentQ) {
+            if (currentQ.expectsResponse === false) {
+                indicator.textContent = '💭 EXAMINER (listening)';
+                indicator.style.background = 'rgba(108,99,255,0.2)';
+                indicator.style.color = '#b3adff';
+                indicator.style.display = 'block';
+            } else {
+                indicator.textContent = '🎙️ YOUR ANSWER NEEDED';
+                indicator.style.background = 'rgba(34,197,94,0.2)';
+                indicator.style.color = '#7ee89f';
+                indicator.style.display = 'block';
+            }
+        }
+        
         overlayCategory.textContent = category || '';
         overlayCue.style.display = 'none';
         overlayTimer.style.display = 'none';
@@ -2459,17 +2709,44 @@ body.exam-focus #live-transcript {
         });
     }
 
+    // [PATCH] Avatar gender — voice matching
+    window._avatarGender = 'male';
+
+    window.setAvatarGender = function(g) {
+        window._avatarGender = (g === 'female') ? 'female' : 'male';
+        console.log('🔊 Avatar gender set:', window._avatarGender);
+    };
+
+    function pickVoice() {
+        const voices = speechSynthesis.getVoices();
+        const gbVoices = voices.filter(x => x.lang === 'en-GB' || x.lang === 'en_GB');
+
+        if (window._avatarGender === 'female') {
+            return gbVoices.find(v => /female|samantha|kate|serena|victoria|libby|sonia|emma|hazel|susan/i.test(v.name))
+                || voices.find(v => /female|samantha|kate|zira|aria|jenny/i.test(v.name))
+                || gbVoices[0]
+                || voices.find(v => v.lang.startsWith('en'));
+        } else {
+            return gbVoices.find(v => /male|daniel|george|arthur|oliver|ryan/i.test(v.name) && !/female/i.test(v.name))
+                || voices.find(v => /male|david|mark|alex/i.test(v.name) && !/female/i.test(v.name))
+                || gbVoices[0]
+                || voices.find(v => v.lang.startsWith('en'));
+        }
+    }
+
     function browserTTS(text) {
         return new Promise((resolve) => {
             if (!('speechSynthesis' in window)) return resolve();
             speechSynthesis.cancel();
             const u = new SpeechSynthesisUtterance(text);
             u.rate = 0.92;
-            u.pitch = 1.0;
+            u.pitch = window._avatarGender === 'female' ? 1.15 : 0.95;
             u.lang = 'en-GB';
-            const voices = speechSynthesis.getVoices();
-            const v = voices.find(x => x.lang === 'en-GB') || voices.find(x => x.lang.startsWith('en'));
-            if (v) u.voice = v;
+            const v = pickVoice();
+            if (v) {
+                u.voice = v;
+                console.log(`🔊 Voice: ${v.name} (${window._avatarGender})`);
+            }
             u.onend = () => resolve();
             u.onerror = () => resolve();
             speechSynthesis.speak(u);
@@ -2527,10 +2804,24 @@ body.exam-focus #live-transcript {
         window._nextQLock = true;
         setTimeout(function() { window._nextQLock = false; }, 600);
 
-        if (state.timeLeft <= 0 && !state.graceUsed) { endTest('Time limit reached'); return; }
-        if (state.graceUsed && state.timeLeft <= 0) { endTest('Time limit reached'); return; }
+        // [NATURAL] Check time ONLY before asking new question (never mid-question)
+        if (state.timeLeft <= 0 && !state.graceUsed) {
+            // Time up — but let's end naturally
+            console.log('⏰ Time up — ending naturally (not mid-question)');
+            await naturalEnding('time_limit');
+            return;
+        }
+        if (state.graceUsed && state.timeLeft <= 0) {
+            console.log('⏰ Grace exhausted — ending naturally');
+            await naturalEnding('grace_exhausted');
+            return;
+        }
 
-        if (state.questionQueue.length === 0) { endTest('All questions completed!'); return; }
+        if (state.questionQueue.length === 0) { 
+            // All questions done — natural ending
+            await naturalEnding('all_done');
+            return; 
+        }
 
         stopSilenceDetection();
         stopSilenceMonitor();
@@ -2544,6 +2835,24 @@ body.exam-focus #live-transcript {
         state.currentQNumber++;
         updateProgress();
         updatePart(state.currentPart);
+        
+        // [UI] Show part progress
+        const partProg = document.getElementById('part-progress');
+        if (partProg) {
+            partProg.textContent = `Part ${state.currentPart} of 3`;
+            partProg.style.display = 'inline-flex';
+        }
+
+        // [REAL IELTS] Update skip tracker (info only)
+        const skipTracker = document.getElementById('skip-tracker');
+        if (skipTracker) {
+            if (state.totalMisses > 0) {
+                skipTracker.textContent = `💭 Skipped: ${state.totalMisses}`;
+                skipTracker.style.display = 'inline-flex';
+            } else {
+                skipTracker.style.display = 'none';
+            }
+        }
         questionText.textContent = state.currentQuestion.text;
         answerInput.value = '';
         updateWordCounter();
@@ -2792,28 +3101,9 @@ body.exam-focus #live-transcript {
         }
 
         if (!transcript) {
-            if (state._micFailed) {
-                setStatus('⌨️ Type your answer (60s window) or click Skip', 'warn');
-                const typedOk = await new Promise(resolve => {
-                    const startT = Date.now();
-                    const check = setInterval(() => {
-                        if (!state.isAwaitingResponse) { clearInterval(check); resolve(true); return; }
-                        if (Date.now() - startT >= 60000) { clearInterval(check); resolve(false); }
-                    }, 500);
-                });
-                if (typedOk) return;
-                setStatus('⏭️ No answer typed — moving to next question', 'warn');
-                state.isAwaitingResponse = false;
-                hideOverlay();
-                await new Promise(r => setTimeout(r, 500));
-                nextQuestion();
-                return;
-            }
-            setStatus('⏭️ No speech detected — moving to next question', 'warn');
-            state.isAwaitingResponse = false;
-            hideOverlay();
-            await new Promise(r => setTimeout(r, 500));
-            nextQuestion();
+            // [REAL IELTS] Count as miss (no fail)
+            console.log('⚠️ No transcript — recording as miss');
+            autoAdvance('no_answer');
             return;
         }
 
@@ -3016,6 +3306,29 @@ function commitAnswer(transcript) {
         try { rec.start(); } catch (e) { enableTypingMode(); }
     }
 
+    function handleDontKnow() {
+        if (!state.isAwaitingResponse) return;
+        state.dontKnowCount++;
+        
+        console.log(`💭 "I don't know" clicked (total: ${state.dontKnowCount})`);
+        setStatus('💭 Noted — moving to next question', 'live');
+        
+        // Not a "miss" but still affects band slightly
+        state.totalMisses++;
+        state.bandPenalty += 0.25;  // Half penalty compared to silence
+        
+        showBanner(
+            '💭 That\'s okay! Real examiners understand. In a real test, this counts less than silence.',
+            'info',
+            [{ label: 'OK', className: 'btn-dismiss', onClick: hideBanner }]
+        );
+        
+        state.isAwaitingResponse = false;
+        hideOverlay();
+        setTimeout(() => nextQuestion(), 800);
+    }
+    window.handleDontKnow = handleDontKnow;
+
     function repeatQuestion() {
         if (!state.currentQuestion) return;
         if (state.isAwaitingResponse && stopRecordingEarly) {
@@ -3053,9 +3366,63 @@ function commitAnswer(transcript) {
     // ═══════════════════════════════════════════════════════════
     // SUBMIT — /api/speaking/pooled-submit
     // ═══════════════════════════════════════════════════════════
+    // [NATURAL] Examiner-style natural ending
+    async function naturalEnding(reason) {
+        if (state.isSubmitting || state.hasSubmitted) return;
+        
+        console.log(`🎬 Natural ending triggered (reason: ${reason})`);
+        setStatus('🎓 Concluding test…', 'live');
+        setAvatarState('speaking');
+        
+        // Stop silence detection
+        stopSilenceDetection();
+        stopSilenceMonitor();
+        
+        // Hide question overlay
+        hideOverlay();
+        if (skipRecBtn) skipRecBtn.style.display = 'none';
+        
+        // Different goodbye based on reason
+        let goodbye = '';
+        if (reason === 'all_done') {
+            goodbye = "That brings us to the end of the speaking test. Thank you very much for your time. Goodbye.";
+        } else if (reason === 'time_limit') {
+            goodbye = "I'm afraid our time is up. Thank you very much for your responses. This concludes the speaking test.";
+        } else {
+            goodbye = "Thank you. That concludes the speaking test. Goodbye.";
+        }
+        
+        // Show goodbye on question overlay
+        showOverlay('', goodbye);
+        
+        // Speak the goodbye
+        try {
+            await speakText(goodbye, 'goodbye_ending', 'empathetic');
+        } catch (e) {
+            console.warn('Goodbye audio failed:', e);
+        }
+        
+        // Wait a moment after goodbye
+        await new Promise(r => setTimeout(r, 1500));
+        
+        // Then submit
+        hideOverlay();
+        setStatus('📤 Submitting responses…', 'live');
+        
+        // Call original endTest (which does submit)
+        const _originalReason = reason === 'all_done' ? 'All questions completed!' : 'Time limit reached';
+        await endTest(_originalReason);
+    }
+    window.naturalEnding = naturalEnding;
+
     async function endTest(reason) {
         if (state.isSubmitting || state.hasSubmitted) return;
         state.isSubmitting = true;
+        
+        // [WAKE LOCK] Release on test end
+        try {
+            if (window.__wakeLock) window.__wakeLock.release();
+        } catch (e) {}
 
         if (state.timerInterval) { clearInterval(state.timerInterval); state.timerInterval = null; }
         stopSilenceDetection();
@@ -3084,6 +3451,9 @@ function commitAnswer(transcript) {
                         body: JSON.stringify({
                             responses: [], is_full_test: true,
                             session_id: state.sessionId, _pool_id: state.poolId,
+                            band_penalty: state.bandPenalty || 0,
+                            total_misses: state.totalMisses || 0,
+                            dont_know_count: state.dontKnowCount || 0,
                         })
                     });
                 } catch (e) {}
@@ -3108,6 +3478,10 @@ function commitAnswer(transcript) {
                     is_full_test: isFullTest,
                     session_id: state.sessionId,
                     _pool_id: state.poolId,
+                    // [REAL IELTS] Send penalty data to backend
+                    band_penalty: state.bandPenalty || 0,
+                    total_misses: state.totalMisses || 0,
+                    dont_know_count: state.dontKnowCount || 0,
                 })
             });
             state.hasSubmitted = true;
@@ -3191,19 +3565,59 @@ function commitAnswer(transcript) {
 
     function showResults(band, feedback) {
         resultsScreen.classList.add('show');
-        if (band === null || band === undefined || isNaN(band)) {
+        
+        // [REAL IELTS] Hide panel on results
+        const mainPanel = document.getElementById('main-panel');
+        if (mainPanel) mainPanel.style.display = 'none';
+
+        // [REAL IELTS] Band already penalized by backend — use directly
+        let displayBand = band;
+        
+        // Only apply local penalty if backend didn't (standalone fallback)
+        if (band !== null && band !== undefined && !isNaN(band)) {
+            const rawBand = Number(band);
+            // If backend didn't penalize (full test already handled), don't double-penalize
+            // Check: standalone returns user_overall_band which is ALREADY penalized
+            console.log(`📊 Band received from server: ${rawBand.toFixed(1)}`);
+        }
+
+        if (displayBand === null || displayBand === undefined || isNaN(displayBand)) {
             bandScoreEl.textContent = '—';
         } else {
-            bandScoreEl.textContent = Number(band).toFixed(1);
+            bandScoreEl.textContent = Number(displayBand).toFixed(1);
         }
+        
         answeredCountEl.textContent = state.answeredCount;
         const totalWords = state.responses.reduce((sum, r) =>
             sum + (r.answer || '').split(/\s+/).filter(Boolean).length, 0);
         wordsCountEl.textContent = totalWords;
-        feedbackTextEl.innerHTML = '<p>' + String(feedback || '').replace(/\|/g, '<br>') + '</p>';
+        
+        // [REAL IELTS] Add miss info to feedback
+        let enhancedFeedback = String(feedback || '');
+        
+        if (state.totalMisses > 0) {
+            enhancedFeedback += `\n\n📊 Test Summary:`;
+            enhancedFeedback += `\n• Questions answered: ${state.answeredCount}`;
+            enhancedFeedback += `\n• Questions skipped: ${state.totalMisses}`;
+            if (state.dontKnowCount > 0) {
+                enhancedFeedback += `\n• "I don't know" used: ${state.dontKnowCount} time(s)`;
+            }
+            enhancedFeedback += `\n• Band penalty: -${state.bandPenalty.toFixed(1)} (for skips)`;
+            
+            if (state.totalMisses >= 3) {
+                enhancedFeedback += `\n\n💡 Tip: Try to attempt every question — even saying "I'm not sure, but..." helps your score. Silence hurts more than imperfect answers.`;
+            }
+        }
+        
+        feedbackTextEl.innerHTML = '<p>' + enhancedFeedback.replace(/\|/g, '<br>') + '</p>';
     }
 
     function exitTest() {
+        // [WAKE LOCK] Release on exit
+        try {
+            if (window.__wakeLock) window.__wakeLock.release();
+        } catch (e) {}
+        
         let msg = 'Are you sure you want to exit the test? Your progress will be saved.';
         if (isFullTest) {
             msg = 'Leave the Speaking phase and return to the Full Test dashboard?\n\n' +
@@ -3331,25 +3745,20 @@ function commitAnswer(transcript) {
             if (graceElapsed >= GRACE_SECONDS) {
                 if (state.timerInterval) clearInterval(state.timerInterval);
                 state.timerInterval = null;
-                setStatus('⏰ Time is up — submitting now…', 'err');
-                endTest('Time limit reached');
+                console.log('⏰ Grace exhausted (tab return) — natural ending on next question');
+                setStatus('⏰ Concluding after this question…', 'warn');
             }
         } else if (baseElapsed >= SPEAKING_BASE_SECONDS) {
             if (isStudentMidAnswer()) {
                 state.graceUsed = true;
                 state._graceStartedAt = Date.now();
                 updateTimer();
-                setStatus('⏳ +5 minutes grace added — please finish', 'warn');
-                showBanner(
-                    '⏳ Grace extension: +5 minutes added because you were mid-answer.',
-                    'success',
-                    [{ label: 'OK', className: 'btn-dismiss', onClick: hideBanner }]
-                );
+                setStatus('⏳ A few more seconds — finish your thought', 'warn');
             } else {
                 if (state.timerInterval) clearInterval(state.timerInterval);
                 state.timerInterval = null;
-                setStatus('⏰ Time is up — submitting now…', 'err');
-                endTest('Time limit reached');
+                console.log('⏰ Time up (tab return) — natural ending on next question');
+                setStatus('⏰ Concluding after this question…', 'warn');
             }
         }
     });
@@ -3384,6 +3793,160 @@ function commitAnswer(transcript) {
         }
     });
 
+
+
+    // ═══════════════════════════════════════════════════════════════
+    // [SCREEN WAKE LOCK] Keep device awake during test
+    // ═══════════════════════════════════════════════════════════════
+    let _wakeLock = null;
+    let _wakeLockActive = false;
+    let _fallbackVideo = null;
+    let _fallbackAudio = null;
+
+    async function requestWakeLock() {
+        if (state.hasSubmitted || !state._timerStartedAt) {
+            console.log('🔓 Wake lock skip (test not running)');
+            return;
+        }
+        
+        // Try modern Screen Wake Lock API
+        if ('wakeLock' in navigator) {
+            try {
+                _wakeLock = await navigator.wakeLock.request('screen');
+                _wakeLockActive = true;
+                console.log('✅ Screen wake lock acquired');
+                updateWakeLockIndicator(true);
+                
+                _wakeLock.addEventListener('release', () => {
+                    console.log('🔓 Screen wake lock released (browser)');
+                    _wakeLockActive = false;
+                    updateWakeLockIndicator(false);
+                });
+                return;
+            } catch (err) {
+                console.warn('⚠️ Wake Lock API failed:', err.message);
+            }
+        }
+        
+        // Fallback for older browsers
+        startFallbackWakeLock();
+    }
+
+    function releaseWakeLock() {
+        if (_wakeLock) {
+            try {
+                _wakeLock.release();
+            } catch (e) {}
+            _wakeLock = null;
+        }
+        _wakeLockActive = false;
+        stopFallbackWakeLock();
+        updateWakeLockIndicator(false);
+        console.log('🔓 Wake lock released (test end)');
+    }
+
+    // Fallback: hidden looping video + silent audio
+    function startFallbackWakeLock() {
+        console.log('🔧 Fallback wake lock (video loop)');
+        
+        // Hidden tiny video
+        try {
+            if (!_fallbackVideo) {
+                const v = document.createElement('video');
+                v.style.position = 'fixed';
+                v.style.top = '-2px';
+                v.style.left = '-2px';
+                v.style.width = '1px';
+                v.style.height = '1px';
+                v.style.opacity = '0.01';
+                v.style.pointerEvents = 'none';
+                v.muted = true;
+                v.loop = true;
+                v.playsInline = true;
+                v.setAttribute('playsinline', '');
+                v.setAttribute('aria-hidden', 'true');
+                // 1-second black frame, base64 (very small)
+                v.src = 'data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAAIZnJlZQAAAA1tZGF0AAAAAAAAAAAAAA==';
+                v.play().catch(() => {});
+                document.body.appendChild(v);
+                _fallbackVideo = v;
+                _wakeLockActive = true;
+                updateWakeLockIndicator(true);
+            }
+        } catch (e) {
+            console.warn('Fallback video failed:', e);
+        }
+        
+        // Silent audio loop (alternative)
+        try {
+            if (!_fallbackAudio) {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                gain.gain.value = 0.0001; // Nearly silent
+                osc.frequency.value = 20;  // Inaudible frequency
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start();
+                _fallbackAudio = { ctx, osc, gain };
+            }
+        } catch (e) {}
+    }
+
+    function stopFallbackWakeLock() {
+        if (_fallbackVideo) {
+            try {
+                _fallbackVideo.pause();
+                _fallbackVideo.remove();
+            } catch (e) {}
+            _fallbackVideo = null;
+        }
+        if (_fallbackAudio) {
+            try {
+                _fallbackAudio.osc.stop();
+                _fallbackAudio.ctx.close();
+            } catch (e) {}
+            _fallbackAudio = null;
+        }
+    }
+
+    function updateWakeLockIndicator(active) {
+        let indicator = document.getElementById('wake-lock-indicator');
+        if (!indicator) {
+            // Create indicator in header
+            const header = document.querySelector('.header .nav-links');
+            if (header) {
+                indicator = document.createElement('span');
+                indicator.id = 'wake-lock-indicator';
+                indicator.className = 'pill';
+                indicator.style.cssText = 'background:rgba(34,197,94,0.16);border-color:rgba(34,197,94,0.4);color:#7ee89f;font-size:10px;';
+                indicator.title = 'Screen will stay awake';
+                indicator.textContent = '☀️ Screen: ON';
+                header.appendChild(indicator);
+            }
+        }
+        if (indicator) {
+            indicator.style.display = active ? 'inline-flex' : 'none';
+        }
+    }
+
+    // Re-acquire on tab return
+    document.addEventListener('visibilitychange', async () => {
+        if (document.visibilityState === 'visible' && 
+            state._timerStartedAt && 
+            !state.hasSubmitted && 
+            !_wakeLockActive) {
+            console.log('🔄 Tab returned — re-acquiring wake lock');
+            await requestWakeLock();
+        }
+    });
+
+    window.__wakeLock = {
+        request: requestWakeLock,
+        release: releaseWakeLock,
+        isActive: () => _wakeLockActive,
+    };
+
     document.addEventListener('DOMContentLoaded', () => {
         applyFullTestMode();
         applyRetakeMode();
@@ -3392,6 +3955,12 @@ function commitAnswer(transcript) {
         recordBtn.addEventListener('click', toggleManualRecording);
         repeatBtn.addEventListener('click', repeatQuestion);
         exitBtn.addEventListener('click', exitTest);
+        
+        // [REAL IELTS] Wire "I don't know" button
+        const dontKnowBtn = document.getElementById('dontknow-btn');
+        if (dontKnowBtn) {
+            dontKnowBtn.addEventListener('click', handleDontKnow);
+        }
         headerExit.addEventListener('click', (e) => { e.preventDefault(); exitTest(); });
 
         answerInput.addEventListener('keydown', (e) => {
@@ -3411,7 +3980,14 @@ function commitAnswer(transcript) {
             window._avatarControl.lookAt(x * 0.4, y * 0.4);
         });
 
-        if (window.speechSynthesis) window.speechSynthesis.getVoices();
+        // [PATCH] Voice list async (Safari/Chrome)
+        if (window.speechSynthesis) {
+            window.speechSynthesis.getVoices();
+            window.speechSynthesis.onvoiceschanged = function() {
+                const v = window.speechSynthesis.getVoices();
+                console.log(`🔊 Voices loaded: ${v.length}`);
+            };
+        }
 
         const startOverlay = document.getElementById('start-overlay');
         const btnStart = document.getElementById('btn-start-test');
@@ -3451,6 +4027,15 @@ function commitAnswer(transcript) {
             startOverlay.classList.add('hidden');
             setTimeout(() => { startOverlay.style.display = 'none'; }, 400);
 
+            // [WAKE LOCK] Keep screen on during test
+            try {
+                if (window.__wakeLock) {
+                    await window.__wakeLock.request();
+                }
+            } catch (e) {
+                console.warn('Wake lock request failed:', e);
+            }
+
             initTest();
         });
 
@@ -3469,42 +4054,6 @@ function commitAnswer(transcript) {
 </script>
 <script src="/static/js/sw-register.js"></script>
 <script src="/static/js/push-notifications.js"></script>
-// __EXAMINER_V3_PATCH__
-(function() {
-    function ensureTranscriptVisible() {
-        const box = document.getElementById('live-transcript');
-        if (!box) return;
-        box.style.setProperty('display', 'block', 'important');
-        box.style.setProperty('visibility', 'visible', 'important');
-        box.style.setProperty('opacity', '1', 'important');
-        box.classList.add('show');
-    }
-    window.__ensureTranscriptVisible = ensureTranscriptVisible;
-
-    // Wrap recordAnswer to guarantee visibility
-    function wrap() {
-        const _orig = window.recordAnswer;
-        if (typeof _orig === 'function' && !_orig.__v3wrapped) {
-            const wrapped = async function() {
-                ensureTranscriptVisible();
-                return await _orig.apply(this, arguments);
-            };
-            wrapped.__v3wrapped = true;
-            window.recordAnswer = wrapped;
-        }
-    }
-    wrap();
-    setInterval(wrap, 500);
-
-    document.addEventListener('DOMContentLoaded', () => {
-        ensureTranscriptVisible();
-        new MutationObserver(ensureTranscriptVisible).observe(
-            document.body, { attributes: true, attributeFilter: ['class'] }
-        );
-    });
-})();
-
-
 <script id="btn-guard-v1">
 (function() {
     var _btnLock = false;

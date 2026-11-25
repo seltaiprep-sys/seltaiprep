@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IELTS Test History - SeltaPrep</title>
+
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Arial, sans-serif;
+    background: radial-gradient(circle at 50% 25%, #16203a 0%, #0d1117 55%, #05070b 100%);
+    color: #fff;
+    min-height: 100vh;
+    padding: 20px;
+}
+.container { max-width: 1000px; margin: 0 auto; }
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    background: rgba(20,25,40,0.8);
+    border-radius: 16px;
+    margin-bottom: 24px;
+    border: 1px solid rgba(255,255,255,0.08);
+}
+.header h1 { font-size: 22px; font-weight: 800; }
+.header a {
+    color: #b3adff;
+    text-decoration: none;
+    font-size: 13px;
+    padding: 8px 16px;
+    border: 1px solid rgba(108,99,255,0.4);
+    border-radius: 8px;
+    transition: all .2s;
+}
+.header a:hover { background: rgba(108,99,255,0.15); }
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
+}
+.stat-card {
+    background: rgba(20,25,40,0.8);
+    border-radius: 14px;
+    padding: 18px;
+    border: 1px solid rgba(255,255,255,0.06);
+    text-align: center;
+}
+.stat-card .value {
+    font-size: 32px;
+    font-weight: 900;
+    background: linear-gradient(135deg, #6c63ff, #9b8cff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+.stat-card .label {
+    font-size: 11px;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 6px;
+    font-weight: 700;
+}
+
+.filters {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+}
+.filter-btn {
+    padding: 8px 18px;
+    border-radius: 30px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    background: rgba(255,255,255,0.04);
+    color: #9ca3af;
+    border: 1px solid rgba(255,255,255,0.08);
+    transition: all .2s;
+    font-family: inherit;
+}
+.filter-btn:hover { background: rgba(255,255,255,0.08); color: #fff; }
+.filter-btn.active {
+    background: rgba(108,99,255,0.2);
+    color: #b3adff;
+    border-color: rgba(108,99,255,0.4);
+}
+
+.test-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.test-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    background: rgba(20,25,40,0.7);
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,0.06);
+    transition: all .2s;
+    text-decoration: none;
+    color: inherit;
+}
+.test-row:hover {
+    background: rgba(20,25,40,0.95);
+    border-color: rgba(108,99,255,0.3);
+    transform: translateX(4px);
+}
+.test-info { flex: 1; }
+.test-name {
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+.test-meta {
+    font-size: 12px;
+    color: #6b7280;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.test-meta span { display: flex; align-items: center; gap: 4px; }
+.test-score {
+    font-size: 24px;
+    font-weight: 900;
+    padding: 8px 18px;
+    border-radius: 12px;
+    background: rgba(34,197,94,0.1);
+    color: #22c55e;
+    min-width: 70px;
+    text-align: center;
+}
+.test-score.pending {
+    background: rgba(255,176,32,0.1);
+    color: #ffb020;
+    font-size: 12px;
+    padding: 8px 12px;
+}
+.test-score.failed {
+    background: rgba(239,68,68,0.1);
+    color: #ef4444;
+    font-size: 12px;
+    padding: 8px 12px;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    background: rgba(20,25,40,0.5);
+    border-radius: 16px;
+    border: 1px dashed rgba(255,255,255,0.1);
+}
+.empty-icon { font-size: 64px; margin-bottom: 16px; }
+.empty-title { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+.empty-text { font-size: 13px; color: #6b7280; margin-bottom: 20px; }
+.empty-btn {
+    display: inline-block;
+    padding: 12px 28px;
+    background: linear-gradient(135deg, #6c63ff, #5b52d9);
+    color: #fff;
+    text-decoration: none;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 13px;
+    transition: all .2s;
+}
+.empty-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(108,99,255,0.4); }
+
+.loading {
+    text-align: center;
+    padding: 40px;
+    color: #6b7280;
+    font-size: 13px;
+}
+
+@media (max-width: 600px) {
+    body { padding: 12px; }
+    .header { padding: 14px; }
+    .header h1 { font-size: 18px; }
+    .test-row { padding: 14px; }
+    .test-score { font-size: 20px; padding: 6px 14px; min-width: 60px; }
+    .stat-card .value { font-size: 26px; }
+}
+</style>
+
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>🎓 IELTS Test History</h1>
+        <a href="/dashboard">← Dashboard</a>
+    </div>
+    
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="value" id="stat-total">0</div>
+            <div class="label">Total Tests</div>
+        </div>
+        <div class="stat-card">
+            <div class="value" id="stat-completed">0</div>
+            <div class="label">Completed</div>
+        </div>
+        <div class="stat-card">
+            <div class="value" id="stat-avg">—</div>
+            <div class="label">Average</div>
+        </div>
+        <div class="stat-card">
+            <div class="value" id="stat-best">—</div>
+            <div class="label">Best</div>
+        </div>
+    </div>
+    
+    <div class="filters">
+        <button class="filter-btn active" data-filter="all">All</button>
+        <button class="filter-btn" data-filter="speaking">🎙️ Speaking</button>
+        <button class="filter-btn" data-filter="listening">🎧 Listening</button>
+        <button class="filter-btn" data-filter="reading">📖 Reading</button>
+        <button class="filter-btn" data-filter="writing">✍️ Writing</button>
+        <button class="filter-btn" data-filter="full">🎯 Full Test</button>
+    </div>
+    
+    <div class="test-list" id="test-list">
+        <div class="loading">Loading tests...</div>
+    </div>
+</div>
+
+<script>
+(function() {
+    'use strict';
+    
+    const MODULE = 'IELTS';
+    const ICON = '🎓';
+    const ACCENT = '#6c63ff';
+    
+    let allTests = [];
+    let currentFilter = 'all';
+    
+    function setLoading(on) {
+        const list = document.getElementById('test-list');
+        if (on) list.innerHTML = '<div class="loading">Loading tests...</div>';
+    }
+    
+    function formatDate(dateStr) {
+        if (!dateStr) return 'N/A';
+        try {
+            const d = new Date(dateStr);
+            return d.toLocaleDateString('en-US', { 
+                month: 'short', day: 'numeric', year: 'numeric',
+                hour: '2-digit', minute: '2-digit'
+            });
+        } catch (e) { return 'N/A'; }
+    }
+    
+    function renderStats(tests) {
+        const completed = tests.filter(t => t.score != null && t.status !== 'in_progress');
+        const scores = completed.map(t => Number(t.score)).filter(n => !isNaN(n) && n > 0);
+        
+        document.getElementById('stat-total').textContent = tests.length;
+        document.getElementById('stat-completed').textContent = completed.length;
+        
+        if (scores.length > 0) {
+            const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+            const best = Math.max(...scores);
+            document.getElementById('stat-avg').textContent = MODULE === 'IELTS' 
+                ? avg.toFixed(1) : Math.round(avg);
+            document.getElementById('stat-best').textContent = MODULE === 'IELTS'
+                ? best.toFixed(1) : Math.round(best);
+        } else {
+            document.getElementById('stat-avg').textContent = '—';
+            document.getElementById('stat-best').textContent = '—';
+        }
+    }
+    
+    function renderTests(tests) {
+        const list = document.getElementById('test-list');
+        
+        let filtered = tests;
+        if (currentFilter !== 'all') {
+            filtered = tests.filter(t => (t.section || 'full').toLowerCase().includes(currentFilter));
+        }
+        
+        if (filtered.length === 0) {
+            list.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">📋</div>
+                    <div class="empty-title">No ${MODULE} tests yet</div>
+                    <div class="empty-text">Start your first test to see history here</div>
+                    <a href="/${MODULE === 'IELTS' ? 'ielts-full-test' : 'pte-full-test'}" class="empty-btn">
+                        🚀 Start Test
+                    </a>
+                </div>
+            `;
+            return;
+        }
+        
+        const html = filtered.map(t => {
+            const isPending = t.status === 'in_progress' || t.status === 'pending' || !t.score;
+            const isFailed = t.status === 'failed';
+            const scoreNum = Number(t.score);
+            
+            let scoreHtml;
+            if (isFailed) {
+                scoreHtml = '<div class="test-score failed">❌ Failed</div>';
+            } else if (isPending) {
+                scoreHtml = '<div class="test-score pending">⏳ In Progress</div>';
+            } else if (MODULE === 'IELTS') {
+                scoreHtml = `<div class="test-score">${scoreNum.toFixed(1)}</div>`;
+            } else {
+                scoreHtml = `<div class="test-score">${Math.round(scoreNum)}</div>`;
+            }
+            
+            return `
+                <a href="/${MODULE.toLowerCase()}/result/${t.id}" class="test-row">
+                    <div class="test-info">
+                        <div class="test-name">${ICON} ${t.test_type || t.section || 'Full Test'}</div>
+                        <div class="test-meta">
+                            <span>📅 ${formatDate(t.date || t.created_at)}</span>
+                            ${t.duration ? `<span>⏱️ ${t.duration}m</span>` : ''}
+                        </div>
+                    </div>
+                    ${scoreHtml}
+                </a>
+            `;
+        }).join('');
+        
+        list.innerHTML = html;
+    }
+    
+    async function loadHistory() {
+        setLoading(true);
+        try {
+            const r = await fetch('/api/progress-data?limit=100');
+            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+            const data = await r.json();
+            
+            console.log(`[${MODULE} History] Raw data:`, data);
+            
+            // Extract items (handle various response shapes)
+            let items = data.items || data.results || data.tests || data.data || [];
+            if (!Array.isArray(items)) items = [];
+            
+            // Filter by module
+            const moduleLower = MODULE.toLowerCase();
+            allTests = items
+                .filter(t => {
+                    const m = (t.module || t.type || '').toLowerCase();
+                    return m.includes(moduleLower);
+                })
+                .map(t => ({
+                    id: t.id || t.session_id,
+                    section: t.section || t.test_type || t.module_detail || 'full',
+                    test_type: t.test_type || t.section || 'Full Test',
+                    date: t.created_at || t.date || t.last_updated,
+                    status: t.status || (t.score ? 'completed' : 'in_progress'),
+                    score: t.band_score || t.score || t.overall_band || t.overall_score,
+                    duration: t.duration_seconds ? Math.round(t.duration_seconds / 60) : null,
+                }));
+            
+            console.log(`[${MODULE} History] Filtered:`, allTests.length, 'tests');
+            
+            renderStats(allTests);
+            renderTests(allTests);
+        } catch (e) {
+            console.error(`[${MODULE} History] Error:`, e);
+            document.getElementById('test-list').innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">⚠️</div>
+                    <div class="empty-title">Could not load history</div>
+                    <div class="empty-text">${e.message}</div>
+                    <a href="/dashboard" class="empty-btn">← Back to Dashboard</a>
+                </div>
+            `;
+        }
+    }
+    
+    // Filter buttons
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            currentFilter = this.dataset.filter;
+            renderTests(allTests);
+        });
+    });
+    
+    // Load on ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', loadHistory);
+    } else {
+        loadHistory();
+    }
+})();
+</script>
+
+</body>
+</html>

@@ -2508,5 +2508,97 @@
     </script>
 <script src="/static/js/sw-register.js"></script>
 <script src="/static/js/push-notifications.js"></script>
+
+<!-- [WAKE LOCK v2] Auto keep screen awake -->
+<script>
+(function(){
+    'use strict';
+    let _wakeLock = null;
+    let _fallbackVideo = null;
+    let _active = false;
+    let _acquired = false;
+    
+    const WL = {
+        acquire: async function() {
+            if (_acquired) return;
+            _acquired = true;
+            
+            if ('wakeLock' in navigator) {
+                try {
+                    _wakeLock = await navigator.wakeLock.request('screen');
+                    _active = true;
+                    console.log('✅ [WakeLock] Screen ON (API)');
+                    _wakeLock.addEventListener('release', () => {
+                        _active = false;
+                        _acquired = false;
+                    });
+                    return;
+                } catch (e) {
+                    console.warn('⚠️ [WakeLock] API failed:', e.message);
+                }
+            }
+            
+            try {
+                if (!_fallbackVideo) {
+                    const v = document.createElement('video');
+                    v.style.cssText = 'position:fixed;top:-2px;left:-2px;width:1px;height:1px;opacity:0.01;pointer-events:none;z-index:-1;';
+                    v.muted = true;
+                    v.loop = true;
+                    v.playsInline = true;
+                    v.setAttribute('playsinline', '');
+                    v.src = 'data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAAIZnJlZQAAAA1tZGF0AAAAAAAAAAAAAA==';
+                    v.play().catch(() => {});
+                    document.body.appendChild(v);
+                    _fallbackVideo = v;
+                    _active = true;
+                    console.log('🔧 [WakeLock] Screen ON (fallback)');
+                }
+            } catch (e) {}
+        },
+        
+        release: function() {
+            if (_wakeLock) {
+                try { _wakeLock.release(); } catch(e) {}
+                _wakeLock = null;
+            }
+            if (_fallbackVideo) {
+                try { _fallbackVideo.pause(); _fallbackVideo.remove(); } catch(e) {}
+                _fallbackVideo = null;
+            }
+            _active = false;
+            _acquired = false;
+        },
+        
+        isActive: () => _active,
+    };
+    
+    function _firstInteraction() {
+        WL.acquire();
+        document.removeEventListener('click', _firstInteraction);
+        document.removeEventListener('keydown', _firstInteraction);
+        document.removeEventListener('touchstart', _firstInteraction);
+    }
+    
+    document.addEventListener('click', _firstInteraction);
+    document.addEventListener('keydown', _firstInteraction);
+    document.addEventListener('touchstart', _firstInteraction);
+    
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible' && !_active) {
+            if (document.body.dataset.wlActive === '1') {
+                WL.acquire();
+            }
+        }
+    });
+    
+    document.body.dataset.wlActive = '1';
+    window.addEventListener('beforeunload', () => WL.release());
+    window.addEventListener('pagehide', () => WL.release());
+    
+    window.WakeLock = WL;
+    console.log('🔋 [WakeLock v2] Ready');
+})();
+</script>
+
 </body>
 </html>

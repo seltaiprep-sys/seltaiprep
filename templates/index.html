@@ -438,6 +438,187 @@
     </style>
 <link rel="stylesheet" href="/static/css/mobile.css">
 <link rel="manifest" href="/static/manifest.json">
+
+<style id="advanced-auth-css">
+/* Password field wrapper */
+.pw-wrapper {
+    position: relative;
+}
+.pw-wrapper input {
+    padding-right: 44px !important;
+}
+.pw-toggle {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: #9ca3af;
+    cursor: pointer;
+    font-size: 18px;
+    padding: 4px;
+    transition: color 0.2s;
+    z-index: 2;
+}
+.pw-toggle:hover { color: #fff; }
+
+/* Password strength meter */
+.pw-strength {
+    height: 4px;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.1);
+    margin-top: 8px;
+    overflow: hidden;
+}
+.pw-strength-bar {
+    height: 100%;
+    width: 0%;
+    transition: all 0.3s ease;
+    border-radius: 4px;
+}
+.pw-strength-bar.weak { background: linear-gradient(90deg, #ef4444, #f87171); width: 25%; }
+.pw-strength-bar.fair { background: linear-gradient(90deg, #f59e0b, #fbbf24); width: 50%; }
+.pw-strength-bar.good { background: linear-gradient(90deg, #3b82f6, #60a5fa); width: 75%; }
+.pw-strength-bar.strong { background: linear-gradient(90deg, #22c55e, #4ade80); width: 100%; }
+
+.pw-strength-text {
+    font-size: 11px;
+    margin-top: 6px;
+    font-weight: 700;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.pw-strength-text .label {
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.pw-strength-text.weak { color: #ef4444; }
+.pw-strength-text.fair { color: #f59e0b; }
+.pw-strength-text.good { color: #3b82f6; }
+.pw-strength-text.strong { color: #22c55e; }
+
+/* Password requirements checklist */
+.pw-reqs {
+    list-style: none;
+    padding: 12px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 8px;
+    margin-top: 8px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    font-size: 11px;
+}
+.pw-reqs li {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #6b7280;
+    transition: color 0.2s;
+}
+.pw-reqs li::before {
+    content: '○';
+    font-weight: 900;
+    color: #6b7280;
+    transition: all 0.2s;
+}
+.pw-reqs li.met {
+    color: #22c55e;
+}
+.pw-reqs li.met::before {
+    content: '✓';
+    color: #22c55e;
+}
+
+/* Username availability indicator */
+.username-status {
+    font-size: 11px;
+    margin-top: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 16px;
+    font-weight: 700;
+}
+.username-status.checking { color: #6b7280; }
+.username-status.available { color: #22c55e; }
+.username-status.taken { color: #ef4444; }
+.username-status.invalid { color: #f59e0b; }
+
+.username-status .spinner-mini {
+    width: 12px;
+    height: 12px;
+    border: 2px solid rgba(255,255,255,0.2);
+    border-top-color: #9ca3af;
+    border-radius: 50%;
+    animation: spin-mini 0.6s linear infinite;
+}
+@keyframes spin-mini { to { transform: rotate(360deg); } }
+
+/* Caps lock warning */
+.capslock-warning {
+    display: none;
+    font-size: 11px;
+    color: #f59e0b;
+    margin-top: 6px;
+    padding: 4px 8px;
+    background: rgba(245,158,11,0.1);
+    border-radius: 6px;
+    font-weight: 700;
+}
+.capslock-warning.show { display: block; }
+
+/* Loading button */
+.btn-loading {
+    position: relative;
+    pointer-events: none;
+    opacity: 0.7;
+}
+.btn-loading::after {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin-mini 0.6s linear infinite;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+/* Terms checkbox */
+.terms-checkbox {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin: 16px 0;
+    font-size: 12px;
+    color: #9ca3af;
+    line-height: 1.5;
+}
+.terms-checkbox input[type="checkbox"] {
+    margin-top: 3px;
+    accent-color: #6c63ff;
+    flex-shrink: 0;
+}
+.terms-checkbox a {
+    color: #6c63ff;
+    text-decoration: none;
+}
+.terms-checkbox a:hover { text-decoration: underline; }
+
+/* Mobile */
+@media (max-width: 500px) {
+    .pw-reqs {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+
 </head>
 <body>
     <div class="container">
@@ -485,7 +666,7 @@
             <div class="auth-tabs">
                 <div class="auth-tab active" data-tab="login">Sign In</div>
                 <div class="auth-tab" data-tab="register">Register</div>
-                <div class="auth-tab" data-tab="email">Email OTP</div>
+                
             </div>
 
             <!-- Message Boxes -->
@@ -494,19 +675,17 @@
             {% if error %}<div class="message-box error" style="display:block;">{{ error }}</div>{% endif %}
 
             <!-- ─── Login Form ─── -->
-            <form class="auth-form active" id="login-form" method="POST" action="{{ url_for('login') }}">
+            <form class="auth-form active" id="login-form" method="POST" action="{{ url_for('login') }}" novalidate>
                 <input type="hidden" name="module" id="login-module-input" value="ielts">
                 <a href="/login/google?module={{ module|default('ielts') }}" class="btn btn-google">
                     <i class="fab fa-google"></i> Sign in with Google
                 </a>
-                <a href="/login/facebook?module={{ module|default('ielts') }}" class="btn btn-facebook">
-                    <i class="fab fa-facebook-f"></i> Continue with Facebook
-                </a>
+                
                 <div class="divider">or sign in with email</div>
 
                 <div class="form-group">
                     <label>Username</label>
-                    <input type="text" name="username" id="login-username" required autocomplete="username">
+                    <input type="text" name="username" id="login-username" autocomplete="username">
                     <div class="error-text" id="login-username-error">Please enter your username</div>
                 </div>
                 <div class="form-group">
@@ -525,29 +704,81 @@
             </form>
 
             <!-- ─── Register Form (simplified: username + password only) ─── -->
-            <form class="auth-form" id="register-form" method="POST" action="{{ url_for('register') }}">
+            <form class="auth-form" id="register-form" method="POST" novalidate>
                 <input type="hidden" name="module" id="register-module-input" value="ielts">
-                <div class="form-group">
-                    <label>Username</label>
-                    <input type="text" name="username" id="reg-username"
-                           required autocomplete="username" minlength="3" maxlength="80">
-                    <div class="error-text" id="reg-username-error">Username must be at least 3 characters</div>
-                    <div class="form-hint">Letters, numbers, dot, underscore, hyphen only.</div>
+
+                <!-- ═══ STEP 1: Email + Username + Password ═══ -->
+                <div id="reg-step-1">
+                    <div class="form-group">
+                        <label>Email Address <span style="color:#ef4444;">*</span></label>
+                        <input type="email" name="email" id="reg-email"
+                               placeholder="your@email.com"
+                               autocomplete="email" spellcheck="false">
+                        <div class="error-text" id="reg-email-error"></div>
+                        <div class="form-hint">We'll send a 6-digit verification code here</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Username <span style="color:#ef4444;">*</span></label>
+                        <input type="text" name="username" id="reg-username"
+                               autocomplete="username" autocapitalize="off"
+                               autocorrect="off" spellcheck="false">
+                        <div class="error-text" id="reg-username-error"></div>
+                        <div class="form-hint">3+ chars: letters, numbers, dot, underscore, hyphen</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Password <span style="color:#ef4444;">*</span></label>
+                        <input type="password" name="password" id="reg-password"
+                               autocomplete="new-password">
+                        <div class="error-text" id="reg-password-error"></div>
+                    </div>
+
+                    <button type="button" class="btn btn-primary" id="reg-send-otp-btn" style="width:100%;">
+                        <span class="btn-text">📧 Send Verification Code</span>
+                        <span class="spinner" style="display:none;"></span>
+                    </button>
                 </div>
-                <div class="form-group">
-                    <label>Password</label>
-                    <input type="password" name="password" id="reg-password"
-                           required autocomplete="new-password" minlength="8">
-                    <div class="error-text" id="reg-password-error">Password must be at least 8 characters</div>
+
+                <!-- ═══ STEP 2: OTP Verification ═══ -->
+                <div id="reg-step-2" style="display:none;">
+                    <div style="text-align:center;padding:20px 0;">
+                        <div style="font-size:56px;margin-bottom:8px;">📬</div>
+                        <h3 style="font-size:18px;margin-bottom:8px;">Check Your Email</h3>
+                        <p style="color:#9ca3af;font-size:13px;line-height:1.6;">
+                            We sent a 6-digit code to<br>
+                            <strong id="reg-email-display" style="color:#b3adff;"></strong>
+                        </p>
+                    </div>
+
+                    <div class="form-group">
+                        <label style="text-align:center;display:block;">Verification Code</label>
+                        <input type="text" id="reg-otp" maxlength="6" inputmode="numeric"
+                               placeholder="000000"
+                               style="text-align:center;font-size:24px;letter-spacing:10px;font-weight:800;padding:16px;">
+                        <div class="error-text" id="reg-otp-error"></div>
+                    </div>
+
+                    <button type="button" class="btn btn-success" id="reg-verify-btn" style="width:100%;">
+                        <span class="btn-text">✅ Verify & Create Account</span>
+                        <span class="spinner" style="display:none;"></span>
+                    </button>
+
+                    <div style="display:flex;justify-content:space-between;margin-top:14px;font-size:12px;">
+                        <button type="button" id="reg-back-btn"
+                                style="background:none;border:none;color:#9ca3af;cursor:pointer;padding:6px;">
+                            ← Back
+                        </button>
+                        <button type="button" id="reg-resend-btn" disabled
+                                style="background:none;border:none;color:#9ca3af;cursor:pointer;padding:6px;">
+                            Resend (60s)
+                        </button>
+                    </div>
                 </div>
-                <button type="submit" class="btn btn-primary" id="register-btn">
-                    <span class="btn-text"><i class="fas fa-user-plus"></i> Create Account</span>
-                    <span class="spinner" style="display:none;"></span>
-                </button>
             </form>
 
             <!-- ─── OTP Form ─── -->
-            <div class="auth-form" id="email-form">
+            <div class="auth-form" id="email-form" style="display:none !important;">
                 <input type="hidden" name="module" id="otp-module-input" value="ielts">
                 <div class="form-group">
                     <label>Email Address</label>
@@ -817,6 +1048,44 @@
             var registerForm = document.getElementById('register-form');
             var registerBtn = document.getElementById('register-btn');
             registerForm.addEventListener('submit', function(e) {
+                // [AUTO-SPLIT] If username has @, split it BEFORE validation
+                var _uname_field = document.getElementById('reg-username');
+                if (_uname_field && _uname_field.value && _uname_field.value.includes('@')) {
+                    var _raw_val = _uname_field.value.trim();
+                    var _suggested = _raw_val.split('@')[0].replace(/[^a-zA-Z0-9._-]/g, '');
+                    
+                    if (_suggested.length >= 3) {
+                        // Confirm with user
+                        if (confirm(
+                            'Username cannot contain @\n\n' +
+                            'You entered: ' + _raw_val + '\n\n' +
+                            'Auto-split?\n' +
+                            'Username: ' + _suggested + '\n' +
+                            'Email: ' + _raw_val + '\n\n' +
+                            'Click OK to continue with these values.'
+                        )) {
+                            _uname_field.value = _suggested;
+                            // Store email in hidden field if exists
+                            var _email_hidden = document.querySelector('input[name="email"]');
+                            if (_email_hidden) {
+                                _email_hidden.value = _raw_val.toLowerCase();
+                            }
+                            // Continue — validation will pass now
+                        } else {
+                            // User cancelled
+                            e.preventDefault();
+                            return false;
+                        }
+                    } else {
+                        alert('❌ Username part before @ must be at least 3 characters.\n\nYou entered: ' + _raw_val);
+                        e.preventDefault();
+                        _uname_field.focus();
+                        return false;
+                    }
+                }
+                
+                // Original validation continues below
+
                 if (!validateRegister()) {
                     e.preventDefault();
                     showError('Please fix the highlighted fields.');
@@ -1102,5 +1371,456 @@
     </script>
 <script src="/static/js/sw-register.js"></script>
 <script src="/static/js/push-notifications.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script id="register-two-step-js">
+(function() {
+    'use strict';
+    console.log('[Reg Two-Step] Loading...');
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        const step1 = document.getElementById('reg-step-1');
+        const step2 = document.getElementById('reg-step-2');
+        const emailIn = document.getElementById('reg-email');
+        const userIn = document.getElementById('reg-username');
+        const passIn = document.getElementById('reg-password');
+        const otpIn = document.getElementById('reg-otp');
+        const emailDisplay = document.getElementById('reg-email-display');
+        const sendBtn = document.getElementById('reg-send-otp-btn');
+        const verifyBtn = document.getElementById('reg-verify-btn');
+        const backBtn = document.getElementById('reg-back-btn');
+        const resendBtn = document.getElementById('reg-resend-btn');
+        const emailErr = document.getElementById('reg-email-error');
+        const userErr = document.getElementById('reg-username-error');
+        const passErr = document.getElementById('reg-password-error');
+        const otpErr = document.getElementById('reg-otp-error');
+        
+        if (!step1 || !step2) {
+            console.log('[Reg Two-Step] Form not found');
+            return;
+        }
+        
+        let resendInterval = null;
+        let resendCountdown = 0;
+        
+        function setError(el, msg) {
+            if (!el) return;
+            if (msg) {
+                el.textContent = msg;
+                el.style.display = 'block';
+            } else {
+                el.textContent = '';
+                el.style.display = 'none';
+            }
+        }
+        
+        function setLoading(btn, loading) {
+            if (!btn) return;
+            const txt = btn.querySelector('.btn-text');
+            const sp = btn.querySelector('.spinner');
+            btn.disabled = loading;
+            if (txt) txt.style.opacity = loading ? '0.5' : '1';
+            if (sp) sp.style.display = loading ? 'inline-block' : 'none';
+        }
+        
+        // ── Send OTP ──
+        sendBtn.addEventListener('click', async function() {
+            setError(emailErr, '');
+            setError(userErr, '');
+            setError(passErr, '');
+            
+            const email = (emailIn.value || '').trim();
+            const username = (userIn.value || '').trim();
+            const password = passIn.value || '';
+            
+            // Client validation
+            if (!email || email.indexOf('@') < 0) {
+                setError(emailErr, 'Enter a valid email');
+                emailIn.focus();
+                return;
+            }
+            if (!username || username.length < 3) {
+                setError(userErr, 'Username min 3 characters');
+                userIn.focus();
+                return;
+            }
+            if (!/^[a-zA-Z0-9._-]+$/.test(username)) {
+                setError(userErr, 'Only letters, numbers, dot, underscore, hyphen');
+                userIn.focus();
+                return;
+            }
+            if (!password || password.length < 8) {
+                setError(passErr, 'Password min 8 characters');
+                passIn.focus();
+                return;
+            }
+            
+            setLoading(sendBtn, true);
+            
+            try {
+                const fd = new FormData();
+                fd.append('email', email);
+                fd.append('username', username);
+                fd.append('password', password);
+                fd.append('module', document.getElementById('register-module-input').value || 'ielts');
+                
+                const r = await fetch('/register', {
+                    method: 'POST',
+                    body: fd,
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                
+                const data = await r.json();
+                
+                if (!data.success) {
+                    setError(emailErr, data.error || 'Failed to send OTP');
+                    setLoading(sendBtn, false);
+                    return;
+                }
+                
+                // Success - show step 2
+                emailDisplay.textContent = email;
+                step1.style.display = 'none';
+                step2.style.display = 'block';
+                setLoading(sendBtn, false);
+                otpIn.value = '';
+                otpIn.focus();
+                
+                // Dev OTP display
+                if (data._dev_otp) {
+                    console.log('[DEV] OTP:', data._dev_otp);
+                    setError(otpErr, '🔧 DEV MODE: OTP = ' + data._dev_otp);
+                }
+                
+                // Start resend countdown
+                startResendCountdown(60);
+                
+            } catch (e) {
+                console.error('Send OTP error:', e);
+                setError(emailErr, 'Network error. Please try again.');
+                setLoading(sendBtn, false);
+            }
+        });
+        
+        // ── Verify OTP ──
+        verifyBtn.addEventListener('click', async function() {
+            setError(otpErr, '');
+            
+            const otp = (otpIn.value || '').trim();
+            if (!otp || otp.length !== 6) {
+                setError(otpErr, 'Enter the 6-digit code');
+                otpIn.focus();
+                return;
+            }
+            
+            setLoading(verifyBtn, true);
+            
+            try {
+                const fd = new FormData();
+                fd.append('otp', otp);
+                
+                const r = await fetch('/register/verify', {
+                    method: 'POST',
+                    body: fd,
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                
+                const data = await r.json();
+                
+                if (!data.success) {
+                    setError(otpErr, data.error || 'Invalid code');
+                    setLoading(verifyBtn, false);
+                    otpIn.focus();
+                    return;
+                }
+                
+                // Success - redirect
+                console.log('[Reg] Account created, redirecting...');
+                window.location.href = data.redirect || '/dashboard';
+                
+            } catch (e) {
+                console.error('Verify error:', e);
+                setError(otpErr, 'Network error');
+                setLoading(verifyBtn, false);
+            }
+        });
+        
+        // ── OTP input: auto-submit on 6th digit ──
+        otpIn.addEventListener('input', function() {
+            this.value = this.value.replace(/[^0-9]/g, '');
+            if (this.value.length === 6) {
+                // Auto verify
+                setTimeout(() => verifyBtn.click(), 300);
+            }
+        });
+        
+        // ── Back ──
+        backBtn.addEventListener('click', async function() {
+            step2.style.display = 'none';
+            step1.style.display = 'block';
+            if (resendInterval) clearInterval(resendInterval);
+            
+            // Clear pending on server
+            try {
+                await fetch('/register/cancel', { method: 'POST' });
+            } catch (e) {}
+        });
+        
+        // ── Resend ──
+        resendBtn.addEventListener('click', async function() {
+            if (resendCountdown > 0) return;
+            
+            setError(otpErr, '');
+            setLoading(resendBtn, true);
+            
+            try {
+                const r = await fetch('/register/resend-otp', {
+                    method: 'POST',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                const data = await r.json();
+                
+                if (data.success) {
+                    if (data._dev_otp) {
+                        setError(otpErr, '🔧 DEV: New OTP = ' + data._dev_otp);
+                        console.log('[DEV] New OTP:', data._dev_otp);
+                    } else {
+                        setError(otpErr, '✅ New code sent');
+                    }
+                    startResendCountdown(60);
+                } else {
+                    setError(otpErr, data.error || 'Resend failed');
+                }
+            } catch (e) {
+                setError(otpErr, 'Network error');
+            }
+            
+            setLoading(resendBtn, false);
+        });
+        
+        function startResendCountdown(seconds) {
+            resendCountdown = seconds;
+            resendBtn.disabled = true;
+            resendBtn.textContent = 'Resend (' + resendCountdown + 's)';
+            
+            if (resendInterval) clearInterval(resendInterval);
+            resendInterval = setInterval(function() {
+                resendCountdown--;
+                if (resendCountdown <= 0) {
+                    clearInterval(resendInterval);
+                    resendInterval = null;
+                    resendBtn.disabled = false;
+                    resendBtn.textContent = 'Resend code';
+                } else {
+                    resendBtn.textContent = 'Resend (' + resendCountdown + 's)';
+                }
+            }, 1000);
+        }
+        
+        console.log('[Reg Two-Step] Ready');
+    });
+})();
+</script>
+
+
+
+
+
+<script id="final-form-features">
+(function() {
+    'use strict';
+    console.log('[Form Features v2] Loading...');
+    
+    // ── Helper: get module from hidden input or URL ──
+    function getCurrentModule() {
+        const hidden = document.getElementById('register-module-input') || 
+                      document.getElementById('login-module-input');
+        if (hidden && hidden.value) return hidden.value;
+        
+        const urlParams = new URLSearchParams(location.search);
+        const fromUrl = urlParams.get('module');
+        if (fromUrl && ['ielts', 'pte', 'ukvi'].includes(fromUrl)) return fromUrl;
+        
+        return 'ielts';  // default
+    }
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        // ═══════════════════════════════════════════════════════
+        // LOGIN FORM — password toggle only, NO availability check
+        // ═══════════════════════════════════════════════════════
+        const loginForm = document.getElementById('login-form');
+        if (loginForm) {
+            const loginPass = loginForm.querySelector('input[name="password"]');
+            
+            if (loginPass && !loginPass.parentElement.classList.contains('pw-wrapper')) {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'pw-wrapper';
+                wrapper.style.position = 'relative';
+                loginPass.parentNode.insertBefore(wrapper, loginPass);
+                wrapper.appendChild(loginPass);
+                
+                const toggle = document.createElement('button');
+                toggle.type = 'button';
+                toggle.className = 'pw-toggle';
+                toggle.innerHTML = '👁️';
+                toggle.style.cssText = 'position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:#9ca3af;cursor:pointer;font-size:18px;z-index:2;';
+                toggle.onclick = function() {
+                    const isPass = loginPass.type === 'password';
+                    loginPass.type = isPass ? 'text' : 'password';
+                    this.innerHTML = isPass ? '🙈' : '👁️';
+                };
+                wrapper.appendChild(toggle);
+            }
+            console.log('[Form Features v2] Login: password toggle only (NO availability check)');
+        }
+        
+        // ═══════════════════════════════════════════════════════
+        // REGISTER FORM — full features (availability + strength)
+        // ═══════════════════════════════════════════════════════
+        const registerForm = document.getElementById('register-form');
+        if (!registerForm) {
+            console.log('[Form Features v2] No register form found');
+            return;
+        }
+        
+        const regUser = registerForm.querySelector('input[name="username"]');
+        const regPass = registerForm.querySelector('input[name="password"]');
+        
+        // ── Username availability (register only) ──
+        if (regUser && !document.getElementById('reg-username-status')) {
+            const statusDiv = document.createElement('div');
+            statusDiv.id = 'reg-username-status';
+            statusDiv.className = 'username-status';
+            statusDiv.style.cssText = 'font-size:11px;margin-top:6px;font-weight:700;min-height:16px;';
+            regUser.parentNode.appendChild(statusDiv);
+            
+            let timer = null;
+            regUser.addEventListener('input', function() {
+                const val = this.value.trim();
+                const st = document.getElementById('reg-username-status');
+                
+                if (timer) clearTimeout(timer);
+                
+                if (val.length < 3) {
+                    st.textContent = val.length === 0 ? '' : '⚠️ Min 3 characters';
+                    st.style.color = '#ffb020';
+                    return;
+                }
+                if (!/^[a-zA-Z0-9._-]+$/.test(val)) {
+                    st.textContent = '⚠️ Only letters, numbers, dot, underscore, hyphen';
+                    st.style.color = '#ffb020';
+                    return;
+                }
+                
+                st.textContent = 'Checking...';
+                st.style.color = '#9ca3af';
+                
+                timer = setTimeout(async function() {
+                    try {
+                        const module = getCurrentModule();
+                        // [FIX] Explicit module parameter
+                        const r = await fetch('/api/check-username?username=' + 
+                            encodeURIComponent(val) + '&module=' + encodeURIComponent(module));
+                        const d = await r.json();
+                        
+                        console.log('[check-username] module=' + module + ', result=' + JSON.stringify(d));
+                        
+                        if (d.available === true) {
+                            st.textContent = '✅ Available (' + module.toUpperCase() + ')';
+                            st.style.color = '#22c55e';
+                        } else if (d.available === false) {
+                            st.textContent = '❌ Already taken (' + module.toUpperCase() + ')';
+                            st.style.color = '#ef4444';
+                        } else {
+                            st.textContent = '⚠️ Check failed';
+                            st.style.color = '#ffb020';
+                        }
+                    } catch (e) {
+                        st.textContent = '⚠️ Check failed';
+                        st.style.color = '#ffb020';
+                    }
+                }, 600);
+            });
+            console.log('[Form Features v2] Register: username check added');
+        }
+        
+        // ── Password strength (register only) ──
+        if (regPass && !registerForm.querySelector('.pw-strength-reg')) {
+            const container = document.createElement('div');
+            container.className = 'pw-strength-reg';
+            container.innerHTML = `
+                <div style="height:4px;background:rgba(255,255,255,0.1);border-radius:4px;margin-top:8px;overflow:hidden;">
+                    <div id="reg-pw-bar" style="height:100%;width:0%;transition:all 0.3s;border-radius:4px;"></div>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:11px;margin-top:4px;font-weight:700;">
+                    <span id="reg-pw-label" style="color:#6b7280;">—</span>
+                    <span id="reg-pw-count" style="color:#6b7280;">0/5</span>
+                </div>
+            `;
+            regPass.parentNode.parentNode.appendChild(container);
+            
+            regPass.addEventListener('input', function() {
+                const pw = this.value;
+                const reqs = {
+                    len: pw.length >= 8,
+                    up: /[A-Z]/.test(pw),
+                    low: /[a-z]/.test(pw),
+                    num: /[0-9]/.test(pw),
+                    sym: /[^A-Za-z0-9]/.test(pw),
+                };
+                const met = Object.values(reqs).filter(Boolean).length;
+                
+                const bar = document.getElementById('reg-pw-bar');
+                const label = document.getElementById('reg-pw-label');
+                const count = document.getElementById('reg-pw-count');
+                
+                if (!bar) return;
+                count.textContent = met + '/5';
+                
+                if (pw.length === 0) {
+                    bar.style.width = '0%';
+                    label.textContent = '—';
+                    label.style.color = '#6b7280';
+                } else if (met <= 1) {
+                    bar.style.width = '25%';
+                    bar.style.background = '#ef4444';
+                    label.textContent = 'Weak';
+                    label.style.color = '#ef4444';
+                } else if (met === 2) {
+                    bar.style.width = '50%';
+                    bar.style.background = '#f59e0b';
+                    label.textContent = 'Fair';
+                    label.style.color = '#f59e0b';
+                } else if (met <= 4) {
+                    bar.style.width = '75%';
+                    bar.style.background = '#3b82f6';
+                    label.textContent = 'Good';
+                    label.style.color = '#3b82f6';
+                } else {
+                    bar.style.width = '100%';
+                    bar.style.background = '#22c55e';
+                    label.textContent = 'Strong';
+                    label.style.color = '#22c55e';
+                }
+            });
+            console.log('[Form Features v2] Register: password strength added');
+        }
+        
+        console.log('[Form Features v2] Ready');
+    });
+})();
+</script>
+
 </body>
 </html>

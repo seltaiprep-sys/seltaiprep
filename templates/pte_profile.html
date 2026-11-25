@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="csrf-token" content="{{ csrf_token }}">
+<title>PTE Profile - SeltaPrep</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Arial, sans-serif;
+    background: radial-gradient(circle at 50% 25%, #16203a 0%, #0d1117 55%, #05070b 100%);
+    color: #fff;
+    min-height: 100vh;
+    padding: 20px;
+}
+.container { max-width: 900px; margin: 0 auto; }
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    background: rgba(20,25,40,0.8);
+    border-radius: 16px;
+    margin-bottom: 24px;
+    border: 1px solid rgba(255,255,255,0.08);
+}
+.header h1 { font-size: 22px; font-weight: 800; }
+.header a {
+    color: #f093fb;
+    text-decoration: none;
+    font-size: 13px;
+    padding: 8px 16px;
+    border: 1px solid rgba(240,147,251,0.4);
+    border-radius: 8px;
+    transition: all .2s;
+}
+.header a:hover { background: rgba(240,147,251,0.15); }
+
+.profile-hero {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    padding: 28px;
+    background: linear-gradient(135deg, rgba(240,147,251,0.15), rgba(245,87,108,0.05));
+    border-radius: 20px;
+    border: 1px solid rgba(240,147,251,0.3);
+    margin-bottom: 24px;
+}
+.avatar {
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #f093fb, #f5576c);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 36px;
+    font-weight: 900;
+    color: #fff;
+    flex-shrink: 0;
+    box-shadow: 0 8px 24px rgba(240,147,251,0.4);
+}
+.hero-info h2 { font-size: 24px; font-weight: 800; margin-bottom: 4px; }
+.hero-info .username { color: #9ca3af; font-size: 13px; margin-bottom: 6px; }
+.hero-info .email { color: #f093fb; font-size: 13px; }
+.hero-info .member-since {
+    display: inline-block;
+    margin-top: 8px;
+    padding: 4px 12px;
+    background: rgba(34,197,94,0.15);
+    color: #7ee89f;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.section {
+    background: rgba(20,25,40,0.8);
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 20px;
+    border: 1px solid rgba(255,255,255,0.06);
+}
+.section-title {
+    font-size: 16px;
+    font-weight: 800;
+    margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.section-title .icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: rgba(240,147,251,0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+}
+
+.form-group { margin-bottom: 16px; }
+.form-group label {
+    display: block;
+    font-size: 12px;
+    font-weight: 700;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+}
+.form-group input {
+    width: 100%;
+    padding: 12px 16px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    color: #fff;
+    font-size: 14px;
+    font-family: inherit;
+    transition: all .2s;
+}
+.form-group input:focus {
+    outline: none;
+    border-color: #f093fb;
+    background: rgba(240,147,251,0.05);
+    box-shadow: 0 0 0 3px rgba(240,147,251,0.15);
+}
+.form-group input:disabled { opacity: 0.5; cursor: not-allowed; }
+.form-hint { font-size: 11px; color: #6b7280; margin-top: 4px; }
+
+.btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all .2s;
+    font-family: inherit;
+}
+.btn-primary {
+    background: linear-gradient(135deg, #f093fb, #f5576c);
+    color: #fff;
+}
+.btn-primary:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(240,147,251,0.4);
+}
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.toast {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 14px 24px;
+    background: rgba(20,25,40,0.95);
+    border-radius: 12px;
+    border: 1px solid rgba(34,197,94,0.4);
+    color: #7ee89f;
+    font-size: 13px;
+    font-weight: 700;
+    z-index: 9999;
+    transform: translateX(400px);
+    transition: transform .3s;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+.toast.show { transform: translateX(0); }
+.toast.error {
+    border-color: rgba(239,68,68,0.4);
+    color: #ff9a9a;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+}
+.stat-box {
+    text-align: center;
+    padding: 16px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 10px;
+}
+.stat-box .value {
+    font-size: 24px;
+    font-weight: 900;
+    color: #f093fb;
+}
+.stat-box .label {
+    font-size: 10px;
+    color: #6b7280;
+    text-transform: uppercase;
+    margin-top: 4px;
+    letter-spacing: 0.5px;
+}
+
+@media (max-width: 600px) {
+    body { padding: 12px; }
+    .profile-hero { flex-direction: column; text-align: center; padding: 20px; }
+    .avatar { width: 70px; height: 70px; font-size: 28px; }
+    .section { padding: 18px; }
+    .stats-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>📘 PTE Profile</h1>
+        <a href="/pte/dashboard">← PTE Dashboard</a>
+    </div>
+
+    <div class="toast" id="toast">Saved!</div>
+
+    <!-- Profile Hero -->
+    <div class="profile-hero">
+        <div class="avatar" id="avatar-initials">?</div>
+        <div class="hero-info">
+            <h2 id="profile-name">Loading...</h2>
+            <div class="username" id="profile-username">@loading</div>
+            <div class="email" id="profile-email">loading@example.com</div>
+            <div class="member-since" id="member-since">Member</div>
+        </div>
+    </div>
+
+    <!-- PTE Target Score -->
+    <div class="section">
+        <div class="section-title">
+            <div class="icon">🎯</div>
+            <span>PTE Target Score</span>
+        </div>
+        <div class="form-group">
+            <label>Target PTE Score</label>
+            <input type="number" id="target-pte" min="10" max="90" step="1" value="79">
+            <div class="form-hint">10 - 90 (e.g., 79 for C1, 85+ for C2)</div>
+        </div>
+        <button class="btn btn-primary" id="btn-save-targets">💾 Save Target</button>
+    </div>
+
+    <!-- Account Info -->
+    <div class="section">
+        <div class="section-title">
+            <div class="icon">📝</div>
+            <span>Account Information</span>
+        </div>
+        <div class="form-group">
+            <label>Full Name</label>
+            <input type="text" id="input-fullname" placeholder="Your full name">
+        </div>
+        <div class="form-group">
+            <label>Username</label>
+            <input type="text" id="input-username" disabled>
+            <div class="form-hint">Username cannot be changed</div>
+        </div>
+        <div class="form-group">
+            <label>Email</label>
+            <input type="email" id="input-email" placeholder="your@email.com">
+        </div>
+        <button class="btn btn-primary" id="btn-save-info">💾 Save Info</button>
+    </div>
+
+    <!-- Change Password -->
+    <div class="section">
+        <div class="section-title">
+            <div class="icon">🔐</div>
+            <span>Change Password</span>
+        </div>
+        <div class="form-group">
+            <label>Current Password</label>
+            <input type="password" id="input-old-pass" placeholder="Enter current password">
+        </div>
+        <div class="form-group">
+            <label>New Password</label>
+            <input type="password" id="input-new-pass" placeholder="Min 8 chars">
+        </div>
+        <div class="form-group">
+            <label>Confirm New Password</label>
+            <input type="password" id="input-confirm-pass" placeholder="Re-enter new password">
+        </div>
+        <button class="btn btn-primary" id="btn-change-pass">🔑 Change Password</button>
+    </div>
+
+    <!-- PTE Stats -->
+    <div class="section">
+        <div class="section-title">
+            <div class="icon">📊</div>
+            <span>PTE Account Stats</span>
+        </div>
+        <div class="stats-grid">
+            <div class="stat-box">
+                <div class="value" id="stat-total-tests">0</div>
+                <div class="label">Total PTE Tests</div>
+            </div>
+            <div class="stat-box">
+                <div class="value" id="stat-pte-tests">0</div>
+                <div class="label">Completed</div>
+            </div>
+            <div class="stat-box">
+                <div class="value" id="stat-best-pte">—</div>
+                <div class="label">Best Score</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    'use strict';
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+    function showToast(msg, isError) {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.className = 'toast show' + (isError ? ' error' : '');
+        setTimeout(() => t.classList.remove('show'), 3000);
+    }
+
+    function getInitials(name) {
+        if (!name) return '?';
+        return name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
+    }
+
+    async function loadProfile() {
+        try {
+            const r = await fetch('/api/profile', {
+                headers: { 'X-CSRF-Token': csrfToken }
+            });
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            const data = await r.json();
+            const user = data.user || data;
+
+            document.getElementById('profile-name').textContent = user.full_name || user.username || 'User';
+            document.getElementById('profile-username').textContent = '@' + (user.username || 'user');
+            document.getElementById('profile-email').textContent = user.email || '—';
+            document.getElementById('avatar-initials').textContent = getInitials(user.full_name || user.username);
+
+            if (user.created_at) {
+                const d = new Date(user.created_at);
+                document.getElementById('member-since').textContent =
+                    '📅 Member since ' + d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+            }
+
+            document.getElementById('target-pte').value = user.target_band_pte || 79;
+            document.getElementById('input-fullname').value = user.full_name || '';
+            document.getElementById('input-username').value = user.username || '';
+            document.getElementById('input-email').value = user.email || '';
+
+            loadStats();
+        } catch (e) {
+            console.error('[PTE Profile] Error:', e);
+            document.getElementById('profile-name').textContent = 'Could not load profile';
+            showToast('Profile load error: ' + (e.message || 'unknown'), true);
+        }
+    }
+
+    async function loadStats() {
+        try {
+            const r = await fetch('/api/progress-data?limit=200');
+            if (!r.ok) return;
+            const data = await r.json();
+            const items = data.items || data.results || data.tests || [];
+            const pteTests = items.filter(t => (t.module || '').toLowerCase().includes('pte'));
+
+            document.getElementById('stat-total-tests').textContent = pteTests.length;
+            document.getElementById('stat-pte-tests').textContent = pteTests.length;
+
+            const scores = pteTests.map(t => Number(t.score || t.band_score || t.overall_score)).filter(n => n > 0);
+            if (scores.length > 0) {
+                document.getElementById('stat-best-pte').textContent = Math.round(Math.max(...scores));
+            }
+        } catch (e) {
+            console.warn('[PTE Profile] Stats error:', e);
+        }
+    }
+
+    async function saveProfile(updates) {
+        try {
+            const r = await fetch('/api/profile', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken
+                },
+                body: JSON.stringify(updates)
+            });
+            const data = await r.json();
+            if (data.success) {
+                showToast('✅ Saved successfully');
+                return true;
+            }
+            showToast(data.error || 'Failed', true);
+            return false;
+        } catch (e) {
+            showToast('Network error', true);
+            return false;
+        }
+    }
+
+    document.getElementById('btn-save-targets').addEventListener('click', async function() {
+        this.disabled = true;
+        await saveProfile({
+            target_band_pte: parseInt(document.getElementById('target-pte').value),
+        });
+        this.disabled = false;
+    });
+
+    document.getElementById('btn-save-info').addEventListener('click', async function() {
+        this.disabled = true;
+        await saveProfile({
+            full_name: document.getElementById('input-fullname').value.trim(),
+            email: document.getElementById('input-email').value.trim(),
+        });
+        this.disabled = false;
+    });
+
+    document.getElementById('btn-change-pass').addEventListener('click', async function() {
+        const oldPass = document.getElementById('input-old-pass').value;
+        const newPass = document.getElementById('input-new-pass').value;
+        const confirm = document.getElementById('input-confirm-pass').value;
+
+        if (!oldPass || !newPass) { showToast('Fill all password fields', true); return; }
+        if (newPass.length < 8) { showToast('Password min 8 chars', true); return; }
+        if (newPass !== confirm) { showToast('Passwords do not match', true); return; }
+
+        this.disabled = true;
+        try {
+            const r = await fetch('/api/profile/password', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken
+                },
+                body: JSON.stringify({ old_password: oldPass, new_password: newPass })
+            });
+            const data = await r.json();
+            if (data.success) {
+                showToast('✅ Password changed');
+                document.getElementById('input-old-pass').value = '';
+                document.getElementById('input-new-pass').value = '';
+                document.getElementById('input-confirm-pass').value = '';
+            } else {
+                showToast(data.error || 'Failed', true);
+            }
+        } catch (e) {
+            showToast('Network error', true);
+        }
+        this.disabled = false;
+    });
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', loadProfile);
+    } else {
+        loadProfile();
+    }
+})();
+</script>
+</body>
+</html>

@@ -1787,6 +1787,11 @@ def api_speaking_pooled_submit():
     is_full_test = bool(data.get('is_full_test'))
     user_id = current_user.id
 
+    # [REAL IELTS] Band penalty for skipped questions
+    band_penalty = float(data.get('band_penalty', 0) or 0)
+    total_misses = int(data.get('total_misses', 0) or 0)
+    dont_know_count = int(data.get('dont_know_count', 0) or 0)
+
     if not responses:
         if is_full_test:
             ft = session.get('full_ielts_test')
@@ -1835,7 +1840,16 @@ def api_speaking_pooled_submit():
             feedbacks.append(f"Part {part}: {ev['feedback']}")
 
     all_scores = [s for lst in per_part.values() for s in lst]
-    band = round(sum(all_scores) / len(all_scores), 1) if all_scores else 0.0
+    raw_band = round(sum(all_scores) / len(all_scores), 1) if all_scores else 0.0
+    
+    # [REAL IELTS] Apply band penalty for skipped questions
+    band = max(0.0, round(raw_band - band_penalty, 1))
+    if band_penalty > 0:
+        logger.info(
+            f"Speaking band penalty: raw={raw_band}, penalty=-{band_penalty}, "
+            f"final={band} (misses={total_misses}, dont_know={dont_know_count})"
+        )
+    
     part_avgs = {
         p: (round(sum(l) / len(l), 1) if l else 0.0)
         for p, l in per_part.items()
@@ -1902,9 +1916,18 @@ def api_speaking_pooled_submit():
             ft.setdefault('scores', {})['speaking'] = {
                 'band_score': band, 'score_pct': None,
                 'correct': None, 'total': None,
+                # [REAL IELTS] Store penalty info for report
+                'raw_band': raw_band,
+                'band_penalty': band_penalty,
+                'total_misses': total_misses,
+                'dont_know_count': dont_know_count,
             }
             ft.setdefault('completed_sections', {})['speaking'] = True
-            ft.setdefault('answers', {})['speaking'] = {'responses': responses}
+            ft.setdefault('answers', {})['speaking'] = {
+                'responses': responses,
+                'total_misses': total_misses,
+                'dont_know_count': dont_know_count,
+            }
             for p in ('listening', 'reading', 'writing', 'speaking'):
                 if not ft['completed_sections'].get(p):
                     ft['phase'] = p
@@ -1921,6 +1944,10 @@ def api_speaking_pooled_submit():
                 'success': True,
                 'is_full_test': True,
                 'band_score': band,
+                'raw_band': raw_band,
+                'band_penalty': band_penalty,
+                'total_misses': total_misses,
+                'dont_know_count': dont_know_count,
                 'part_averages': part_avgs,
                 'feedback': ' | '.join(feedbacks[:6]),
                 'next_phase': ft['phase'],
@@ -1931,6 +1958,10 @@ def api_speaking_pooled_submit():
         'success': True,
         'user_overall_band': band,
         'band_score': band,
+        'raw_band': raw_band,
+        'band_penalty': band_penalty,
+        'total_misses': total_misses,
+        'dont_know_count': dont_know_count,
         'part_averages': part_avgs,
         'feedback': ' | '.join(feedbacks[:6]),
     })
@@ -2151,82 +2182,9 @@ def login():
     return render_template('index.html', module=module)
 
 
-@app.route('/register', methods=['GET', 'POST'])
-@limiter.limit("10 per minute")
-def register():
-    module = request.args.get('module') or request.form.get('module') or session.get('selected_module', 'ielts')
-    if module not in ['ielts', 'pte', 'ukvi']:
-        module = 'ielts'
-    session['selected_module'] = module
-    User = get_user_model(module)
-
-    if request.method == 'POST':
-        username = (request.form.get('username') or '').strip()
-        password = request.form.get('password') or ''
-
-        if not username or not password:
-            return render_template('index.html',
-                                   error="Username and password are required",
-                                   module=module)
-        if len(username) < 3:
-            return render_template('index.html',
-                                   error="Username must be at least 3 characters",
-                                   module=module)
-        if len(username) > 80:
-            return render_template('index.html',
-                                   error="Username is too long (max 80 characters)",
-                                   module=module)
-        if not re.match(r'^[a-zA-Z0-9._-]+$', username):
-            return render_template('index.html',
-                                   error="Username can only contain letters, numbers, dot, underscore, hyphen",
-                                   module=module)
-        if len(password) < 8:
-            return render_template('index.html',
-                                   error="Password must be at least 8 characters",
-                                   module=module)
-        if User.query.filter_by(username=username).first():
-            return render_template('index.html',
-                                   error="Username already taken",
-                                   module=module)
-
-        email = f"{username.lower()}@seltaiprep.local"
-        if User.query.filter_by(email=email).first():
-            counter = 1
-            while User.query.filter_by(email=f"{username.lower()}{counter}@seltaiprep.local").first():
-                counter += 1
-                if counter > 1000:
-                    break
-            email = f"{username.lower()}{counter}@seltaiprep.local"
-
-        try:
-            user = User(username=username, email=email)
-            user.set_password(password)
-            db.session.add(user)
-            db.session.commit()
-        except Exception as e:
-            db.session.rollback()
-            logger.exception(f"Registration failed for {username}: {e}")
-            return render_template('index.html',
-                                   error="Registration failed. Please try again.",
-                                   module=module)
-
-        try:
-            if module == 'ielts':
-                from models import create_default_subscription_for_user
-                create_default_subscription_for_user(user.id, 'ielts')
-        except Exception as e:
-            logger.warning(f"Default subscription creation failed: {e}")
-
-        session.clear()
-        session['selected_module'] = module
-        login_user(user, remember=True, duration=timedelta(days=14))
-        session.permanent = True
-        log_user_activity(user.id, 'register', {'module': module, 'method': 'username_password'})
-        logger.info(f" New user registered: {user.id} ({username})")
-        return redirect(url_for('dashboard'))
-
-    return render_template('index.html', module=module)
-
+# ═══════════════════════════════════════════════════════════════
+# [ADVANCED] Username availability check (general users)
+# ═══════════════════════════════════════════════════════════════
 
 @app.route('/logout')
 @login_required
@@ -6070,6 +6028,148 @@ def _ft_speaking_status(state, user_id: Optional[int] = None) -> Dict[str, Any]:
         'is_stuck': is_stuck,
         'can_reset': (not completed),
     }
+
+
+# ═══════════════════════════════════════════════════════════════
+# [HISTORY] IELTS and PTE test history pages
+# ═══════════════════════════════════════════════════════════════
+@app.route('/ielts/history')
+@login_required
+def ielts_history():
+    return render_template('ielts_history.html')
+
+
+@app.route('/pte/history')
+@login_required
+def pte_history():
+    return render_template('pte_history.html')
+
+
+# ═══════════════════════════════════════════════════════════════
+# [PTE DASHBOARD] Separate PTE dashboard
+# ═══════════════════════════════════════════════════════════════
+@app.route('/pte/dashboard')
+@login_required
+def pte_dashboard_page():
+    return render_template('pte_dashboard.html')
+
+
+# ═══════════════════════════════════════════════════════════════
+# [PROFILE API] Data endpoint for frontend
+# ═══════════════════════════════════════════════════════════════
+@app.route('/profile/data', methods=['GET'])
+@login_required
+def profile_data_get():
+    """Return user profile data for frontend"""
+    from sqlalchemy import text
+    
+    try:
+        row = db.session.execute(text("""
+            SELECT id, username, email, full_name, target_band, created_at
+            FROM users WHERE id = :uid
+        """), {"uid": current_user.id}).fetchone()
+        
+        if not row:
+            return jsonify({'success': False, 'error': 'User not found'}), 404
+        
+        return jsonify({
+            'success': True,
+            'user': {
+                'id': row[0],
+                'username': row[1],
+                'email': row[2],
+                'full_name': row[3],
+                'target_band_ielts': float(row[4]) if row[4] else 7.0,
+                'created_at': row[5].isoformat() if row[5] else None,
+            }
+        })
+    except Exception as e:
+        logger.error(f"Profile data GET failed: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/profile/data', methods=['POST'])
+@login_required
+def profile_data_post():
+    """Update user profile"""
+    from sqlalchemy import text
+    
+    try:
+        data = request.json or {}
+        updates = []
+        params = {}
+        
+        if 'full_name' in data:
+            updates.append("full_name = :fn")
+            params['fn'] = (data['full_name'] or '').strip() or None
+        
+        if 'email' in data:
+            updates.append("email = :em")
+            params['em'] = (data['email'] or '').strip() or None
+        
+        if 'target_band_ielts' in data:
+            updates.append("target_band = :tb")
+            params['tb'] = float(data['target_band_ielts'])
+        
+        if not updates:
+            return jsonify({'success': False, 'error': 'No updates'}), 400
+        
+        params['uid'] = current_user.id
+        sql = "UPDATE users SET " + ", ".join(updates) + " WHERE id = :uid"
+        db.session.execute(text(sql), params)
+        db.session.commit()
+        
+        logger.info(f"Profile updated for user {current_user.id}: {list(data.keys())}")
+        return jsonify({'success': True})
+    except Exception as e:
+        logger.error(f"Profile data POST failed: {e}")
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ═══════════════════════════════════════════════════════════════
+# [PROFILE PASSWORD] Change password
+# ═══════════════════════════════════════════════════════════════
+@app.route('/profile/password', methods=['POST'])
+@login_required
+def profile_password_change():
+    """Change user password"""
+    from sqlalchemy import text
+    from werkzeug.security import check_password_hash, generate_password_hash
+    
+    data = request.json or {}
+    old_pass = data.get('old_password', '')
+    new_pass = data.get('new_password', '')
+    
+    if not old_pass or not new_pass:
+        return jsonify({'success': False, 'error': 'Fill all fields'}), 400
+    
+    if len(new_pass) < 8:
+        return jsonify({'success': False, 'error': 'Password min 8 chars'}), 400
+    
+    try:
+        row = db.session.execute(text(
+            "SELECT password_hash FROM users WHERE id = :uid"
+        ), {"uid": current_user.id}).fetchone()
+        
+        if not row:
+            return jsonify({'success': False, 'error': 'User not found'}), 404
+        
+        if not check_password_hash(row[0], old_pass):
+            return jsonify({'success': False, 'error': 'Current password wrong'}), 401
+        
+        new_hash = generate_password_hash(new_pass)
+        db.session.execute(text(
+            "UPDATE users SET password_hash = :ph WHERE id = :uid"
+        ), {"ph": new_hash, "uid": current_user.id})
+        db.session.commit()
+        
+        logger.info(f"Password changed for user {current_user.id}")
+        return jsonify({'success': True})
+    except Exception as e:
+        logger.error(f"Password change failed: {e}")
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 @app.route('/ielts-full-test')
@@ -11867,10 +11967,6 @@ def ukvi_expired():
     ), 403
 
 
-if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    debug = os.environ.get('FLASK_ENV') == 'development'
-    app.run(host='0.0.0.0', port=port, debug=debug)
 
 # ═══════════════════════════════════════════════════════════
 # UX Helpers — Stage icons and labels for templates
@@ -11899,3 +11995,308 @@ def stage_icon_filter(code):
 @app.template_filter('stage_label')
 def stage_label_filter(code):
     return _stage_meta(code)['label']
+
+
+
+# ═══════════════════════════════════════════════════════════════
+# [SUBSCRIPTION API] Current plan
+# ═══════════════════════════════════════════════════════════════
+@app.route('/api/subscription/current')
+@login_required
+def api_subscription_current():
+    try:
+        from sqlalchemy import text
+        row = db.session.execute(text(
+            "SELECT plan, status FROM subscriptions WHERE user_id = :uid ORDER BY id DESC LIMIT 1"
+        ), {"uid": current_user.id}).fetchone()
+        
+        if row and row[1] in ('active', 'paid'):
+            return jsonify({'plan': row[0] or 'free', 'status': row[1]})
+        return jsonify({'plan': 'free', 'status': 'inactive'})
+    except Exception as e:
+        logger.warning(f"Subscription API failed: {e}")
+        return jsonify({'plan': 'free', 'status': 'inactive'})
+
+
+
+
+# ═══════════════════════════════════════════════════════════════
+# [PTE PROFILE] PTE-specific profile page
+# ═══════════════════════════════════════════════════════════════
+@app.route('/pte/profile')
+@login_required
+def pte_profile_page():
+    return render_template('pte_profile.html')
+
+
+
+# ═══════════════════════════════════════════════════════════════
+# [REGISTER + OTP MERGE] Two-step email-verified registration
+# ═══════════════════════════════════════════════════════════════
+
+def _generate_otp():
+    """Generate 6-digit OTP"""
+    import random
+    return str(random.randint(100000, 999999))
+
+
+def _send_otp_email(to_email, otp, purpose='register'):
+    """Send OTP email. Returns (ok, err)."""
+    try:
+        if not to_email or '@' not in to_email:
+            return (False, 'Invalid email')
+        
+        subject = 'Verify your SeltaPrep account' if purpose == 'register' else 'Your SeltaPrep verification code'
+        body = f"""Hello,
+
+Your SeltaPrep verification code is:
+
+    {otp}
+
+This code expires in 10 minutes.
+
+If you did not request this, please ignore this email.
+
+- SeltaPrep Team
+"""
+        msg = Message(subject=subject, recipients=[to_email], body=body)
+        mail.send(msg)
+        logger.info(f"OTP email sent to {to_email} (purpose={purpose})")
+        return (True, None)
+    except Exception as e:
+        logger.warning(f"OTP email FAILED to {to_email}: {e}")
+        return (False, str(e))
+
+
+@app.route('/api/check-username')
+def api_check_username_general():
+    """Check username availability — module-specific"""
+    username = (request.args.get('username') or '').strip()
+    
+    if not username:
+        return jsonify({'available': False, 'error': 'Username required'})
+    if len(username) < 3:
+        return jsonify({'available': False, 'error': 'Min 3 characters'})
+    if len(username) > 80:
+        return jsonify({'available': False, 'error': 'Max 80 characters'})
+    if not re.match(r'^[a-zA-Z0-9._-]+$', username):
+        return jsonify({'available': False, 'error': 'Invalid characters'})
+    
+    # [FIX] STRICT module: use explicit ?module= or default 'ielts'
+    # Do NOT fall back to session (stale data risk)
+    module = (request.args.get('module') or 'ielts').strip().lower()
+    if module not in ['ielts', 'pte', 'ukvi']:
+        module = 'ielts'
+    
+    try:
+        User = get_user_model(module)
+        existing = User.query.filter_by(username=username).first()
+        
+        logger.info(f"[check-username] module={module}, username='{username}', available={existing is None}")
+        
+        return jsonify({
+            'available': existing is None,
+            'username': username,
+            'module': module,
+        })
+    except Exception as e:
+        logger.warning(f"Username check error: {e}")
+        return jsonify({'available': None, 'error': 'Check failed'})
+
+@app.route('/register', methods=['POST'])
+@limiter.limit("10 per minute")
+def register():
+    """Step 1: Validate inputs, send OTP. Does NOT create account yet."""
+    module = request.args.get('module') or request.form.get('module') or session.get('selected_module', 'ielts')
+    if module not in ['ielts', 'pte', 'ukvi']:
+        module = 'ielts'
+    session['selected_module'] = module
+    
+    # Get fields (support both form and JSON)
+    data = request.json if request.is_json else request.form
+    email = (data.get('email') or '').strip().lower()
+    username = (data.get('username') or '').strip()
+    password = data.get('password') or ''
+    
+    # Auto-split email from username if user typed email in username
+    if '@' in username and not email:
+        parts = username.rsplit('@', 1)
+        username = parts[0].strip()
+        email = username + '@' + parts[1] if len(parts) > 1 else username
+        # Actually: email = original username value
+        email = (data.get('username') or '').strip().lower()
+    
+    # Validate
+    errors = []
+    if not email or '@' not in email or '.' not in email.split('@')[-1]:
+        errors.append('Valid email required')
+    if not username:
+        errors.append('Username required')
+    if len(username) < 3:
+        errors.append('Username must be at least 3 characters')
+    if len(username) > 80:
+        errors.append('Username too long (max 80)')
+    if username and not re.match(r'^[a-zA-Z0-9._-]+$', username):
+        errors.append('Username: only letters, numbers, dot, underscore, hyphen')
+    if len(password) < 8:
+        errors.append('Password must be at least 8 characters')
+    
+    if errors:
+        return jsonify({'success': False, 'error': '; '.join(errors)}), 400
+    
+    # Check existing
+    User = get_user_model(module)
+    if User.query.filter_by(username=username).first():
+        return jsonify({'success': False, 'error': f"Username '{username}' already taken"}), 400
+    if User.query.filter_by(email=email).first():
+        return jsonify({'success': False, 'error': f"Email '{email}' already registered"}), 400
+    
+    # Generate OTP
+    otp = _generate_otp()
+    
+    # Store pending registration in session (encrypt password)
+    from werkzeug.security import generate_password_hash
+    session['pending_register'] = {
+        'module': module,
+        'email': email,
+        'username': username,
+        'password_hash': generate_password_hash(password),
+        'otp': otp,
+        'expires_at': (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat(),
+        'attempts': 0,
+    }
+    session.modified = True
+    
+    # Send email
+    ok, err = _send_otp_email(email, otp, purpose='register')
+    
+    resp = {
+        'success': True,
+        'message': f'Verification code sent to {email}',
+        'email_masked': email[:2] + '***' + email[email.index('@'):],
+    }
+    
+    # Dev mode: expose OTP for testing
+    if not ok and (app.debug or app.config.get('DEBUG')):
+        resp['_dev_otp'] = otp
+        resp['_dev_note'] = f'Email failed ({err}). Use this OTP: {otp}'
+        logger.warning(f"[DEV] OTP for {email}: {otp}")
+    elif app.debug or app.config.get('DEBUG'):
+        # Even if email succeeded, show OTP in debug mode for convenience
+        resp['_dev_otp'] = otp
+    
+    return jsonify(resp)
+
+
+@app.route('/register/verify', methods=['POST'])
+@limiter.limit("20 per minute")
+def register_verify():
+    """Step 2: Verify OTP, create account, auto-login."""
+    data = request.json if request.is_json else request.form
+    otp_input = (data.get('otp') or '').strip()
+    
+    pending = session.get('pending_register')
+    if not pending:
+        return jsonify({'success': False, 'error': 'No pending registration. Please start over.'}), 400
+    
+    # Check expiry
+    try:
+        expires = datetime.fromisoformat(pending['expires_at'])
+        if datetime.now(timezone.utc) > expires:
+            session.pop('pending_register', None)
+            return jsonify({'success': False, 'error': 'OTP expired. Please register again.'}), 400
+    except Exception:
+        pass
+    
+    # Check attempts
+    if pending.get('attempts', 0) >= 5:
+        session.pop('pending_register', None)
+        return jsonify({'success': False, 'error': 'Too many attempts. Please start over.'}), 400
+    
+    # Verify OTP
+    if otp_input != pending['otp']:
+        pending['attempts'] = pending.get('attempts', 0) + 1
+        session['pending_register'] = pending
+        remaining = 5 - pending['attempts']
+        return jsonify({'success': False, 'error': f'Invalid OTP. {remaining} attempts left.'}), 400
+    
+    # Create user
+    module = pending['module']
+    username = pending['username']
+    email = pending['email']
+    
+    try:
+        User = get_user_model(module)
+        
+        # Double-check uniqueness
+        if User.query.filter_by(username=username).first():
+            session.pop('pending_register', None)
+            return jsonify({'success': False, 'error': 'Username taken. Please start over.'}), 400
+        if User.query.filter_by(email=email).first():
+            session.pop('pending_register', None)
+            return jsonify({'success': False, 'error': 'Email already registered.'}), 400
+        
+        user = User(username=username, email=email)
+        user.password_hash = pending['password_hash']  # already hashed
+        db.session.add(user)
+        db.session.commit()
+        
+        # Auto-login
+        login_user(user, remember=True, duration=timedelta(days=14))
+        session.permanent = True
+        session['selected_module'] = module
+        session.pop('pending_register', None)
+        
+        log_user_activity(user.id, 'register', {'method': 'email_otp', 'module': module})
+        logger.info(f"✅ User registered via OTP: {username} (id={user.id})")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Account created successfully',
+            'redirect': url_for('dashboard'),
+        })
+    
+    except Exception as e:
+        db.session.rollback()
+        logger.exception(f"Registration failed for {username}: {e}")
+        return jsonify({'success': False, 'error': 'Registration failed. Please try again.'}), 500
+
+
+@app.route('/register/resend-otp', methods=['POST'])
+@limiter.limit("3 per minute")
+def register_resend_otp():
+    """Resend OTP to pending email."""
+    pending = session.get('pending_register')
+    if not pending:
+        return jsonify({'success': False, 'error': 'No pending registration'}), 400
+    
+    otp = _generate_otp()
+    pending['otp'] = otp
+    pending['expires_at'] = (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat()
+    pending['attempts'] = 0
+    session['pending_register'] = pending
+    session.modified = True
+    
+    ok, err = _send_otp_email(pending['email'], otp, purpose='register')
+    
+    resp = {'success': True, 'message': 'New code sent'}
+    if not ok and (app.debug or app.config.get('DEBUG')):
+        resp['_dev_otp'] = otp
+    elif app.debug or app.config.get('DEBUG'):
+        resp['_dev_otp'] = otp
+    
+    return jsonify(resp)
+
+
+@app.route('/register/cancel', methods=['POST'])
+def register_cancel():
+    """Clear pending registration."""
+    session.pop('pending_register', None)
+    session.modified = True
+    return jsonify({'success': True})
+
+
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 5000))
+    debug = os.environ.get('FLASK_ENV') == 'development'
+    app.run(host='0.0.0.0', port=port, debug=debug)

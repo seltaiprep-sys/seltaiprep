@@ -241,3 +241,23 @@ static/temp_audio/
 
 # --- Backups (auto-generated) ---
 *.bak_*
+
+# Backup files
+*.bak_*
+*.bak
+static/_avatars_backup/
+__pycache__/
+
+# Local utility scripts (not for repo)
+advanced_login_register.py
+clean_pool.py
+create_student.py
+extract_prompts.py
+fix2.py
+import_avatars.py
+merge_otp_register.py
+read_prompts.py
+remove_pte_from_profile.py
+restore_dashboard_subscription.py
+revert_peak_cdn.py
+truncate_all.py

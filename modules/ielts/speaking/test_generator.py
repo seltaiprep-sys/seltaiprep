@@ -305,6 +305,96 @@ def _count_questions(result: Dict) -> int:
 # SpeakingTest
 # ============================================================
 
+
+
+# ═══════════════════════════════════════════════════════════════
+# [QUALITY FILTER] Reject unanswerable questions (post-generation)
+# ═══════════════════════════════════════════════════════════════
+_QUALITY_BAD_PATTERNS = [
+    # Requiring specific factual knowledge
+    r'\b(population|GDP|exact year|specific date|statistics\s+of)\b',
+    r'what\s+(year|date)\s+(was|did|will)',
+    r'how\s+many\s+(exactly|precisely)',
+    # Requiring expert/technical knowledge
+    r'\b(theory|theoretical|hypothesis|quantum|DNA|molecular|algorithm|neural)\b',
+    r'\b(calculate|compute|solve|derive)\b',
+    # Requiring personal secrets
+    r'\b(deepest\s+(fear|secret|regret)|biggest\s+regret|darkest\s+secret)\b',
+    # Placeholder leakage
+    r'\[(something|topic|question|item|thing)\]',
+    r'^Generate\s+',
+    r'generate\s+(question|item|topic)',
+    # Sensitive
+    r'\b(politics|political|religion|religious|war|abortion|suicide)\b',
+]
+
+_QUALITY_GOOD_STARTERS = (
+    'what', 'how', 'why', 'when', 'where', 'who', 'do', 'does', 'did',
+    'can', 'could', 'would', 'should', 'is', 'are', 'have', 'has',
+    'tell me', 'describe', 'explain', 'do you', 'have you', 'why do',
+    'why are', 'how do', 'how has', 'how did', 'in what way',
+)
+
+def _is_quality_question(text: str, part: int = 1) -> bool:
+    """Return True if question is answerable and well-formed."""
+    if not text or not isinstance(text, str):
+        return False
+    text_s = text.strip()
+    if len(text_s) < 15:
+        return False
+    if len(text_s) > 300:
+        return False
+    
+    lower = text_s.lower()
+    for pat in _QUALITY_BAD_PATTERNS:
+        try:
+            if re.search(pat, lower):
+                logger.warning(f"[QualityFilter] Rejected (pattern {pat[:30]}): {text_s[:60]}")
+                return False
+        except Exception:
+            continue
+    
+    if not any(lower.startswith(s) for s in _QUALITY_GOOD_STARTERS):
+        if not text_s.endswith('?'):
+            return False
+    
+    return True
+
+
+def _filter_questions_list(qs, part: int):
+    """Filter list of question dicts / strings."""
+    if not qs:
+        return []
+    filtered = []
+    for q in qs:
+        if isinstance(q, dict):
+            qt = q.get('question', '')
+            if _is_quality_question(qt, part):
+                filtered.append(q)
+        elif isinstance(q, str):
+            if _is_quality_question(q, part):
+                filtered.append(q)
+    if len(filtered) < len(qs):
+        logger.info(f"[QualityFilter] Part {part}: kept {len(filtered)}/{len(qs)} questions")
+    return filtered
+
+
+def _apply_quality_filter(test_data: dict) -> dict:
+    """Apply quality filter to entire test data structure."""
+    try:
+        p1 = test_data.get('part1', {})
+        for section in ('warmup_section', 'topic_section'):
+            if section in p1 and 'questions' in p1[section]:
+                p1[section]['questions'] = _filter_questions_list(p1[section]['questions'], 1)
+
+        p3 = test_data.get('part3', {})
+        if 'questions' in p3:
+            p3['questions'] = _filter_questions_list(p3['questions'], 3)
+    except Exception as e:
+        logger.warning(f"[QualityFilter] Error: {e}")
+    return test_data
+
+
 class SpeakingTest:
     """
     Generate IELTS Speaking tests using an AI engine.
@@ -596,6 +686,14 @@ Generate a COMPLETE test with ALL THREE PARTS now. Return ONLY valid JSON."""
         selected_topic = _safe_str(topic) or self._pick_topic(PART1_TOPIC_POOL)
         prompt = f"""You are a certified IELTS Speaking Examiner (British English).
 
+UNIVERSAL RULES (apply to ALL parts):
+  • Questions must be answerable by ANY candidate — student, worker, retiree.
+  • AVOID questions that require specific facts (dates, statistics, names).
+  • AVOID expert knowledge (medical, technical, scientific terms).
+  • AVOID personal secrets (deepest fears, regrets, financial details).
+  • PREFER everyday topics: hometown, work, hobbies, family, food, travel, shopping.
+
+
 TARGET: Candidates aiming for Band 6.5-8.0.
 STYLE: Natural examiner phrasing — same as real Cambridge IELTS Speaking tests.
 
@@ -685,6 +783,14 @@ Generate NATURAL, REALISTIC questions. Return ONLY valid JSON."""
 
         prompt = f"""You are a certified IELTS Speaking Examiner (British English).
 
+UNIVERSAL RULES (apply to ALL parts):
+  • Questions must be answerable by ANY candidate — student, worker, retiree.
+  • AVOID questions that require specific facts (dates, statistics, names).
+  • AVOID expert knowledge (medical, technical, scientific terms).
+  • AVOID personal secrets (deepest fears, regrets, financial details).
+  • PREFER everyday topics: hometown, work, hobbies, family, food, travel, shopping.
+
+
 TARGET: Candidates aiming for Band 6.5-8.0.
 STYLE: Natural examiner phrasing — same as real Cambridge IELTS Part 2 cue cards.
 
@@ -764,6 +870,14 @@ Generate a UNIQUE, REAL IELTS topic. Return ONLY valid JSON."""
         theme = _safe_str(part2_topic) or "modern life and society"
         prompt = f"""You are a certified IELTS Speaking Examiner (British English).
 
+UNIVERSAL RULES (apply to ALL parts):
+  • Questions must be answerable by ANY candidate — student, worker, retiree.
+  • AVOID questions that require specific facts (dates, statistics, names).
+  • AVOID expert knowledge (medical, technical, scientific terms).
+  • AVOID personal secrets (deepest fears, regrets, financial details).
+  • PREFER everyday topics: hometown, work, hobbies, family, food, travel, shopping.
+
+
 TARGET: Candidates aiming for Band 6.5-8.0.
 STYLE: Natural examiner phrasing — same as real Cambridge IELTS Part 3 discussion.
 
@@ -773,12 +887,21 @@ Difficulty: {difficulty}
 TASK: Generate Part 3 (Two-way Discussion). Output ONLY the JSON below.
 
 CRITICAL RULES:
-  1. Every "question" must be a REAL, complete, abstract/analytical question
-     that builds on the Part 2 theme.
+  1. Every "question" must be a REAL, complete, general discussion question
+     that ANY candidate (student, worker, any background) can answer.
   2. NEVER output instruction text like "Generate analytical question 1" —
      those are placeholders, not real questions.
-  3. Each question must encourage a longer, abstract answer (not yes/no).
-  4. Use natural British English. No markdown. No extra text outside JSON.
+  3. Each question must encourage a longer answer (not yes/no).
+  4. Questions must be ACCESSIBLE — avoid:
+     ❌ Requiring specific facts (year, population, statistics)
+     ❌ Requiring expert knowledge (theory, technical terms)
+     ❌ Requiring personal secrets (deepest fear, biggest regret)
+     ❌ Politics, religion, or sensitive topics
+  5. GOOD Part 3 style:
+     ✅ "Why do you think people enjoy traveling to new places?"
+     ✅ "How has shopping changed compared to your parents' time?"
+     ✅ "Do you think technology will change how people travel in future?"
+  6. Use natural British English. No markdown. No extra text outside JSON.
 
 EXAMPLES of real Part 3 questions (do NOT copy verbatim):
   • "Why do you think some people find it difficult to do X?"

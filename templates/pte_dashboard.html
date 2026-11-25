@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PTE Dashboard - SeltaPrep</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Arial, sans-serif;
+    background: radial-gradient(circle at 50% 25%, #16203a 0%, #0d1117 55%, #05070b 100%);
+    color: #fff;
+    min-height: 100vh;
+    padding: 20px;
+}
+.container { max-width: 1000px; margin: 0 auto; }
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    background: rgba(20,25,40,0.8);
+    border-radius: 16px;
+    margin-bottom: 24px;
+    border: 1px solid rgba(255,255,255,0.08);
+}
+.header .logo { font-size: 20px; font-weight: 800; }
+.header .logo .accent { color: #f093fb; }
+.nav-links { display: flex; gap: 12px; align-items: center; }
+.nav-links a {
+    color: #b3adff;
+    text-decoration: none;
+    font-size: 13px;
+    padding: 6px 14px;
+    border: 1px solid rgba(240,147,251,0.3);
+    border-radius: 8px;
+    transition: all .2s;
+}
+.nav-links a:hover { background: rgba(240,147,251,0.1); }
+
+.module-card {
+    background: linear-gradient(135deg, rgba(20,25,40,0.95), rgba(15,20,35,0.9));
+    border-radius: 20px;
+    padding: 24px;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-left: 4px solid #f093fb;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+    margin-bottom: 20px;
+}
+.module-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 18px;
+}
+.module-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 20px;
+    font-weight: 800;
+}
+.module-icon {
+    width: 48px; height: 48px;
+    border-radius: 12px;
+    background: rgba(240,147,251,0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+}
+
+.band-display {
+    text-align: center;
+    padding: 24px 0;
+    margin: 14px 0;
+    background: rgba(255,255,255,0.03);
+    border-radius: 14px;
+}
+.band-value {
+    font-size: 56px;
+    font-weight: 900;
+    background: linear-gradient(135deg, #f093fb, #f5576c);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+.band-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #6b7280;
+    font-weight: 700;
+    margin-top: 6px;
+}
+
+.module-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin: 14px 0;
+}
+.mini-stat {
+    background: rgba(255,255,255,0.04);
+    border-radius: 10px;
+    padding: 12px;
+    text-align: center;
+}
+.mini-stat .value { font-size: 22px; font-weight: 800; color: #fff; }
+.mini-stat .label { font-size: 10px; color: #9ca3af; text-transform: uppercase; margin-top: 3px; }
+
+.module-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 16px;
+}
+.module-actions .btn {
+    flex: 1;
+    padding: 12px 16px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 700;
+    text-align: center;
+    text-decoration: none;
+    transition: all 0.2s;
+}
+.btn-module-primary {
+    background: linear-gradient(135deg, #f093fb, #f5576c);
+    color: #fff;
+}
+.btn-module-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(240,147,251,0.4);
+}
+.btn-module-outline {
+    background: transparent;
+    border: 1.5px solid rgba(255,255,255,0.15);
+    color: #d1d5db;
+}
+.btn-module-outline:hover { background: rgba(255,255,255,0.05); color: #fff; }
+
+.skills-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+}
+.skill-card {
+    background: rgba(20,25,40,0.7);
+    border-radius: 14px;
+    padding: 18px;
+    border: 1px solid rgba(255,255,255,0.06);
+    text-align: center;
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.2s;
+}
+.skill-card:hover {
+    background: rgba(20,25,40,0.95);
+    border-color: rgba(240,147,251,0.3);
+    transform: translateY(-3px);
+}
+.skill-icon { font-size: 32px; margin-bottom: 8px; }
+.skill-name { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+.skill-desc { font-size: 11px; color: #6b7280; }
+
+.recent-section {
+    background: rgba(20,25,40,0.7);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 20px;
+    border: 1px solid rgba(255,255,255,0.06);
+}
+.recent-title {
+    font-size: 16px;
+    font-weight: 800;
+    margin-bottom: 14px;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: #6b7280;
+    font-size: 13px;
+}
+
+@media (max-width: 600px) {
+    body { padding: 12px; }
+    .header { flex-direction: column; gap: 12px; }
+    .band-value { font-size: 42px; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <div class="logo">📘 <span class="accent">PTE</span> Academic</div>
+        <div class="nav-links">
+            <a href="/dashboard">🎓 IELTS</a>
+            <a href="/profile">👤 Profile</a>
+            <a href="/logout">Logout</a>
+        </div>
+    </div>
+
+    <!-- PTE Module Card -->
+    <div class="module-card">
+        <div class="module-header">
+            <div class="module-title">
+                <div class="module-icon">📘</div>
+                <div>
+                    <div>PTE Academic</div>
+                    <div style="font-size:12px;color:#6b7280;font-weight:500;">Pearson Test of English</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="band-display">
+            <div class="band-value" id="pte-score">—</div>
+            <div class="band-label">Latest Overall Score</div>
+        </div>
+
+        <div class="module-stats">
+            <div class="mini-stat">
+                <div class="value" id="pte-tests">0</div>
+                <div class="label">Tests Taken</div>
+            </div>
+            <div class="mini-stat">
+                <div class="value" id="pte-target">79</div>
+                <div class="label">Target Score</div>
+            </div>
+        </div>
+
+        <div class="module-actions">
+            <a href="/pte-full-test" class="btn btn-module-primary">🚀 Start Full Test</a>
+            <a href="/pte/history" class="btn btn-module-outline">📊 History</a>
+        </div>
+    </div>
+
+    <!-- PTE Skills -->
+    <div class="skills-grid">
+        <a href="/pte/speaking" class="skill-card">
+            <div class="skill-icon">🎙️</div>
+            <div class="skill-name">Speaking</div>
+            <div class="skill-desc">Read Aloud, Describe Image, Retell Lecture</div>
+        </a>
+        <a href="/pte/writing" class="skill-card">
+            <div class="skill-icon">✍️</div>
+            <div class="skill-name">Writing</div>
+            <div class="skill-desc">Summarize Written Text, Essay</div>
+        </a>
+        <a href="/pte/reading" class="skill-card">
+            <div class="skill-icon">📖</div>
+            <div class="skill-name">Reading</div>
+            <div class="skill-desc">Multiple choice, Reorder, Fill blanks</div>
+        </a>
+        <a href="/pte/listening" class="skill-card">
+            <div class="skill-icon">🎧</div>
+            <div class="skill-name">Listening</div>
+            <div class="skill-desc">Summarize, Fill blanks, Highlight</div>
+        </a>
+    </div>
+
+    <!-- Recent Tests -->
+    <div class="recent-section">
+        <div class="recent-title">📈 Recent PTE Tests</div>
+        <div id="recent-list">
+            <div class="empty-state">No PTE tests yet. Start your first test above! 🚀</div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    'use strict';
+    
+    async function loadStats() {
+        try {
+            const r = await fetch('/api/progress-data?limit=50');
+            if (!r.ok) return;
+            const data = await r.json();
+            const items = (data.items || data.results || data.tests || []);
+            
+            const pteTests = items.filter(t => (t.module || '').toLowerCase().includes('pte'));
+            
+            document.getElementById('pte-tests').textContent = pteTests.length;
+            
+            if (pteTests.length > 0) {
+                const scores = pteTests.map(t => Number(t.score || t.band_score || t.overall_score)).filter(n => n > 0);
+                if (scores.length > 0) {
+                    document.getElementById('pte-score').textContent = Math.round(Math.max(...scores));
+                }
+                
+                // Recent list
+                const list = document.getElementById('recent-list');
+                list.innerHTML = pteTests.slice(0, 5).map(t => {
+                    const score = t.score || t.band_score || t.overall_score;
+                    const date = t.created_at || t.date;
+                    const dateStr = date ? new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
+                    return `
+                        <div style="display:flex;justify-content:space-between;padding:12px 16px;background:rgba(255,255,255,0.03);border-radius:10px;margin-bottom:8px;">
+                            <div>
+                                <div style="font-size:13px;font-weight:700;">${t.test_type || 'Full Test'}</div>
+                                <div style="font-size:11px;color:#6b7280;">${dateStr}</div>
+                            </div>
+                            <div style="font-size:20px;font-weight:900;color:#f093fb;">
+                                ${score ? Math.round(Number(score)) : '—'}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+        } catch (e) {
+            console.warn('[PTE Dashboard] Error:', e);
+        }
+    }
+    
+    loadStats();
+})();
+</script>
+</body>
+</html>
