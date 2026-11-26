@@ -339,6 +339,7 @@ app.config['MAIL_USE_TLS'] = os.environ.get('MAIL_USE_TLS', 'true').lower() == '
 app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME')
 app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
 app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER')
+app.config['MAIL_MAX_EMAILS'] = 1
 mail = Mail(app)
 
 GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID', '')
@@ -12169,6 +12170,9 @@ def register():
     
     # Send email
     ok, err = _send_otp_email(email, otp, purpose='register')
+    if not ok and not (app.debug or app.config.get('DEBUG')):
+        session.pop('pending_register', None)
+        return jsonify({'success': False, 'error': 'Could not send verification email. Please try again.'}), 500
     
     resp = {
         'success': True,
@@ -12278,6 +12282,8 @@ def register_resend_otp():
     session.modified = True
     
     ok, err = _send_otp_email(pending['email'], otp, purpose='register')
+    if not ok and not (app.debug or app.config.get('DEBUG')):
+        return jsonify({'success': False, 'error': 'Could not send verification email. Please try again.'}), 500
     
     resp = {'success': True, 'message': 'New code sent'}
     if not ok and (app.debug or app.config.get('DEBUG')):
