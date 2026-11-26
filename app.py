@@ -8926,22 +8926,51 @@ if _B2B_AVAILABLE:
                             or os.environ.get("SESSION_COOKIE_SECURE", "").lower() == "true"):
                         _h = _h.replace("http://", "https://", 1)
                     _link = _h + student.test_url
-                    _msg = Message(
-                        subject="Your UKVI Mock Test Link",
-                        recipients=[student.email],
-                        bcc=[partner.email] if partner and getattr(partner, 'email', None) else None,
-                        body=(
-                            f"Hello {student.full_name},\n\n"
-                            f"Your UKVI interview test is scheduled for:\n"
-                            f"  {sched_date} at {sched_time} ({tz_code})\n\n"
-                            f"Test link:\n{_link}\n\n"
-                            f"Username: {username}\n"
-                            f"Password: {password}\n\n"
-                            f"Please complete the test within 24 hours of the scheduled time.\n\n"
-                            f"— {partner.name}"
-                        ),
+                    _plain_body = (
+                        f"Hello {student.full_name}," + chr(10)*2 +
+                        f"Your UKVI interview test is scheduled for:" + chr(10) +
+                        f"  {sched_date} at {sched_time} ({tz_code})" + chr(10)*2 +
+                        f"Test link:" + chr(10) + f"{_link}" + chr(10)*2 +
+                        f"Username: {username}" + chr(10) +
+                        f"Password: {password}" + chr(10)*2 +
+                        f"Please complete the test within 24 hours of the scheduled time." + chr(10)*2 +
+                        f"? {partner.name}"
                     )
-                    mail.send(_msg)
+                    _p_smtp_user = (partner.smtp_user or partner.from_email) if partner else None
+                    _sent_via_inst = False
+                    if partner and _p_smtp_user and getattr(partner, 'smtp_pass', None):
+                        try:
+                            _inst_cfg = {
+                                'host': partner.smtp_host or ('smtp.' + 'gmail.com'),
+                                'port': partner.smtp_port or 587,
+                                'user': _p_smtp_user,
+                                'pass': partner.smtp_pass,
+                                'from_email': partner.from_email or _p_smtp_user,
+                                'from_name': partner.from_name or partner.name,
+                            }
+                            _html_body = "<div style='font-family:sans-serif;line-height:1.6'>" + _plain_body.replace(chr(10), "<br>") + "</div>"
+                            _ok_inst, _err_inst = _send_smtp_html(
+                                _inst_cfg,
+                                student.email,
+                                f"Your UKVI Mock Test Link ? {partner.name}",
+                                _html_body,
+                                bcc=partner.email if getattr(partner, 'email', None) else None,
+                            )
+                            if _ok_inst:
+                                _sent_via_inst = True
+                                logger.info("Test link emailed via INSTITUTE SMTP (%s) to %s", _p_smtp_user, student.email)
+                            else:
+                                logger.warning("Institute SMTP failed (%s), falling back: %s", _p_smtp_user, _err_inst)
+                        except Exception as _ie:
+                            logger.warning("Institute SMTP exception, falling back: %s", _ie)
+                    if not _sent_via_inst:
+                        _msg = Message(
+                            subject=f"Your UKVI Mock Test Link ? {partner.name}",
+                            recipients=[student.email],
+                            bcc=[partner.email] if partner and getattr(partner, 'email', None) else None,
+                            body=_plain_body,
+                        )
+                        mail.send(_msg)
                     flash("Test link emailed to student ✅", "success")
                     logger.info("Test link emailed to %s", student.email)
                 except Exception as _e:
@@ -10408,10 +10437,11 @@ def _partner_smtp_config(student):
         partner = db.session.get(UKVIB2BPartner, student.partner_id) if student.partner_id else None
     except Exception:
         pass
-    if partner and partner.smtp_host and partner.smtp_user and partner.smtp_pass:
-        return ({'host': partner.smtp_host, 'port': partner.smtp_port or 587,
-                 'user': partner.smtp_user, 'pass': partner.smtp_pass,
-                 'from_email': partner.from_email or partner.smtp_user,
+    _p_user = (partner.smtp_user or partner.from_email) if partner else None
+    if partner and _p_user and partner.smtp_pass:
+        return ({'host': partner.smtp_host or ('smtp.' + 'gmail.com'), 'port': partner.smtp_port or 587,
+                 'user': _p_user, 'pass': partner.smtp_pass,
+                 'from_email': partner.from_email or _p_user,
                  'from_name': partner.from_name or partner.name or 'Institute'}, 'institute', partner)
     host = _os_local.environ.get('SMTP_HOST')
     if host:
