@@ -348,6 +348,8 @@ class UKVIB2BPartner(db.Model):
     credits_balance = db.Column(db.Integer, default=0, nullable=False)
     total_credits_purchased = db.Column(db.Integer, default=0, nullable=False)
     total_credits_used = db.Column(db.Integer, default=0, nullable=False)
+    max_students = db.Column(db.Integer, default=2, nullable=False)
+    package_expires_at = db.Column(db.DateTime, nullable=True)
 
     # Status
     is_active = db.Column(db.Boolean, default=True, nullable=False)
@@ -393,6 +395,8 @@ class UKVIB2BCreditPackage(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     credits = db.Column(db.Integer, nullable=False)
+    student_limit = db.Column(db.Integer, default=10, nullable=False)
+    validity_days = db.Column(db.Integer, default=30, nullable=False)
     price_npr = db.Column(db.Float, nullable=False)
     discount_percent = db.Column(db.Float, default=0)
     description = db.Column(db.String(300))

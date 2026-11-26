@@ -14,6 +14,14 @@
         <div class="stat-value" style="color: #f59e0b;">{{ partner.total_credits_used or 0 }}</div>
         <div class="stat-label">Used</div>
     </div>
+    <div class="stat-card">
+        <div class="stat-value" style="color: #2563eb;">{{ partner.students.count() }} / {{ partner.max_students or 2 }}</div>
+        <div class="stat-label">Student Slots</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value" style="font-size: 18px; color: #7c3aed;">{{ partner.package_expires_at.strftime('%Y-%m-%d') if partner.package_expires_at else 'No Expiry' }}</div>
+        <div class="stat-label">Valid Until</div>
+    </div>
 </div>
 
 <h3 style="margin-bottom: 15px;">Buy Credits — Rs 100/credit</h3>
@@ -25,14 +33,29 @@
             <div style="position: absolute; top: -8px; left: 50%; transform: translateX(-50%); background: #f59e0b; color: white; padding: 2px 10px; border-radius: 10px; font-size: 10px; font-weight: 700;">POPULAR</div>
         {% endif %}
         <h4 style="margin-bottom: 10px;">{{ p.name }}</h4>
-        <div style="font-size: 32px; font-weight: 800; color: #1e40af; margin: 10px 0;">
-            {{ p.credits }}<span style="font-size: 14px;"> cr</span>
-        </div>
+        {% set _slots = p.student_limit if p.student_limit is not none else 0 %}
+        {% set _days = p.validity_days if p.validity_days is not none else 0 %}
+        {% if p.credits > 0 and _slots > 0 %}
+            <div style="font-size: 26px; font-weight: 800; color: #1e40af; margin: 10px 0;">
+                {{ p.credits }} <span style="font-size: 13px;">Credits</span> + {{ _slots }} <span style="font-size: 13px;">Slots</span>
+            </div>
+            <div style="font-size: 12px; font-weight: 600; color: #059669; margin-bottom: 6px;">?? Full Package &bull; ? {{ _days }} Days</div>
+        {% elif p.credits > 0 %}
+            <div style="font-size: 30px; font-weight: 800; color: #1e40af; margin: 10px 0;">
+                +{{ p.credits }} <span style="font-size: 14px;">Test Credits</span>
+            </div>
+            <div style="font-size: 12px; font-weight: 600; color: #d97706; margin-bottom: 6px;">? Credit Top-Up Only{% if _days > 0 %} &bull; +{{ _days }} Days{% endif %}</div>
+        {% else %}
+            <div style="font-size: 30px; font-weight: 800; color: #2563eb; margin: 10px 0;">
+                +{{ _slots }} <span style="font-size: 14px;">Student Slots</span>
+            </div>
+            <div style="font-size: 12px; font-weight: 600; color: #7c3aed; margin-bottom: 6px;">?? Student Slot Add-On{% if _days > 0 %} &bull; +{{ _days }} Days{% endif %}</div>
+        {% endif %}
         <div style="font-size: 22px; font-weight: 700; color: #059669;">
             Rs {{ '{:,.0f}'.format(p.price_npr) }}
         </div>
         <div style="font-size: 12px; color: #6b7280; margin-top: 5px;">
-            Rs {{ p.price_per_credit }}/credit
+            {% if p.credits > 0 %}Rs {{ p.price_per_credit }}/credit{% else %}Rs {{ (p.price_npr / (p.student_limit or 1))|round(2) }}/slot{% endif %}
             {% if p.discount_percent > 0 %}
                 <br><span style="color: #f59e0b; font-weight: 700;">{{ p.discount_percent }}% OFF</span>
             {% endif %}
@@ -94,3 +117,4 @@
     {% endif %}
 </div>
 {% endblock %}
+<script src="/static/js/ui-haptics.js" defer></script>

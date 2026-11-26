@@ -1875,6 +1875,7 @@ function finishPhaseInterview() {
             resultPrediction.textContent = ev.prediction || 'Completed';
             resultScore.textContent = ev.overall_score ? ev.overall_score.toFixed(1) : '--';
             resultCredibility.textContent = ev.credibility_avg ? ev.credibility_avg.toFixed(0) + '%' : '--';
+            if ('{{ b2b_exit_url or "" }}'.includes('/ukvi/b2b/test/')) { setTimeout(() => { window.location.href = '{{ b2b_exit_url }}'; }, 1200); }
             recList.innerHTML = '';
             (ev.recommendations || []).forEach(r => {
                 const div = document.createElement('div');
@@ -2095,7 +2096,7 @@ function exitTest() {
     if (isListening && recognition) recognition.abort();
     if (timerInterval) clearInterval(timerInterval);
     if (prepTimerInterval) clearInterval(prepTimerInterval);
-    if (confirm('Are you sure you want to exit?')) window.location.href = '/ukvi/dashboard';
+    if (confirm('Are you sure you want to exit?')) window.location.href = '{{ (b2b_exit_url + "?exited=1") if (b2b_exit_url and "/ukvi/b2b/test/" in b2b_exit_url) else "/ukvi" }}';
 }
 
 function restart() {
@@ -3032,5 +3033,6 @@ body.typing-mode #status-text {
 })();
 </script>
 
+<script src="/static/js/ui-haptics.js" defer></script>
 </body>
 </html>

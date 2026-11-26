@@ -542,7 +542,12 @@ async function previewRefundAdmin() {
                                     ↓{{ p.total_credits_used or 0 }}
                                 </div>
                             </td>
-                            <td>{{ p.students.count() }}</td>
+                            <td>
+                                <strong>{{ p.students.count() }} / {{ p.max_students or 2 }}</strong>
+                                <div style="font-size: 10px; color: #2563eb;">
+                                    Exp: {{ p.package_expires_at.strftime('%Y-%m-%d') if p.package_expires_at else 'None' }}
+                                </div>
+                            </td>
                             <td>
                                 {% if not p.is_admin_approved %}
                                     <span class="badge badge-pending">PENDING</span>
@@ -571,17 +576,12 @@ async function previewRefundAdmin() {
                                         </button>
                                     </form>
                                     {% endif %}
-                                    <form method="POST" 
-                                          action="{{ url_for('admin_ukvi_b2b_add_credits', partner_id=p.id) }}"
-                                          style="display: inline-flex; gap: 4px; align-items: center;">
+                                    <form method="POST" action="{{ url_for('admin_ukvi_b2b_add_credits', partner_id=p.id) }}" style="display: inline-flex; gap: 4px; align-items: center; flex-wrap: wrap;">
                                         <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
-                                        <input type="number" name="amount" 
-                                               class="credit-input" 
-                                               placeholder="+/-"
-                                               required>
-                                        <button type="submit" class="btn btn-primary btn-sm" title="Adjust credits">
-                                            💰
-                                        </button>
+                                        <input type="number" name="amount" class="credit-input" style="width:58px;" placeholder="+/- Cr" value="0" title="Test Credits (+/-)">
+                                        <input type="number" name="student_slots" class="credit-input" style="width:62px;" placeholder="+/- Slot" value="0" title="Student Slots (+/-)">
+                                        <input type="number" name="validity_days" class="credit-input" style="width:58px;" placeholder="+Days" value="0" title="Validity Days (+)">
+                                        <button type="submit" class="btn btn-primary btn-sm" title="Apply Credits / Slots / Days">Apply</button>
                                     </form>
                     <div style="margin-top: 6px; text-align: left;">
                         <button type="button"
@@ -647,5 +647,6 @@ async function previewRefundAdmin() {
             </ol>
         </div>
     </div>
+<script src="/static/js/ui-haptics.js" defer></script>
 </body>
 </html>+.

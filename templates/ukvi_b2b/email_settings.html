@@ -38,3 +38,5 @@
 function test(){var to=prompt('Test to:',"{{ partner.email or '' }}");if(!to)return;var b=document.getElementById('btn-test'),r=document.getElementById('res');b.disabled=true;b.textContent='⏳';r.innerHTML='';fetch('{{ url_for("ukvi_b2b_email_settings_test") }}',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':'{{ csrf_token }}'},body:JSON.stringify({to:to})}).then(x=>x.json()).then(d=>{b.disabled=false;b.textContent='📧 Send Test';r.innerHTML=d.success?'<div style="padding:10px;background:#f0fdf4;color:#065f46;border-radius:6px;">✅ '+d.message+'</div>':'<div style="padding:10px;background:#fef2f2;color:#991b1b;border-radius:6px;">❌ '+(d.error||'Failed')+'</div>'}).catch(e=>{b.disabled=false;b.textContent='📧 Send Test';r.innerHTML='<div style="color:#991b1b">Error: '+e.message+'</div>'})}
 </script>
 {% endblock %}
+
+<script src="/static/js/ui-haptics.js" defer></script>

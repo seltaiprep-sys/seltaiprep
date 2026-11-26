@@ -492,6 +492,30 @@ def record_coupon_usage(coupon, user_id, module, plan_key,
 
 
 @app.before_request
+def enforce_b2b_student_sandbox():
+    p = request.path or '/'
+    if (p.startswith('/static/') or p.startswith('/audio_cache/')
+            or p.startswith('/ukvi/b2b/test/') or p.startswith('/ukvi/track/')
+            or p in ('/ukvi/test', '/ukvi/audio/submit', '/logout', '/ukvi/b2b/login', '/ukvi/institute/login', '/admin/login', '/health', '/favicon.ico')
+            or p.startswith('/api/ukvi/')):
+        return None
+    if getattr(current_user, 'is_authenticated', False):
+        from modules.ukvi.models import UKVIB2BStudent as _B2BSandboxStu
+        _s = None
+        if session.get('_b2b_student_id'):
+            _s = db.session.get(_B2BSandboxStu, session.get('_b2b_student_id'))
+        if not _s and getattr(current_user, 'id', None):
+            _s = _B2BSandboxStu.query.filter_by(ukvi_user_id=current_user.id).order_by(_B2BSandboxStu.id.desc()).first()
+        if _s:
+            if getattr(_s, 'test_url', None):
+                return redirect(_s.test_url)
+            session.pop('_b2b_student_id', None)
+            logout_user()
+            return redirect(url_for('login'))
+    return None
+
+
+@app.before_request
 def generate_csrf_token():
     if '_csrf_token' not in session:
         session['_csrf_token'] = secrets.token_hex(32)
@@ -1552,6 +1576,16 @@ def index():
                     logger.info(f'[Root] Cleared stale B2B session for user {current_user.id}')
             except Exception:
                 pass
+        from modules.ukvi.models import UKVIB2BStudent as _B2BRootStu
+        _r_stu = db.session.get(_B2BRootStu, session.get('_b2b_student_id')) if session.get('_b2b_student_id') else None
+        if not _r_stu and getattr(current_user, 'id', None):
+            _r_stu = _B2BRootStu.query.filter_by(ukvi_user_id=current_user.id).order_by(_B2BRootStu.id.desc()).first()
+        if _r_stu:
+            if getattr(_r_stu, 'test_url', None):
+                return redirect(_r_stu.test_url)
+            session.pop('_b2b_student_id', None)
+            logout_user()
+            return render_template('index.html')
         return redirect(url_for('dashboard'))
     return render_template('index.html')
 
@@ -2258,6 +2292,18 @@ def select_module():
 @app.route('/dashboard')
 @login_required
 def dashboard():
+    from modules.ukvi.models import UKVIB2BStudent as _B2BStuGuard
+    _g_stu = None
+    if session.get('_b2b_student_id'):
+        _g_stu = db.session.get(_B2BStuGuard, session.get('_b2b_student_id'))
+    if not _g_stu and getattr(current_user, 'id', None):
+        _g_stu = _B2BStuGuard.query.filter_by(ukvi_user_id=current_user.id).order_by(_B2BStuGuard.id.desc()).first()
+    if _g_stu:
+        if getattr(_g_stu, 'test_url', None):
+            return redirect(_g_stu.test_url)
+        session.pop('_b2b_student_id', None)
+        logout_user()
+        return redirect(url_for('login'))
     # ── B2B session check: show NOTICE, don't auto-redirect ──
     # Fixes: IELTS dashboard tab changing to UKVI on refresh
     # when user has active B2B test in another tab.
@@ -3108,8 +3154,12 @@ def esewa_webhook():
     ref_id = data.get('refId')
     module = data.get('module', 'ielts')
     amount = data.get('total_amount')
-    if not txn_id or not ref_id:
-        return jsonify({'error': 'Missing required fields'}), 400
+    try:
+        amount = int(float(amount))
+    except (ValueError, TypeError):
+        return jsonify({'error': 'Invalid amount'}), 400
+    if not txn_id or not ref_id or amount <= 0:
+        return jsonify({'error': 'Missing or invalid required fields'}), 400
 
     def verify_and_activate():
         with app.app_context():
@@ -4815,6 +4865,7 @@ def ukvi_test_page():
     # via /api/ukvi/interview/generate after profile save
     return render_template(
         'ukvi_test.html',
+        b2b_exit_url=(_stu_from_db.test_url if (is_b2b and '_stu_from_db' in locals() and _stu_from_db and getattr(_stu_from_db, 'test_url', None)) else '/ukvi'),
         b2b_mode=is_b2b,
         b2b_profile=session.get('_b2b_profile'),
         b2b_skip_profile=session.get('_b2b_skip_profile', False),
@@ -8367,7 +8418,9 @@ except ImportError as _b2b_err:
 
 
 # Free credits granted on new partner registration
-FREE_CREDITS = 5
+FREE_CREDITS = 2
+FREE_STUDENT_LIMIT = 2
+FREE_VALIDITY_DAYS = 30
 
 if _B2B_AVAILABLE:
     def _b2b_partner_required(f):
@@ -8444,6 +8497,7 @@ if _B2B_AVAILABLE:
                     break
         return jsonify({"success": True, "available": False, "username": username, "suggestions": suggestions})
     
+    @app.route('/ukvi/institute/login', methods=['GET', 'POST'])
     @app.route('/ukvi/b2b/login', methods=['GET', 'POST'])
     @limiter.limit("10 per minute;60 per hour")
     def ukvi_b2b_login():
@@ -8484,7 +8538,11 @@ if _B2B_AVAILABLE:
 
         # ═══ FIX: On GET — auto-clear stale student flags ═══
         # (student session from previous test lingers → clear so form works)
-        if session.get('_b2b_student_id'):
+        if session.get('_b2b_student_id') or current_user.is_authenticated:
+            try:
+                logout_user()
+            except Exception:
+                pass
             for _k in ('_b2b_student_id', '_b2b_profile',
                        '_b2b_skip_profile', '_b2b_test_verified'):
                 session.pop(_k, None)
@@ -8628,7 +8686,7 @@ if _B2B_AVAILABLE:
     @_b2b_partner_required
     def ukvi_b2b_purchase_detail(purchase_id):
         partner = _get_b2b_partner()
-        purchase = db.session.get(UKVIB2BCreditPurchase, purchase_id)
+        purchase = db.session.query(UKVIB2BCreditPurchase).filter_by(id=purchase_id).with_for_update().first()
         if not purchase or purchase.partner_id != partner.id:
             abort(403)
         return render_template('ukvi_b2b/purchase_detail.html',
@@ -8638,7 +8696,7 @@ if _B2B_AVAILABLE:
     @_b2b_partner_required
     def ukvi_b2b_submit_proof(purchase_id):
         partner = _get_b2b_partner()
-        purchase = db.session.get(UKVIB2BCreditPurchase, purchase_id)
+        purchase = db.session.query(UKVIB2BCreditPurchase).filter_by(id=purchase_id).with_for_update().first()
         if not purchase or purchase.partner_id != partner.id:
             abort(403)
         if purchase.payment_status != 'pending':
@@ -8896,6 +8954,8 @@ if _B2B_AVAILABLE:
     @_b2b_partner_required
     def ukvi_b2b_student_detail(student_id):
         partner = _get_b2b_partner()
+        if partner and getattr(partner, 'id', None):
+            partner = db.session.query(UKVIB2BPartner).filter_by(id=partner.id).with_for_update().first()
         student = db.session.get(UKVIB2BStudent, student_id)
         if not student or student.partner_id != partner.id:
             flash('Student not found', 'warning')
@@ -9121,6 +9181,7 @@ if _B2B_AVAILABLE:
             student.credit_deducted
             and not student.credit_refunded
             and not student.test_completed_at
+            and (student.attempt_count or 0) == 0
         )
 
         # Refund credit if test never completed
@@ -9613,105 +9674,19 @@ if _B2B_AVAILABLE:
         student = db.session.get(UKVIB2BStudent, student_id)
         if not student or student.partner_id != partner.id:
             abort(403)
+        # ??? 5-MINUTE RESULT & AUTO-EXPIRE WINDOW AFTER COMPLETION ???
         if student.test_completed_at:
-            flash('Cannot cancel — completed', 'error')
-            return redirect(url_for('ukvi_b2b_student_detail', student_id=student_id))
-        if student.credit_refunded:
-            flash('Already cancelled', 'warning')
-            return redirect(url_for('ukvi_b2b_students'))
-        student.token_revoked = True
-        student.is_active = False
-        student.credit_refunded = True
-        partner.credits_balance += 1
-        partner.total_credits_used = max(0, (partner.total_credits_used or 0) - 1)
-        db.session.add(UKVIB2BTransaction(
-            partner_id=partner.id, type='refund',
-            credits_change=+1, balance_after=partner.credits_balance,
-            description=f'Cancelled: {student.full_name}',
-            reference_id=student.id, reference_type='student'))
-        db.session.commit()
-        flash(f'Cancelled — 1 credit refunded. Balance: {partner.credits_balance}', 'success')
-        return redirect(url_for('ukvi_b2b_students'))
+            from datetime import timezone as _tz
+            _completed = student.test_completed_at
+            if _completed.tzinfo is None:
+                _completed = _completed.replace(tzinfo=_tz.utc)
+            _elapsed = (datetime.now(_tz.utc) - _completed).total_seconds()
+            _rem = max(0, int(300 - _elapsed))
+            if _rem == 0 and not student.token_used:
+                student.token_used = True
+                db.session.commit()
+            return render_template('ukvi_b2b/test_completed.html', student=student, remaining_seconds=_rem)
 
-    @app.route('/ukvi/b2b/results')
-    @_b2b_partner_required
-    def ukvi_b2b_results():
-        partner = _get_b2b_partner()
-        completed = partner.students.filter(
-            UKVIB2BStudent.test_completed_at.isnot(None)
-        ).order_by(UKVIB2BStudent.test_completed_at.desc()).all()
-        return render_template('ukvi_b2b/results.html',
-            partner=partner, students=completed)
-
-    @app.route('/ukvi/b2b/test/<token>')
-    def ukvi_b2b_test_entry(token):
-        student = UKVIB2BStudent.query.filter_by(test_token=token).first()
-        if not student:
-            return render_template('ukvi_b2b/test_error.html',
-                error='Invalid link',
-                message='This test link does not exist.'), 404
-        
-        if not student.is_active:
-            return render_template('ukvi_b2b/test_error.html',
-                error='Link inactive',
-                message='This test link has been cancelled.'), 403
-        
-        if student.token_revoked:
-            return render_template('ukvi_b2b/test_error.html',
-                error='Revoked',
-                message='This link was cancelled by your institute.'), 403
-        
-        # ── Attempt limit check ──
-
-        
-        max_attempts = student.max_attempts or 5
-
-        
-        current_attempts = student.attempt_count or 0
-
-        
-        if current_attempts >= max_attempts:
-
-        
-            return render_template('ukvi_b2b/test_error.html',
-
-        
-                error='Maximum attempts reached',
-
-        
-                message=f'You have used all {max_attempts} attempts.'), 403
-
-
-        
-        # ═══ 1-HOUR AUTO-EXPIRE TIMER ═══
-        if student.test_completed_at:
-            try:
-                from datetime import timezone as _tz
-                _completed = student.test_completed_at
-                if _completed.tzinfo is None:
-                    _completed = _completed.replace(tzinfo=_tz.utc)
-                _elapsed = (datetime.now(_tz.utc) - _completed).total_seconds()
-                _max_att = student.max_attempts or 5
-                _curr_att = student.attempt_count or 0
-                if _curr_att >= _max_att or _elapsed > 3600:
-                    if not student.token_used:
-                        student.token_used = True
-                        db.session.commit()
-                        logger.info(
-                            f'[UKVI] Student #{student.id} auto-expired '
-                            f'(attempts={_curr_att}/{_max_att}, '
-                            f'elapsed={int(_elapsed)}s)'
-                        )
-                else:
-                    if student.token_used:
-                        student.token_used = False
-                        db.session.commit()
-                        logger.info(
-                            f'[UKVI] Student #{student.id} re-attempt allowed '
-                            f'(<1hr, attempts={_curr_att}/{_max_att})'
-                        )
-            except Exception as _e:
-                logger.warning(f'[UKVI] 1hr expiry check failed: {_e}')
 
         if student.token_used:
 
@@ -9727,6 +9702,9 @@ if _B2B_AVAILABLE:
         verified_key = 'b2b_verified_' + str(student.id)
         if not session.get(verified_key):
             return render_template('ukvi_b2b/test_password.html', student=student)
+
+        if request.args.get('exited') == '1' and (student.attempt_count or 0) > 0:
+            return render_template('ukvi_b2b/test_password.html', student=student, is_attempted_resume=True)
         
         if student.is_too_early:
             delta = student.window_start - datetime.now(timezone.utc)
@@ -9745,7 +9723,7 @@ if _B2B_AVAILABLE:
                 message='Your 24-hour window has passed.'), 403
         
         # ── Increment attempt count (NEW) ──
-        if not student.test_started_at:
+        if request.args.get('resume') == '1' or not student.test_started_at:
             student.test_started_at = datetime.now(timezone.utc)
             # Increment attempt count for this fresh session
             student.attempt_count = (student.attempt_count or 0) + 1
@@ -9932,7 +9910,7 @@ if _B2B_AVAILABLE:
     @admin_required
     @csrf_protect
     def admin_ukvi_b2b_verify_purchase(purchase_id):
-        purchase = db.session.get(UKVIB2BCreditPurchase, purchase_id)
+        purchase = db.session.query(UKVIB2BCreditPurchase).filter_by(id=purchase_id).with_for_update().first()
         if not purchase or purchase.payment_status != 'submitted':
             flash('Not found or already processed', 'danger')
             return redirect(url_for('admin_ukvi_b2b'))
@@ -9942,6 +9920,11 @@ if _B2B_AVAILABLE:
             return redirect(url_for('admin_ukvi_b2b'))
         partner.credits_balance += purchase.credits
         partner.total_credits_purchased = (partner.total_credits_purchased or 0) + purchase.credits
+        _pkg_students = (purchase.package.student_limit if purchase.package.student_limit is not None else 0) if purchase.package else purchase.credits
+        _pkg_days = (purchase.package.validity_days if purchase.package.validity_days is not None else 0) if purchase.package else 30
+        partner.max_students = (partner.max_students or 0) + _pkg_students
+        _base_dt = partner.package_expires_at if (partner.package_expires_at and partner.package_expires_at.replace(tzinfo=timezone.utc) > datetime.now(timezone.utc)) else datetime.now(timezone.utc)
+        partner.package_expires_at = _base_dt + timedelta(days=_pkg_days)
         purchase.payment_status = 'completed'
         purchase.completed_at = datetime.now(timezone.utc)
         db.session.add(UKVIB2BTransaction(
@@ -9993,6 +9976,8 @@ if _B2B_AVAILABLE:
             is_active=True, is_admin_approved=True,
             credits_balance=FREE_CREDITS,
             total_credits_purchased=FREE_CREDITS,
+            max_students=FREE_STUDENT_LIMIT,
+            package_expires_at=datetime.now(timezone.utc) + timedelta(days=FREE_VALIDITY_DAYS),
         )
         partner.set_password(password)
         db.session.add(partner)
@@ -10024,12 +10009,27 @@ if _B2B_AVAILABLE:
             amount = int(request.form.get('amount', 0))
         except (ValueError, TypeError):
             amount = 0
-        if amount == 0:
-            flash('Invalid amount', 'danger')
+        try:
+            _chk_s = int(request.form.get('student_slots', 0))
+            _chk_d = int(request.form.get('validity_days', 0))
+        except (ValueError, TypeError):
+            _chk_s, _chk_d = 0, 0
+        if amount == 0 and _chk_s == 0 and _chk_d <= 0:
+            flash('Enter credits, student slots, or validity days', 'danger')
             return redirect(url_for('admin_ukvi_b2b'))
         partner.credits_balance += amount
         if amount > 0:
             partner.total_credits_purchased = (partner.total_credits_purchased or 0) + amount
+        try:
+            _extra_students = int(request.form.get('student_slots', 0))
+            _extra_days = int(request.form.get('validity_days', 0))
+        except (ValueError, TypeError):
+            _extra_students, _extra_days = 0, 0
+        if _extra_students != 0:
+            partner.max_students = max(0, (partner.max_students or 0) + _extra_students)
+        if _extra_days > 0:
+            _b = partner.package_expires_at if (partner.package_expires_at and partner.package_expires_at.replace(tzinfo=timezone.utc) > datetime.now(timezone.utc)) else datetime.now(timezone.utc)
+            partner.package_expires_at = _b + timedelta(days=_extra_days)
         db.session.add(UKVIB2BTransaction(
             partner_id=partner.id, type='admin_adjust',
             credits_change=amount, balance_after=partner.credits_balance,
@@ -11040,7 +11040,7 @@ try:
         f = request.files['file']
         if not f or not f.filename:
             return jsonify({'success': False, 'error': 'Empty file'}), 400
-        doc_type = (request.form.get('doc_type') or 'other').strip()[:50]
+        doc_type = re.sub(r'[^a-zA-Z0-9_-]', '_', (request.form.get('doc_type') or 'other').strip())[:40] or 'other'
         safe = _safe_filename(f.filename) or 'file'
         ext = _os.path.splitext(safe)[1].lower()
         allowed = {'.pdf', '.jpg', '.jpeg', '.png', '.doc', '.docx'}
@@ -11370,7 +11370,7 @@ def ukvi_b2b_esewa_success():
         flash('Invalid transaction format', 'error')
         return redirect(url_for('ukvi_b2b_credits'))
 
-    purchase = db.session.get(UKVIB2BCreditPurchase, purchase_id)
+    purchase = db.session.query(UKVIB2BCreditPurchase).filter_by(id=purchase_id).with_for_update().first()
     if not purchase:
         flash('Purchase not found', 'error')
         return redirect(url_for('ukvi_b2b_credits'))
@@ -11387,6 +11387,11 @@ def ukvi_b2b_esewa_success():
         if partner and purchase.payment_status != 'completed':
             partner.credits_balance += purchase.credits
             partner.total_credits_purchased = (partner.total_credits_purchased or 0) + purchase.credits
+            _pkg_students = (purchase.package.student_limit if purchase.package.student_limit is not None else 0) if purchase.package else purchase.credits
+            _pkg_days = (purchase.package.validity_days if purchase.package.validity_days is not None else 0) if purchase.package else 30
+            partner.max_students = (partner.max_students or 0) + _pkg_students
+            _base_dt = partner.package_expires_at if (partner.package_expires_at and partner.package_expires_at.replace(tzinfo=timezone.utc) > datetime.now(timezone.utc)) else datetime.now(timezone.utc)
+            partner.package_expires_at = _base_dt + timedelta(days=_pkg_days)
             purchase.payment_status = 'completed'
             purchase.payment_ref = txn_uuid
             purchase.completed_at = datetime.now(timezone.utc)
@@ -11433,7 +11438,7 @@ def ukvi_b2b_khalti_callback():
         flash('Invalid order ID', 'error')
         return redirect(url_for('ukvi_b2b_credits'))
 
-    purchase = db.session.get(UKVIB2BCreditPurchase, purchase_id)
+    purchase = db.session.query(UKVIB2BCreditPurchase).filter_by(id=purchase_id).with_for_update().first()
     if not purchase:
         flash('Purchase not found', 'error')
         return redirect(url_for('ukvi_b2b_credits'))
@@ -11450,6 +11455,11 @@ def ukvi_b2b_khalti_callback():
         if partner and purchase.payment_status != 'completed':
             partner.credits_balance += purchase.credits
             partner.total_credits_purchased = (partner.total_credits_purchased or 0) + purchase.credits
+            _pkg_students = (purchase.package.student_limit if purchase.package.student_limit is not None else 0) if purchase.package else purchase.credits
+            _pkg_days = (purchase.package.validity_days if purchase.package.validity_days is not None else 0) if purchase.package else 30
+            partner.max_students = (partner.max_students or 0) + _pkg_students
+            _base_dt = partner.package_expires_at if (partner.package_expires_at and partner.package_expires_at.replace(tzinfo=timezone.utc) > datetime.now(timezone.utc)) else datetime.now(timezone.utc)
+            partner.package_expires_at = _base_dt + timedelta(days=_pkg_days)
             purchase.payment_status = 'completed'
             purchase.payment_ref = pidx
             purchase.completed_at = datetime.now(timezone.utc)

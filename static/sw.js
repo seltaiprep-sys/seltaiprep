@@ -3,14 +3,13 @@
    Provides offline caching + fast loads
    ═══════════════════════════════════════════════════════════ */
 
-const CACHE_VERSION = 'seltaprep-v2';
+const CACHE_VERSION = 'seltaprep-v20261127';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const PAGES_CACHE = `${CACHE_VERSION}-pages`;
 const IMAGES_CACHE = `${CACHE_VERSION}-images`;
 
 // Static assets to cache on install
 const STATIC_ASSETS = [
-    '/',
     '/static/css/mobile.css',
     '/static/css/style.css',
     '/static/manifest.json',
@@ -56,6 +55,7 @@ self.addEventListener('activate', event => {
 
 // ─── Fetch: Strategy per request type ───
 self.addEventListener('fetch', event => {
+    if (event.request.mode === 'navigate' || (event.request.headers.get('accept') || '').includes('text/html')) { return; }
     const { request } = event;
     const url = new URL(request.url);
 

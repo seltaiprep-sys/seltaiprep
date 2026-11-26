@@ -25,8 +25,14 @@
         <div class="stat-label">Credits</div>
     </div>
     <div class="stat-card">
-        <div class="stat-value">{{ total_students }}</div>
-        <div class="stat-label">Total Students</div>
+        <div class="stat-value">{{ total_students }} / {{ partner.max_students or 2 }}</div>
+        <div class="stat-label">Student Slots Used</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value" style="font-size: 18px; color: #2563eb;">
+            {{ partner.package_expires_at.strftime('%Y-%m-%d') if partner.package_expires_at else 'No Expiry' }}
+        </div>
+        <div class="stat-label">Valid Until</div>
     </div>
     <div class="stat-card">
         <div class="stat-value" style="color: #f59e0b;">{{ pending }}</div>
@@ -302,3 +308,4 @@ document.addEventListener('keydown', function(e) {
 {% endif %}
 
 {% endblock %}
+<script src="/static/js/ui-haptics.js" defer></script>

@@ -29,5 +29,6 @@
     <div class="container"><div class="card"><h2>Test Result</h2><div class="band-circle"><div class="band-score">{{ result.band_score }}</div></div><p class="type">{{ result.test_type }}</p><p class="info">Score: {{ result.score|round(1) }}%</p><p class="info">{{ result.feedback or '' }}</p><p class="info">{{ result.created_at.strftime('%Y-%m-%d %H:%M') }}</p><a href="/dashboard" class="btn">Dashboard</a><a href="/results" class="btn">All Results</a></div></div>
 <script src="/static/js/sw-register.js"></script>
 <script src="/static/js/push-notifications.js"></script>
+<script src="/static/js/ui-haptics.js" defer></script>
 </body>
 </html>

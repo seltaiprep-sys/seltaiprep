@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Completed ? UKVI</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
+            min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px;
+        }
+        .card {
+            background: white; border-radius: 16px; padding: 34px 28px; max-width: 460px; width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3); text-align: center;
+        }
+        .timer-box {
+            background: #fef3c7; border: 1.5px solid #f59e0b; color: #92400e;
+            padding: 12px; border-radius: 10px; font-weight: 700; font-size: 14px; margin: 16px 0;
+        }
+        .result-box {
+            background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px;
+            padding: 18px; margin: 16px 0; text-align: left;
+        }
+        .row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #dbeafe; font-size: 14px; }
+        .row:last-child { border-bottom: none; }
+        .expired-box {
+            background: #fee2e2; border: 1.5px solid #ef4444; color: #991b1b;
+            padding: 20px; border-radius: 12px; margin-top: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        {% if remaining_seconds > 0 %}
+            <div style="font-size: 52px; margin-bottom: 8px;">?</div>
+            <h1 style="color: #065f46; font-size: 22px;">Your Test Is Completed!</h1>
+            <p style="color: #4b5563; font-size: 13.5px; margin-top: 6px;">
+                This link will expire within <strong>5 minutes</strong>.
+            </p>
+            <div class="timer-box" id="timer-box">
+                ? Link expires in: <span id="countdown">--:--</span>
+            </div>
+            <div class="result-box" id="result-box">
+                <div class="row"><span>Student</span><strong>{{ student.full_name }}</strong></div>
+                <div class="row"><span>Overall Score</span><strong>{{ '%.1f'|format(student.overall_score) if student.overall_score is not none else 'Evaluated' }}</strong></div>
+                <div class="row"><span>Credibility</span><strong>{{ '%.0f%%'|format(student.credibility_score) if student.credibility_score is not none else 'Completed' }}</strong></div>
+                <div class="row"><span>Grade</span><strong>{{ student.result_grade or 'Recorded' }}</strong></div>
+            </div>
+            <p style="font-size: 12px; color: #6b7280;">After timer ends, contact your institute for your next test link.</p>
+            <script>
+                let rem = {{ remaining_seconds|int }};
+                const cd = document.getElementById('countdown');
+                function tick() {
+                    if (rem <= 0) {
+                        window.location.reload();
+                        return;
+                    }
+                    const m = String(Math.floor(rem / 60)).padStart(2, '0');
+                    const s = String(rem % 60).padStart(2, '0');
+                    cd.textContent = m + ':' + s;
+                    rem--;
+                    setTimeout(tick, 1000);
+                }
+                tick();
+            </script>
+        {% else %}
+            <div style="font-size: 52px; margin-bottom: 8px;">??</div>
+            <h1 style="color: #991b1b; font-size: 22px;">Link Expired</h1>
+            <div class="expired-box">
+                Your test is completed and the 5-minute result viewing window has expired.<br><br>
+                <strong>Please contact with your institute for the next link.</strong>
+            </div>
+        {% endif %}
+    </div>
+<script src="/static/js/ui-haptics.js" defer></script>
+</body>
+</html>

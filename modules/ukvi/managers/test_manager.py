@@ -411,29 +411,7 @@ Do NOT output anything else.
                     if not student.test_completed_at:
                         student.test_completed_at = datetime.now(timezone.utc)
 
-                    # ── Refund on 5th attempt (NEW) ──
-                    _max_att = student.max_attempts or 5
-                    _curr_att = student.attempt_count or 0
-                    if _curr_att >= _max_att and student.credit_deducted and not student.credit_refunded:
-                        try:
-                            partner_obj = self.db.session.get(UKVIB2BPartner, student.partner_id)
-                            if partner_obj:
-                                partner_obj.credits_balance = (partner_obj.credits_balance or 0) + 1
-                                student.credit_refunded = True
-                                from ..models import UKVIB2BTransaction
-                                txn = UKVIB2BTransaction(
-                                    partner_id=student.partner_id,
-                                    type='refund',
-                                    credits_change=1,
-                                    description=f'Refund on {_max_att}th attempt: {student.full_name}',
-                                )
-                                self.db.session.add(txn)
-                                logger.info(f'REFUND: student #{student.id} exhausted {_max_att} attempts — +1 credit')
-                        except Exception as _e:
-                            logger.warning(f'Refund on exhaustion failed: {_e}')
-
-                    
-
+                    # 5th attempt exhausted: No credit refund
                     # ── Update attempts table (attempt-level tracking) ──
 
                     try:
