@@ -425,7 +425,45 @@
 
     <!-- ═══ DOCUMENTS ═══ -->
     <div id="crm-panel-docs" class="crm-panel active">
-        <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+                <div style="background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:10px;padding:12px;margin-bottom:14px;">
+            <div style="background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:10px;padding:12px;margin-bottom:14px;">
+            {% set _ver_types = [] %}
+            {% if student.documents %}
+                {% for _d in student.documents %}
+                    {% if _d.status == 'verified' %}{% set _ = _ver_types.append(_d.doc_type) %}{% endif %}
+                {% endfor %}
+            {% endif %}
+            <div style="font-size:13px;font-weight:700;color:#1e40af;margin-bottom:8px;">📨 Request Documents from Student</div>
+            <div style="display:flex;flex-wrap:wrap;gap:10px;font-size:12px;margin-bottom:10px;">
+                {% for _code, _lbl in [('passport','Passport'),('ielts','IELTS/PTE'),('academic','Academic Transcripts'),('offer_letter','Offer Letter'),('bank_statement','28-Day Bank Statement'),('tb_test','TB Test'),('photo','Photo'),('cas_letter','CAS Document')] %}
+                    {% if _code in _ver_types %}
+                    <label style="background:#d1fae5;color:#065f46;padding:3px 8px;border-radius:6px;font-weight:700;">✅ {{ _lbl }} (Verified)</label>
+                    {% else %}
+                    <label><input type="checkbox" class="req-doc-cb" value="{{ _code }}"> {{ _lbl }}</label>
+                    {% endif %}
+                {% endfor %}
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                <button type="button" class="crm-btn crm-btn-primary" onclick="sendDocRequest({{ student.id }})">📧 Send Email Request</button>
+                <button type="button" class="crm-btn crm-btn-success" onclick="sendDocRequest({{ student.id }}, true)">📲 Request + Open WhatsApp</button>
+                <span id="req-doc-status" style="font-size:12px;font-weight:600;color:#065f46;"></span>
+            </div>
+        </div>
+        <script>
+        function sendDocRequest(sid, openWa) {
+            var checked = Array.from(document.querySelectorAll('.req-doc-cb:checked')).map(c => c.value);
+            if (!checked.length) { alert('Select at least one document.'); return; }
+            var stEl = document.getElementById('req-doc-status'); stEl.textContent = 'Sending...';
+            fetch('/ukvi/b2b/students/' + sid + '/documents/request', {
+                method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': '{{ csrf_token }}' },
+                body: JSON.stringify({ docs: checked })
+            }).then(r => r.json()).then(d => {
+                if (d.success) { stEl.textContent = '✅ Requested: ' + d.requested; if (openWa && d.wa_url) window.open(d.wa_url, '_blank'); }
+                else { stEl.textContent = '⚠️ ' + (d.error || 'Failed'); }
+            }).catch(() => { stEl.textContent = '⚠️ Network error'; });
+        }
+        </script>
+<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
             <select id="doc-type" class="crm-input" style="flex:1;min-width:150px;">
                 <option value="passport">Passport</option>
                 <option value="ielts">IELTS Certificate</option>

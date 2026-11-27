@@ -337,7 +337,8 @@ app.config['MAIL_SERVER'] = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
 app.config['MAIL_PORT'] = int(os.environ.get('MAIL_PORT', 587))
 app.config['MAIL_USE_TLS'] = os.environ.get('MAIL_USE_TLS', 'true').lower() == 'true'
 app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME')
-app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
+_mp = os.environ.get('MAIL_PASSWORD') or ''
+app.config['MAIL_PASSWORD'] = _mp if len(_mp) >= 8 else (os.environ.get('SMTP_PASS') or _mp)
 app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER')
 app.config['MAIL_MAX_EMAILS'] = 1
 mail = Mail(app)
@@ -513,6 +514,13 @@ def enforce_b2b_student_sandbox():
             logout_user()
             return redirect(url_for('login'))
     return None
+
+
+@app.after_request
+def _clear_legacy_sw(resp):
+    if request.path in ('/admin/login', '/ukvi/b2b/login', '/ukvi/institute/login'):
+        resp.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    return resp
 
 
 @app.before_request
@@ -2292,6 +2300,8 @@ def select_module():
 @app.route('/dashboard')
 @login_required
 def dashboard():
+    if session.get('ukvi_b2b_partner_id') and request.args.get('exit_b2b') != '1':
+        return redirect(url_for('ukvi_b2b_dashboard'))
     from modules.ukvi.models import UKVIB2BStudent as _B2BStuGuard
     _g_stu = None
     if session.get('_b2b_student_id'):
@@ -8526,6 +8536,7 @@ if _B2B_AVAILABLE:
                 if _k.startswith('b2b_verified_'):
                     session.pop(_k, None)
 
+            session.permanent = True
             session['ukvi_b2b_partner_id'] = partner.id
             partner.last_login = datetime.now(timezone.utc)
             db.session.commit()
@@ -8594,9 +8605,18 @@ if _B2B_AVAILABLE:
         email_sent_count = sum(1 for n, s in email_log if n.status == 'sent')
         email_failed_count = sum(1 for n, s in email_log if n.status == 'failed')
 
+        from modules.ukvi.models import UKVIB2BDocument
+        pending_docs = db.session.query(UKVIB2BDocument, UKVIB2BStudent).join(
+            UKVIB2BStudent, UKVIB2BDocument.student_id == UKVIB2BStudent.id
+        ).filter(
+            UKVIB2BStudent.partner_id == partner.id,
+            UKVIB2BDocument.status == 'pending'
+        ).order_by(UKVIB2BDocument.uploaded_at.desc()).limit(15).all()
+
         return render_template('ukvi_b2b/dashboard.html',
             partner=partner, total_students=total_students,
             completed=completed, pending=pending, recent=recent,
+            pending_docs=pending_docs,
             email_log=email_log,
             email_sent_count=email_sent_count,
             email_failed_count=email_failed_count)
@@ -10364,8 +10384,22 @@ def ukvi_student_track(token):
     next_step_icon  = stage_icon_filter(_ns_stage) if _ns_stage else ''
     next_step_label = stage_label_filter(_ns_stage) if _ns_stage else ''
 
+    from modules.ukvi.models import UKVIB2BNotification, UKVIB2BPartner
+    partner = db.session.get(UKVIB2BPartner, student.partner_id) if student.partner_id else None
+    req_notifs = UKVIB2BNotification.query.filter_by(student_id=student.id, event_type='doc_request').order_by(UKVIB2BNotification.id.desc()).limit(5).all()
+    uploaded_types = {d.doc_type for d in docs if d.status in ('pending', 'verified')}
+    requested_docs, seen_req = [], set()
+    for rn in req_notifs:
+        for part in (rn.body or '').split(','):
+            code = part.strip()
+            if code and code not in seen_req and code not in uploaded_types:
+                seen_req.add(code); requested_docs.append(code)
+    wa_partner_phone = re.sub(r'\D', '', (getattr(partner, 'phone', '') or ''))
+    if wa_partner_phone.startswith('0') and len(wa_partner_phone) == 10: wa_partner_phone = '977' + wa_partner_phone[1:]
+    elif len(wa_partner_phone) == 10 and wa_partner_phone.startswith('9'): wa_partner_phone = '977' + wa_partner_phone
     return render_template('ukvi_b2b/student_track.html',
-        student=student, docs=docs, events=events, pays=pays,
+        student=student, partner=partner, docs=docs, events=events, pays=pays,
+        requested_docs=requested_docs, wa_partner_phone=wa_partner_phone,
         progress_pct=pct, completed_stages=completed,
         total_stages=total_stages, next_step=next_step,
         next_step_icon=next_step_icon, next_step_label=next_step_label)
@@ -10379,6 +10413,77 @@ def ukvi_student_track_logout(token):
     if student:
         session.pop(f'_track_verified_{student.id}', None)
     return redirect(url_for('ukvi_student_track', token=token))
+
+
+@app.route('/ukvi/track/<token>/upload', methods=['POST'])
+def ukvi_student_track_upload(token):
+    from modules.ukvi.models import UKVIB2BStudent, UKVIB2BDocument, UKVIB2BPartner, UKVIB2BNotification
+    student = UKVIB2BStudent.query.filter_by(public_track_token=token).first() or UKVIB2BStudent.query.filter_by(test_token=token).first()
+    if not student or session.get(f'_track_verified_{student.id}') is not True:
+        return redirect(url_for('ukvi_student_track', token=token))
+    f = request.files.get('file')
+    if not f or not f.filename:
+        flash('Please select a file.', 'error'); return redirect(url_for('ukvi_student_track', token=token))
+    doc_type = re.sub(r'[^a-zA-Z0-9_-]', '_', (request.form.get('doc_type') or 'other').strip())[:40] or 'other'
+    safe = _safe_filename(f.filename) or 'file'
+    ext = _os.path.splitext(safe)[1].lower()
+    if ext not in {'.pdf', '.jpg', '.jpeg', '.png', '.doc', '.docx'}:
+        flash('Only PDF, JPG, PNG, DOC allowed.', 'error'); return redirect(url_for('ukvi_student_track', token=token))
+    f.seek(0, 2); fsize = f.tell(); f.seek(0)
+    if fsize > 10 * 1024 * 1024:
+        flash('Max 10 MB allowed.', 'error'); return redirect(url_for('ukvi_student_track', token=token))
+    sdir = _os.path.join(UKVI_DOC_DIR, str(student.id)); _os.makedirs(sdir, exist_ok=True)
+    fname = f"{doc_type}_{int(datetime.now().timestamp())}{ext}"
+    f.save(_os.path.join(sdir, fname))
+    db.session.add(UKVIB2BDocument(student_id=student.id, doc_type=doc_type, original_name=safe, filename=fname, file_size=fsize, status='pending', notes='Uploaded by student'))
+    db.session.add(UKVIB2BNotification(student_id=student.id, event_type='student_doc_uploaded', channel='in_app', title=f'Student uploaded {doc_type.replace("_"," ").title()}', body=safe, status='sent', sent_at=datetime.now(timezone.utc)))
+    db.session.commit()
+    partner = db.session.get(UKVIB2BPartner, student.partner_id) if student.partner_id else None
+    if partner and getattr(partner, 'email', None):
+        _dlabel = doc_type.replace('_', ' ').title()
+        _rev = f"{request.host_url.rstrip('/')}/ukvi/b2b/students/{student.id}"
+        _subj = f"Document Uploaded by {student.full_name} - {_dlabel}"
+        _body_txt = (
+            f"Hello {partner.name}," + chr(10)*2 +
+            f"Student {student.full_name} has uploaded a document via the Tracking Portal:" + chr(10) +
+            f"  - Document: {_dlabel}" + chr(10) +
+            f"  - File: {safe}" + chr(10) +
+            f"  - Student Email: {student.email or 'N/A'}" + chr(10)*2 +
+            f"Review & Verify now:" + chr(10) + f"{_rev}" + chr(10)*2 +
+            f"-- SeltaPrep UKVI Portal"
+        )
+        _sent_ok = False
+        try:
+            _sender = app.config.get('MAIL_DEFAULT_SENDER') or app.config.get('MAIL_USERNAME')
+            _msg = Message(
+                subject=_subj,
+                sender=_sender,
+                recipients=[partner.email],
+                reply_to=student.email if getattr(student, 'email', None) else None,
+                body=_body_txt,
+            )
+            mail.send(_msg)
+            _sent_ok = True
+            logger.info("Consultancy upload alert sent via Flask-Mail to %s", partner.email)
+        except Exception as _e:
+            logger.warning("Flask-Mail upload alert failed (%s), trying SMTP fallback...", _e)
+        if not _sent_ok:
+            try:
+                _cfg, _, _ = _resolve_smtp_for_student(student)
+                if _cfg:
+                    _html = "<div style='font-family:sans-serif;line-height:1.6'>" + _body_txt.replace(chr(10), "<br>") + "</div>"
+                    _ok2, _err2 = _send_smtp_html(_cfg, partner.email, _subj, _html)
+                    if _ok2:
+                        logger.info("Consultancy upload alert sent via SMTP fallback to %s", partner.email)
+                    else:
+                        logger.warning("SMTP fallback also failed: %s", _err2)
+            except Exception as _e2:
+                logger.warning("SMTP fallback exception: %s", _e2)
+    session['_last_uploaded_doc'] = doc_type.replace('_', ' ').title()
+    flash(f'? {doc_type.replace("_"," ").title()} uploaded! Click the green WhatsApp button below to notify your consultancy.', 'success')
+    return redirect(url_for('ukvi_student_track', token=token))
+
+
 def ensure_track_token(student):
     """Generate public_track_token if missing."""
     import secrets as _sec
@@ -10519,7 +10624,7 @@ def whatsapp_link(student, message=''):
 
 
 @app.route('/ukvi/b2b/email-settings')
-@login_required
+@_b2b_partner_required
 def ukvi_b2b_email_settings():
     from modules.ukvi.models import UKVIB2BPartner
     pid = session.get('ukvi_b2b_partner_id') or session.get('b2b_partner_id')
@@ -10530,7 +10635,7 @@ def ukvi_b2b_email_settings():
 
 
 @app.route('/ukvi/b2b/email-settings/save', methods=['POST'])
-@login_required
+@_b2b_partner_required
 @csrf_exempt
 def ukvi_b2b_email_settings_save():
     from modules.ukvi.models import UKVIB2BPartner
@@ -10552,7 +10657,7 @@ def ukvi_b2b_email_settings_save():
 
 
 @app.route('/ukvi/b2b/email-settings/test', methods=['POST'])
-@login_required
+@_b2b_partner_required
 @csrf_exempt
 def ukvi_b2b_email_settings_test():
     from modules.ukvi.models import UKVIB2BPartner
@@ -10582,7 +10687,7 @@ def ukvi_b2b_email_settings_test():
 # First-time Email Setup Wizard (institute self-service)
 # ═══════════════════════════════════════════════════════════
 @app.route('/ukvi/b2b/email-setup', methods=['GET', 'POST'])
-@login_required
+@_b2b_partner_required
 def ukvi_b2b_email_setup_wizard():
     from modules.ukvi.models import UKVIB2BPartner
     pid = session.get('ukvi_b2b_partner_id') or session.get('b2b_partner_id')
@@ -10642,7 +10747,7 @@ def ukvi_b2b_email_setup_wizard():
 
 
 @app.route('/ukvi/b2b/email-setup/skip', methods=['POST'])
-@login_required
+@_b2b_partner_required
 def ukvi_b2b_email_setup_skip():
     session['_email_setup_skipped'] = True
     flash('Reminder: You can configure email anytime from Email → Settings', 'info')
@@ -11059,6 +11164,42 @@ try:
         return q.first()
 
     # ─── DOCUMENTS ───
+    @app.route('/ukvi/b2b/students/<int:sid>/documents/request', methods=['POST'])
+    @csrf_exempt
+    def ukvi_b2b_doc_request(sid):
+        student = _verify_student(sid)
+        if not student:
+            return jsonify({'success': False, 'error': 'Not found'}), 404
+        from modules.ukvi.models import UKVIB2BPartner, UKVIB2BNotification
+        import urllib.parse as _up
+        partner = db.session.get(UKVIB2BPartner, student.partner_id)
+        data = request.get_json(silent=True) or {}
+        docs_list = [re.sub(r'[^a-zA-Z0-9_-]', '_', str(x))[:40] for x in (data.get('docs') or []) if str(x).strip()]
+        if not docs_list:
+            return jsonify({'success': False, 'error': 'Select at least one document'}), 400
+        pretty_list = ', '.join(d.replace('_', ' ').title() for d in docs_list)
+        db.session.add(UKVIB2BNotification(
+            student_id=student.id, event_type='doc_request', channel='in_app',
+            title=f'Documents Requested: {pretty_list}'[:200], body=','.join(docs_list),
+            status='sent', sent_at=datetime.now(timezone.utc)
+        ))
+        db.session.commit()
+        _tok = ensure_track_token(student)
+        _track_url = f"{request.host_url.rstrip('/')}/ukvi/track/{_tok}"
+        if student.email:
+            try:
+                notify_student(student, 'doc_request_email', f'?? Action Required: Upload Documents ({partner.name})',
+                    f'Please upload these required UKVI documents on your Tracking Portal:' + chr(10)*2 + f'? {pretty_list}' + chr(10)*2 + f'Upload Link: {_track_url}', send_email=True)
+            except Exception as _ne:
+                logger.warning("Doc request email failed: %s", _ne)
+        wa_phone = re.sub(r'\D', '', (student.phone or ''))
+        if wa_phone.startswith('0') and len(wa_phone) == 10: wa_phone = '977' + wa_phone[1:]
+        elif len(wa_phone) == 10 and wa_phone.startswith('9'): wa_phone = '977' + wa_phone
+        wa_msg = f"Hello {student.full_name}, please upload your required UKVI documents ({pretty_list}) on your Tracking Portal: {_track_url} ? {partner.name}"
+        _wa_base = 'https:/' + '/wa.me/'
+        wa_url = f"{_wa_base}{wa_phone}?text={_up.quote(wa_msg)}" if wa_phone else f"{_wa_base}?text={_up.quote(wa_msg)}"
+        return jsonify({'success': True, 'wa_url': wa_url, 'requested': pretty_list})
+
     @app.route('/ukvi/b2b/students/<int:sid>/documents/upload', methods=['POST'])
     @csrf_exempt
     def ukvi_b2b_doc_upload(sid):
@@ -11076,6 +11217,11 @@ try:
         allowed = {'.pdf', '.jpg', '.jpeg', '.png', '.doc', '.docx'}
         if ext not in allowed:
             return jsonify({'success': False, 'error': f'Extension {ext} not allowed'}), 400
+        f.seek(0, 2)
+        _fsize = f.tell()
+        f.seek(0)
+        if _fsize > 10 * 1024 * 1024:
+            return jsonify({'success': False, 'error': 'File too large (max 10 MB allowed)'}), 400
         student_dir = _os.path.join(UKVI_DOC_DIR, str(sid))
         _os.makedirs(student_dir, exist_ok=True)
         fname = f"{doc_type}_{int(datetime.now().timestamp())}{ext}"
@@ -11317,7 +11463,7 @@ except Exception as _e:
     # Student Visa Info (Remarks modal)
     # ═══════════════════════════════════════════════════════
     @app.route('/ukvi/b2b/students/<int:student_id>/visa-info', methods=['GET', 'POST'])
-    @login_required
+    @_b2b_partner_required
     @csrf_exempt
     def ukvi_b2b_student_visa_info(student_id):
         from modules.ukvi.models import UKVIB2BStudent

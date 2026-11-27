@@ -19,6 +19,33 @@
 
 <h2 style="margin-bottom: 20px;">Welcome, {{ partner.name }}</h2>
 
+{% if pending_docs %}
+<div class="card" style="border-left:4px solid #f59e0b;background:#fffbeb;margin-bottom:18px;">
+    <h3 style="margin:0 0 10px;color:#92400e;font-size:15px;">?? Pending Document Verifications ({{ pending_docs|length }})</h3>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+        {% for doc, stu in pending_docs %}
+        <div id="qv-row-{{ doc.id }}" style="display:flex;justify-content:space-between;align-items:center;gap:10px;background:#fff;padding:10px 12px;border-radius:8px;border:1px solid #fde68a;flex-wrap:wrap;">
+            <div><strong>{{ stu.full_name }}</strong> ? <span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;">{{ doc.doc_type|replace('_',' ')|title }}</span> <small style="color:#6b7280;">{{ doc.original_name or '' }}</small></div>
+            <div style="display:flex;gap:6px;">
+                <a href="/ukvi/b2b/students/{{ stu.id }}/documents/{{ doc.id }}/view" target="_blank" class="btn btn-sm btn-outline">??? View</a>
+                <button type="button" class="btn btn-sm btn-success" onclick="quickVerifyDoc({{ stu.id }}, {{ doc.id }}, 'verified')">? Verify</button>
+                <button type="button" class="btn btn-sm btn-danger" onclick="quickVerifyDoc({{ stu.id }}, {{ doc.id }}, 'rejected')">? Reject</button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+<script>
+function quickVerifyDoc(sid, docId, status) {
+    fetch('/ukvi/b2b/students/' + sid + '/documents/' + docId + '/verify', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': '{{ csrf_token }}' },
+        body: JSON.stringify({ status: status })
+    }).then(r => r.json()).then(d => {
+        if (d.success) { var row = document.getElementById('qv-row-' + docId); if (row) row.innerHTML = '<strong style="color:' + (status==='verified'?'#065f46':'#991b1b') + ';">' + (status==='verified'?'? Verified & Student Notified':'? Rejected & Student Notified') + '</strong>'; }
+    });
+}
+</script>
+{% endif %}
 <div class="stats-grid">
     <div class="stat-card">
         <div class="stat-value">{{ partner.credits_balance }}</div>
@@ -63,7 +90,7 @@
         <a href="{{ url_for('ukvi_b2b_students') }}" class="btn btn-outline">
             👥 View Students
         </a>
-        <a href="{{ url_for('ukvi_b2b_results') }}" class="btn btn-outline">
+        <a href="{{ url_for('ukvi_b2b_students') }}" class="btn btn-outline">
             📊 View Results
         </a>
     </div>
